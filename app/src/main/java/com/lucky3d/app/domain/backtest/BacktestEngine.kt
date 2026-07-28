@@ -14,6 +14,8 @@ data class BacktestResult(
     val status: BacktestStatus,
     val candidateCount: Int,
     val covered: Boolean?,
+    val candidates: List<DrawNumber>,
+    val amountYuan: Int,
 )
 
 data class BacktestReport(
@@ -23,6 +25,8 @@ data class BacktestReport(
     val eligibleCount: Int,
     val coveredCount: Int,
     val coverageRate: Double?,
+    val averageBetCount: Double?,
+    val cumulativeAmountYuan: Int,
 )
 
 typealias BacktestCandidateGenerator = (
@@ -32,9 +36,7 @@ typealias BacktestCandidateGenerator = (
 ) -> List<DrawNumber>
 
 class BacktestEngine(
-    private val candidateGenerator: BacktestCandidateGenerator = { _, template, _ ->
-        NumberPool.filter(template.conditions).candidates
-    },
+    private val candidateGenerator: BacktestCandidateGenerator? = null,
 ) {
     fun run(
         template: FilterTemplate,
@@ -44,6 +46,13 @@ class BacktestEngine(
             "Backtest draw issues must be unique"
         }
         val ordered = draws.sortedBy(HistoricalDraw::issue)
+        val staticCandidates = if (candidateGenerator == null) {
+            NumberPool.filter(template.conditions, template.playType).candidates
+                .mapNotNull { normalizeOrNull(it, template.playType) }
+                .distinct()
+        } else {
+            null
+        }
         val results = ordered.mapIndexed { index, target ->
             val history = ordered.subList(0, index)
             if (history.size < template.observationWindow) {
@@ -52,18 +61,25 @@ class BacktestEngine(
                     status = BacktestStatus.INSUFFICIENT_SAMPLE,
                     candidateCount = 0,
                     covered = null,
+                    candidates = emptyList(),
+                    amountYuan = 0,
                 )
             } else {
-                val candidates = candidateGenerator(history, template, target)
-                val normalizedCandidates = candidates
-                    .mapNotNull { normalizeOrNull(it, template.playType) }
-                    .distinct()
+                val normalizedCandidates = if (candidateGenerator == null) {
+                    checkNotNull(staticCandidates)
+                } else {
+                    candidateGenerator(history, template, target)
+                        .mapNotNull { normalizeOrNull(it, template.playType) }
+                        .distinct()
+                }
                 val winningNumber = normalizeOrNull(target.number, template.playType)
                 BacktestResult(
                     targetIssue = target.issue,
                     status = BacktestStatus.EVALUATED,
                     candidateCount = normalizedCandidates.size,
                     covered = winningNumber != null && winningNumber in normalizedCandidates,
+                    candidates = normalizedCandidates,
+                    amountYuan = PlayConverter.amountYuan(normalizedCandidates.size, 1),
                 )
             }
         }
@@ -77,6 +93,10 @@ class BacktestEngine(
             coveredCount = coveredCount,
             coverageRate = evaluated.takeIf(List<BacktestResult>::isNotEmpty)
                 ?.let { coveredCount.toDouble() / it.size },
+            averageBetCount = evaluated.takeIf(List<BacktestResult>::isNotEmpty)
+                ?.map(BacktestResult::candidateCount)
+                ?.average(),
+            cumulativeAmountYuan = evaluated.sumOf(BacktestResult::amountYuan),
         )
     }
 

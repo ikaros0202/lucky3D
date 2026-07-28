@@ -23,6 +23,14 @@ object RepositoryModule {
 
     @Provides
     @Singleton
+    fun provideDrawRepository(repository: DefaultDrawRepository): DrawRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideSchemeRepository(repository: DefaultSchemeRepository): SchemeRepository = repository
+
+    @Provides
+    @Singleton
     fun provideSyncStore(store: RoomSyncStore): SyncStore = store
 
     @Provides

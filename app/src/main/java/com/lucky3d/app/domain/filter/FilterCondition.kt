@@ -196,6 +196,29 @@ data class PairRelationRange(
     }
 }
 
+data class DanTuoCondition(
+    val danDigits: Set<Int>,
+    val tuoDigits: Set<Int>,
+    val playType: PlayType,
+) : FilterCondition {
+    init {
+        validateDigits(danDigits)
+        validateDigits(tuoDigits)
+        require((danDigits intersect tuoDigits).isEmpty()) {
+            "Dan and tuo digits cannot overlap"
+        }
+    }
+
+    override val typeId = "DAN_TUO"
+    override val title = "胆码拖码"
+
+    override fun matches(number: DrawNumber): Boolean {
+        val allowed = danDigits + tuoDigits
+        return number.digits.all(allowed::contains) &&
+            danDigits.all(number.digits::contains)
+    }
+}
+
 private fun validateDigits(digits: Set<Int>) {
     require(digits.all { it in 0..9 }) { "Digits must be between 0 and 9" }
 }

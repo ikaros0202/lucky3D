@@ -72,3 +72,14 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         connection.execSQL("CREATE INDEX IF NOT EXISTS `index_replays_issue` ON `replays` (`issue`)")
     }
 }
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE `schemes` ADD COLUMN `title` TEXT NOT NULL DEFAULT ''",
+        )
+        connection.execSQL(
+            "ALTER TABLE `schemes` ADD COLUMN `observationWindow` INTEGER NOT NULL DEFAULT 30",
+        )
+    }
+}

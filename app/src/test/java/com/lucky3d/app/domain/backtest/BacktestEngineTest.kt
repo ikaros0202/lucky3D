@@ -37,6 +37,9 @@ class BacktestEngineTest {
         assertThat(report.eligibleCount).isEqualTo(1)
         assertThat(report.coveredCount).isEqualTo(1)
         assertThat(report.coverageRate).isEqualTo(1.0)
+        assertThat(report.averageBetCount).isEqualTo(1000.0)
+        assertThat(report.cumulativeAmountYuan).isEqualTo(2000)
+        assertThat(report.results.last().candidates).hasSize(1000)
     }
 
     @Test
@@ -72,6 +75,19 @@ class BacktestEngineTest {
         val engine = BacktestEngine()
 
         assertThat(engine.run(template, draws)).isEqualTo(engine.run(template, draws))
+    }
+
+    @Test
+    fun `default static conditions reuse the normalized candidate snapshot`() {
+        val draws = (1..5).map { draw("202600$it", "00$it") }
+        val template = FilterTemplate("static", "static", PlayType.STRAIGHT, emptyList(), 1, 1)
+
+        val evaluated = BacktestEngine().run(template, draws).results
+            .filter { it.status == BacktestStatus.EVALUATED }
+
+        assertThat(evaluated).hasSize(4)
+        assertThat(evaluated[0].candidates).isSameInstanceAs(evaluated[1].candidates)
+        assertThat(evaluated[1].candidates).isSameInstanceAs(evaluated[2].candidates)
     }
 
     private fun draw(issue: String, number: String) = HistoricalDraw(

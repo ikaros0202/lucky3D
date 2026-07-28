@@ -32,6 +32,9 @@ interface SchemeDao {
     @Query("SELECT * FROM schemes WHERE issue = :issue ORDER BY createdAtEpochMillis DESC")
     suspend fun schemesForIssue(issue: String): List<SchemeEntity>
 
+    @Query("SELECT * FROM schemes ORDER BY updatedAtEpochMillis DESC")
+    fun observeSchemes(): Flow<List<SchemeEntity>>
+
     @Query("UPDATE schemes SET isDrawn = 1, updatedAtEpochMillis = :updatedAt WHERE id = :id")
     suspend fun markSchemeDrawn(id: String, updatedAt: Long = 0L)
 
@@ -40,6 +43,9 @@ interface SchemeDao {
 
     @Query("SELECT * FROM replays WHERE schemeId = :schemeId LIMIT 1")
     suspend fun replayBySchemeId(schemeId: String): ReplayEntity?
+
+    @Query("SELECT * FROM replays ORDER BY calculatedAtEpochMillis DESC")
+    fun observeReplays(): Flow<List<ReplayEntity>>
 
     @Transaction
     suspend fun saveReplayAndMarkDrawn(

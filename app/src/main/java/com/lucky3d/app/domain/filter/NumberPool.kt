@@ -24,17 +24,25 @@ data class FilterResult(
 object NumberPool {
     private val straightUniverse: List<DrawNumber> = (0..999).map(DrawNumber::fromInt)
 
-    fun filter(conditions: List<FilterCondition>): FilterResult {
+    fun filter(
+        conditions: List<FilterCondition>,
+        playType: PlayType = PlayType.STRAIGHT,
+    ): FilterResult {
         findConflict(conditions)?.let { return FilterResult(emptyList(), conflict = it) }
+        val universe = if (playType == PlayType.STRAIGHT) {
+            straightUniverse
+        } else {
+            PlayConverter.universe(playType)
+        }
 
         val impacts = conditions.map { condition ->
             ConditionImpact(
                 typeId = condition.typeId,
                 title = condition.title,
-                excludedCount = straightUniverse.count { !condition.matches(it) },
+                excludedCount = universe.count { !condition.matches(it) },
             )
         }
-        val candidates = straightUniverse.filter { number -> conditions.all { it.matches(number) } }
+        val candidates = universe.filter { number -> conditions.all { it.matches(number) } }
         if (conditions.isNotEmpty() && candidates.isEmpty()) {
             return FilterResult(
                 candidates = emptyList(),

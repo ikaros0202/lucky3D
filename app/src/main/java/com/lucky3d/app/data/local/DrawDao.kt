@@ -32,6 +32,27 @@ interface DrawDao {
     @Query("SELECT * FROM draws ORDER BY issue DESC LIMIT 1")
     fun observeLatest(): Flow<DrawEntity?>
 
+    @Query("SELECT * FROM draws ORDER BY issue DESC LIMIT :limit")
+    fun observeRecent(limit: Int): Flow<List<DrawEntity>>
+
+    @Query("SELECT * FROM draws ORDER BY issue ASC")
+    fun observeAllAscending(): Flow<List<DrawEntity>>
+
+    @Query("SELECT * FROM draws WHERE issue = :issue LIMIT 1")
+    fun observeByIssue(issue: String): Flow<DrawEntity?>
+
+    @Query("SELECT * FROM draws WHERE substr(drawDate, 1, 4) = :year ORDER BY issue DESC")
+    fun observeByYear(year: String): Flow<List<DrawEntity>>
+
+    @Query(
+        """
+        SELECT * FROM draws
+        WHERE drawDate BETWEEN :startDate AND :endDate
+        ORDER BY issue DESC
+        """,
+    )
+    fun observeByDateRange(startDate: String, endDate: String): Flow<List<DrawEntity>>
+
     @Upsert
     suspend fun upsertSyncMetadata(metadata: SyncMetadataEntity)
 

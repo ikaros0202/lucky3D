@@ -5,9 +5,22 @@ import org.junit.Test
 
 class MainTabTest {
     @Test
-    fun `five tabs use the approved order and labels`() {
-        assertThat(MainTab.entries.map(MainTab::label))
-            .containsExactly("首页", "走势", "选号", "方案", "彩报")
+    fun `five tabs use the approved order and resource labels`() {
+        assertThat(MainTab.entries.map(MainTab::labelRes))
+            .containsExactly(
+                com.lucky3d.app.R.string.nav_home,
+                com.lucky3d.app.R.string.nav_trend,
+                com.lucky3d.app.R.string.nav_pick,
+                com.lucky3d.app.R.string.nav_plans,
+                com.lucky3d.app.R.string.nav_caibao,
+            )
+            .inOrder()
+    }
+
+    @Test
+    fun `tabs expose stable saveable state keys`() {
+        assertThat(MainTab.entries.map(MainTab::stateKey))
+            .containsExactly("home", "trend", "pick", "plans", "caibao")
             .inOrder()
     }
 }

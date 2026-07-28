@@ -1,12 +1,16 @@
 package com.lucky3d.app.app.navigation
 
+import androidx.annotation.StringRes
+import com.lucky3d.app.R
+
 enum class MainTab(
-    val label: String,
-    val accessibilityLabel: String,
+    @StringRes val labelRes: Int,
+    @StringRes val accessibilityLabelRes: Int,
+    val stateKey: String,
 ) {
-    HOME("首页", "首页"),
-    TREND("走势", "走势分析"),
-    PICK("选号", "号码筛选"),
-    PLANS("方案", "已保存方案"),
-    CAIBAO("彩报", "彩报静态预览"),
+    HOME(R.string.nav_home, R.string.nav_home_a11y, "home"),
+    TREND(R.string.nav_trend, R.string.nav_trend_a11y, "trend"),
+    PICK(R.string.nav_pick, R.string.nav_pick_a11y, "pick"),
+    PLANS(R.string.nav_plans, R.string.nav_plans_a11y, "plans"),
+    CAIBAO(R.string.nav_caibao, R.string.nav_caibao_a11y, "caibao"),
 }

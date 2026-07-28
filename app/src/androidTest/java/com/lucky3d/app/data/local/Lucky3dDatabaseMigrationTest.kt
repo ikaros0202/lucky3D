@@ -46,4 +46,40 @@ class Lucky3dDatabaseMigrationTest {
         }
         databaseFile.delete()
     }
+
+    @Test
+    fun migrationTwoToThreePreservesSchemesAndAddsSnapshotFields() = runTest {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val databaseFile = File(context.cacheDir, "lucky3d-migration-2-to-3.db")
+        databaseFile.delete()
+        val helper = MigrationTestHelper(
+            instrumentation = InstrumentationRegistry.getInstrumentation(),
+            file = databaseFile,
+            driver = BundledSQLiteDriver(),
+            databaseClass = Lucky3dDatabase::class,
+        )
+        helper.createDatabase(2).use { connection ->
+            connection.execSQL(
+                """
+                INSERT INTO schemes VALUES (
+                    'scheme-1', '2026199', NULL, 'STRAIGHT',
+                    '{"schemaVersion":1,"ruleVersion":1,"conditions":[]}', 1,
+                    '["007"]', 1, 1, 2, '保留的备注', 1, 0, NULL, 10, 10
+                )
+                """.trimIndent(),
+            )
+        }
+
+        helper.runMigrationsAndValidate(3, listOf(MIGRATION_2_3)).use { connection ->
+            connection.prepare(
+                "SELECT title, observationWindow, note FROM schemes WHERE id = 'scheme-1'",
+            ).use { statement ->
+                assertThat(statement.step()).isTrue()
+                assertThat(statement.getText(0)).isEqualTo("")
+                assertThat(statement.getLong(1)).isEqualTo(30L)
+                assertThat(statement.getText(2)).isEqualTo("保留的备注")
+            }
+        }
+        databaseFile.delete()
+    }
 }

@@ -19,7 +19,7 @@ object DatabaseModule {
         Room.databaseBuilder(context, Lucky3dDatabase::class.java, Lucky3dDatabase.DATABASE_NAME)
             .createFromAsset(Lucky3dDatabase.ASSET_PATH)
             .setDriver(BundledSQLiteDriver())
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides

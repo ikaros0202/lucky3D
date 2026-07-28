@@ -6,6 +6,15 @@ import org.junit.Test
 
 class NumberPoolTest {
     @Test
+    fun `play-specific universes keep canonical group bets`() {
+        assertThat(NumberPool.filter(emptyList(), PlayType.STRAIGHT).candidates).hasSize(1000)
+        assertThat(NumberPool.filter(emptyList(), PlayType.GROUP3).candidates).hasSize(90)
+        assertThat(NumberPool.filter(emptyList(), PlayType.GROUP6).candidates).hasSize(120)
+        assertThat(NumberPool.filter(emptyList(), PlayType.GROUP6).candidates.first().value)
+            .isEqualTo("012")
+    }
+
+    @Test
     fun `golden universe counts are exact`() {
         val cases = listOf(
             emptyList<FilterCondition>() to 1000,

@@ -91,6 +91,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     implementation(libs.hilt.android)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
 
     ksp(libs.room3.compiler)
     ksp(libs.hilt.compiler)
@@ -139,7 +140,7 @@ val verifySeedAndPrepackagedDatabase by tasks.registering {
         }
         val issueCount = Regex(""""issue"\s*:""").findAll(seed.readText()).count()
         check(issueCount == 3334) { "Expected 3334 seed draws, found $issueCount" }
-        check(sha256(database) == "0E9EE88733C1F367DE0DBE10DD20EFE055D5A1334B3814EC6FBBDD89C44F272D") {
+        check(sha256(database) == "89B2263DA8973DDDA3856382CCB8B939A7AC615631C769103D74FB71E81B66F2") {
             "Prepackaged database SHA-256 changed; rebuild and review it explicitly"
         }
     }

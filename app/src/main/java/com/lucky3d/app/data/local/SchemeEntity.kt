@@ -39,6 +39,8 @@ data class SchemeEntity(
     @PrimaryKey
     val id: String,
     val issue: String,
+    val title: String,
+    val observationWindow: Int,
     val templateId: String?,
     val playType: String,
     val conditionsJson: String,

@@ -28,7 +28,7 @@
 **Interfaces:**
 - Produces: `enum class MainTab(val label: String)` with entries `HOME`, `TREND`, `PICK`, `PLANS`, `CAIBAO`.
 
-- [ ] **Step 1: Write the failing contract test**
+- [x] **Step 1: Write the failing contract test**
 
 ```kotlin
 assertThat(MainTab.entries.map(MainTab::label))
@@ -36,13 +36,13 @@ assertThat(MainTab.entries.map(MainTab::label))
     .inOrder()
 ```
 
-- [ ] **Step 2: Run the test and verify it fails because `MainTab` does not exist**
+- [x] **Step 2: Run the test and verify it fails because `MainTab` does not exist**
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest --tests "*.MainTabTest"
 ```
 
-- [ ] **Step 3: Add the minimal enum with the exact ordered labels**
+- [x] **Step 3: Add the minimal enum with the exact ordered labels**
 
 ```kotlin
 enum class MainTab(val label: String) {
@@ -50,9 +50,9 @@ enum class MainTab(val label: String) {
 }
 ```
 
-- [ ] **Step 4: Re-run the focused test and require PASS**
+- [x] **Step 4: Re-run the focused test and require PASS**
 
-- [ ] **Step 5: Stage the files for the next repository commit**
+- [x] **Step 5: Review the files for the next repository commit; leave staging to the user**
 
 ### Task 2: Bundle the licensed static placeholder
 
@@ -63,15 +63,15 @@ enum class MainTab(val label: String) {
 **Interfaces:**
 - Produces: drawable resource `R.drawable.caibao_placeholder`.
 
-- [ ] **Step 1: Download the fixed-resolution Unsplash image URL**
+- [x] **Step 1: Download the fixed-resolution Unsplash image URL**
 
 ```powershell
 Invoke-WebRequest "https://images.unsplash.com/photo-1643967254338-475e748b6488?auto=format&fit=max&fm=jpg&q=80&w=1200" -OutFile app/src/main/res/drawable-nodpi/caibao_placeholder.jpg
 ```
 
-- [ ] **Step 2: Record author, source page, license URL, purpose, and download URL**
+- [x] **Step 2: Record author, source page, license URL, purpose, and download URL**
 
-- [ ] **Step 3: Verify the file is a decodable JPEG and record its SHA-256**
+- [x] **Step 3: Verify the file is a decodable JPEG and record its SHA-256**
 
 ### Task 3: Implement the root shell and static page
 
@@ -86,7 +86,7 @@ Invoke-WebRequest "https://images.unsplash.com/photo-1643967254338-475e748b6488?
 - Consumes: `MainTab.entries`, `R.drawable.caibao_placeholder`.
 - Produces: `@Composable fun AppNavigation()` and `@Composable fun CaibaoScreen(modifier: Modifier = Modifier)`.
 
-- [ ] **Step 1: Add a Compose test that selects “彩报” and asserts the static disclaimer and image semantics**
+- [x] **Step 1: Add a Compose test that selects “彩报” and asserts the static disclaimer and image semantics**
 
 ```kotlin
 composeRule.onNodeWithText("彩报").performClick()
@@ -94,21 +94,21 @@ composeRule.onNodeWithText("当前为静态示意内容，不会自动更新").a
 composeRule.onNodeWithContentDescription("彩报静态占位图：桌面上的报纸").assertExists()
 ```
 
-- [ ] **Step 2: Run the Android test compilation and verify failure because the navigation/page does not exist**
+- [x] **Step 2: Run the Android test compilation and verify failure because the navigation/page does not exist**
 
 ```powershell
 .\gradlew.bat :app:compileDebugAndroidTestKotlin
 ```
 
-- [ ] **Step 3: Implement one Navigation 3 root, saveable selected-tab state, five labeled `NavigationBarItem`s, four neutral placeholder screens, and `CaibaoScreen`**
+- [x] **Step 3: Implement one Navigation 3 root, saveable selected-tab state, five labeled `NavigationBarItem`s, four neutral placeholder screens, and `CaibaoScreen`**
 
-- [ ] **Step 4: Re-run unit tests, Android test compilation, lint, and debug assembly**
+- [x] **Step 4: Re-run unit tests, Android test compilation, lint, and debug assembly**
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:lintDebug :app:assembleDebug
 ```
 
-- [ ] **Step 5: Stage implementation and verification evidence for the next repository commit**
+- [x] **Step 5: Review implementation and evidence for the next repository commit; leave staging to the user**
 
 ### Task 4: Device acceptance
 
@@ -119,8 +119,8 @@ composeRule.onNodeWithContentDescription("彩报静态占位图：桌面上的�
 - Consumes: debug APK and AVDs `XinYue_API26`, `XinYue_API37`.
 - Produces: verified five-tab and offline彩报 behavior.
 
-- [ ] **Step 1: Install and launch the debug APK on API 26**
-- [ ] **Step 2: Switch through all five tabs and verify彩报 remains visible in airplane/offline conditions**
-- [ ] **Step 3: Repeat the navigation and large-font check on API 37**
-- [ ] **Step 4: Confirm there are no彩报 refresh/action controls and no crash in logcat**
-- [ ] **Step 5: Mark only the verified彩报 acceptance items complete**
+- [x] **Step 1: Install and launch the debug APK on API 26**
+- [x] **Step 2: Switch through all five tabs and verify彩报 remains visible in airplane/offline conditions**
+- [x] **Step 3: Repeat the navigation and large-font check on API 37**
+- [x] **Step 4: Confirm there are no彩报 refresh/action controls and no crash in logcat**
+- [x] **Step 5: Mark only the verified彩报 acceptance items complete**

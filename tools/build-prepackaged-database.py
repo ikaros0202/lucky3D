@@ -17,7 +17,7 @@ DEFAULT_SCHEMA = (
     / "app"
     / "schemas"
     / "com.lucky3d.app.data.local.Lucky3dDatabase"
-    / "1.json"
+    / "3.json"
 )
 DEFAULT_OUTPUT = (
     PROJECT_ROOT / "app" / "src" / "main" / "assets" / "database" / "lucky3d.db"

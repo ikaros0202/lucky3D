@@ -11,7 +11,7 @@ import androidx.room3.RoomDatabase
         SchemeEntity::class,
         ReplayEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class Lucky3dDatabase : RoomDatabase() {
