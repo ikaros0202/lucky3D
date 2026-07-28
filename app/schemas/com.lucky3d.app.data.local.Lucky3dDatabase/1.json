@@ -1,0 +1,122 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "1971d5e1f2f51ca04e6d3f0b2cf08aef",
+    "entities": [
+      {
+        "tableName": "draws",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`issue` TEXT NOT NULL, `drawDate` TEXT NOT NULL, `hundreds` INTEGER NOT NULL, `tens` INTEGER NOT NULL, `ones` INTEGER NOT NULL, `officialDetailUrl` TEXT NOT NULL, `officialFingerprint` TEXT NOT NULL, PRIMARY KEY(`issue`))",
+        "fields": [
+          {
+            "fieldPath": "issue",
+            "columnName": "issue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "drawDate",
+            "columnName": "drawDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hundreds",
+            "columnName": "hundreds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tens",
+            "columnName": "tens",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ones",
+            "columnName": "ones",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "officialDetailUrl",
+            "columnName": "officialDetailUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "officialFingerprint",
+            "columnName": "officialFingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "issue"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_draws_drawDate",
+            "unique": false,
+            "columnNames": [
+              "drawDate"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_draws_drawDate` ON `${TABLE_NAME}` (`drawDate`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sync_metadata",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `lastAttemptEpochMillis` INTEGER, `lastSuccessEpochMillis` INTEGER, `latestIssue` TEXT, `lastFailureType` TEXT, `correctedIssuesJson` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptEpochMillis",
+            "columnName": "lastAttemptEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSuccessEpochMillis",
+            "columnName": "lastSuccessEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "latestIssue",
+            "columnName": "latestIssue",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastFailureType",
+            "columnName": "lastFailureType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "correctedIssuesJson",
+            "columnName": "correctedIssuesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1971d5e1f2f51ca04e6d3f0b2cf08aef')"
+    ]
+  }
+}

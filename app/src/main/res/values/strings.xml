@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lucky3D</string>
+    <string name="caibao_title">彩报</string>
+    <string name="caibao_static_notice">当前为静态示意内容，不会自动更新</string>
+    <string name="caibao_description">这是一张随应用安装的报纸占位图，不是实际的福彩分析内容。</string>
+    <string name="caibao_image_description">彩报静态占位图：桌面上的报纸</string>
+    <string name="caibao_attribution">图片：Swello / Unsplash（免费许可）</string>
+    <string name="responsible_play_notice">理性购彩，量力而行</string>
+    <string name="feature_pending">页面功能将在后续任务中逐步实现</string>
+</resources>

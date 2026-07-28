@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 1,
+  "ruleVersion": 1,
+  "qualityConvention": {
+    "primeLike": [1, 2, 3, 5, 7],
+    "compositeLike": [0, 4, 6, 8, 9]
+  },
+  "attributeCases": [
+    {
+      "number": "000",
+      "sum": 0,
+      "sumTail": 0,
+      "span": 0,
+      "oddCount": 0,
+      "bigCount": 0,
+      "primeLikeCount": 0,
+      "routesByPosition": [0, 0, 0],
+      "routeCounts": [3, 0, 0],
+      "groupShape": "LEOPARD",
+      "hasPairConsecutive": false,
+      "hasTripleConsecutive": false,
+      "pairSums": {
+        "hundredsTens": 0,
+        "tensOnes": 0,
+        "hundredsOnes": 0
+      },
+      "pairDifferences": {
+        "hundredsTens": 0,
+        "tensOnes": 0,
+        "hundredsOnes": 0
+      }
+    },
+    {
+      "number": "007",
+      "sum": 7,
+      "sumTail": 7,
+      "span": 7,
+      "oddCount": 1,
+      "bigCount": 1,
+      "primeLikeCount": 1,
+      "routesByPosition": [0, 0, 1],
+      "routeCounts": [2, 1, 0],
+      "groupShape": "GROUP3",
+      "hasPairConsecutive": false,
+      "hasTripleConsecutive": false,
+      "pairSums": {
+        "hundredsTens": 0,
+        "tensOnes": 7,
+        "hundredsOnes": 7
+      },
+      "pairDifferences": {
+        "hundredsTens": 0,
+        "tensOnes": 7,
+        "hundredsOnes": 7
+      }
+    },
+    {
+      "number": "112",
+      "sum": 4,
+      "sumTail": 4,
+      "span": 1,
+      "oddCount": 2,
+      "bigCount": 0,
+      "primeLikeCount": 3,
+      "routesByPosition": [1, 1, 2],
+      "routeCounts": [0, 2, 1],
+      "groupShape": "GROUP3",
+      "hasPairConsecutive": true,
+      "hasTripleConsecutive": false,
+      "pairSums": {
+        "hundredsTens": 2,
+        "tensOnes": 3,
+        "hundredsOnes": 3
+      },
+      "pairDifferences": {
+        "hundredsTens": 0,
+        "tensOnes": 1,
+        "hundredsOnes": 1
+      }
+    },
+    {
+      "number": "123",
+      "sum": 6,
+      "sumTail": 6,
+      "span": 2,
+      "oddCount": 2,
+      "bigCount": 0,
+      "primeLikeCount": 3,
+      "routesByPosition": [1, 2, 0],
+      "routeCounts": [1, 1, 1],
+      "groupShape": "GROUP6",
+      "hasPairConsecutive": true,
+      "hasTripleConsecutive": true,
+      "pairSums": {
+        "hundredsTens": 3,
+        "tensOnes": 5,
+        "hundredsOnes": 4
+      },
+      "pairDifferences": {
+        "hundredsTens": 1,
+        "tensOnes": 1,
+        "hundredsOnes": 2
+      }
+    },
+    {
+      "number": "685",
+      "sum": 19,
+      "sumTail": 9,
+      "span": 3,
+      "oddCount": 1,
+      "bigCount": 3,
+      "primeLikeCount": 1,
+      "routesByPosition": [0, 2, 2],
+      "routeCounts": [1, 0, 2],
+      "groupShape": "GROUP6",
+      "hasPairConsecutive": true,
+      "hasTripleConsecutive": false,
+      "pairSums": {
+        "hundredsTens": 14,
+        "tensOnes": 13,
+        "hundredsOnes": 11
+      },
+      "pairDifferences": {
+        "hundredsTens": 2,
+        "tensOnes": 3,
+        "hundredsOnes": 1
+      }
+    },
+    {
+      "number": "999",
+      "sum": 27,
+      "sumTail": 7,
+      "span": 0,
+      "oddCount": 3,
+      "bigCount": 3,
+      "primeLikeCount": 0,
+      "routesByPosition": [0, 0, 0],
+      "routeCounts": [3, 0, 0],
+      "groupShape": "LEOPARD",
+      "hasPairConsecutive": false,
+      "hasTripleConsecutive": false,
+      "pairSums": {
+        "hundredsTens": 18,
+        "tensOnes": 18,
+        "hundredsOnes": 18
+      },
+      "pairDifferences": {
+        "hundredsTens": 0,
+        "tensOnes": 0,
+        "hundredsOnes": 0
+      }
+    }
+  ],
+  "crossDrawCases": [
+    {
+      "previous": "275",
+      "current": "685",
+      "repeatDigits": [5],
+      "neighborDigits": [6, 8]
+    }
+  ],
+  "permutationCases": [
+    {
+      "playType": "GROUP3",
+      "canonical": "112",
+      "straightPermutations": ["112", "121", "211"]
+    },
+    {
+      "playType": "GROUP6",
+      "canonical": "123",
+      "straightPermutations": ["123", "132", "213", "231", "312", "321"]
+    }
+  ],
+  "universeCases": [
+    {
+      "description": "All straight numbers",
+      "conditions": [],
+      "expectedCount": 1000,
+      "expectedSingleMultiplierAmount": 2000
+    },
+    {
+      "description": "Global kill digit 0",
+      "conditions": [
+        {
+          "type": "GLOBAL_EXCLUDED_DIGITS",
+          "digits": [0]
+        }
+      ],
+      "expectedCount": 729
+    },
+    {
+      "description": "Global required digit 1",
+      "conditions": [
+        {
+          "type": "GLOBAL_REQUIRED_DIGITS",
+          "digits": [1]
+        }
+      ],
+      "expectedCount": 271
+    },
+    {
+      "description": "Global required digits 1 and 2",
+      "conditions": [
+        {
+          "type": "GLOBAL_REQUIRED_DIGITS",
+          "digits": [1, 2]
+        }
+      ],
+      "expectedCount": 54
+    },
+    {
+      "description": "Sum equals 6",
+      "conditions": [
+        {
+          "type": "SUM_RANGE",
+          "minimum": 6,
+          "maximum": 6
+        }
+      ],
+      "expectedCount": 28
+    },
+    {
+      "description": "All leopard straight numbers",
+      "conditions": [
+        {
+          "type": "GROUP_SHAPE",
+          "values": ["LEOPARD"]
+        }
+      ],
+      "expectedCount": 10
+    }
+  ],
+  "playUniverseCases": [
+    {
+      "playType": "STRAIGHT",
+      "expectedBetCount": 1000,
+      "expectedSingleMultiplierAmount": 2000
+    },
+    {
+      "playType": "GROUP3",
+      "expectedBetCount": 90,
+      "expectedStraightPermutationCount": 270,
+      "expectedSingleMultiplierAmount": 180
+    },
+    {
+      "playType": "GROUP6",
+      "expectedBetCount": 120,
+      "expectedStraightPermutationCount": 720,
+      "expectedSingleMultiplierAmount": 240
+    }
+  ],
+  "omissionCases": [
+    {
+      "description": "Hundreds digit 1 across four draws",
+      "hundredsDigits": [1, 2, 1, 3],
+      "targetDigit": 1,
+      "omissionByDraw": [0, 1, 0, 1],
+      "completedOmissions": [1],
+      "currentOmission": 1,
+      "averageOmission": 1.0,
+      "maxOmission": 1
+    },
+    {
+      "description": "Hundreds digit 1 returns after three misses",
+      "hundredsDigits": [1, 2, 3, 4, 1],
+      "targetDigit": 1,
+      "omissionByDraw": [0, 1, 2, 3, 0],
+      "completedOmissions": [3],
+      "currentOmission": 0,
+      "averageOmission": 3.0,
+      "maxOmission": 3
+    }
+  ]
+}
