@@ -27,6 +27,7 @@ Thumbs.db
 # Local logs and temporary files
 *.log
 *.tmp
+.worktrees/
 
 # Locally signed release artifacts
 artifacts/
