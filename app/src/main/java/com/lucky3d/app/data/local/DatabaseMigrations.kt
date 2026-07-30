@@ -83,3 +83,51 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         )
     }
 }
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `trial_numbers` (
+                `issue` TEXT NOT NULL,
+                `number` TEXT NOT NULL,
+                `sourcePageUrl` TEXT NOT NULL,
+                `sourceLocalDate` TEXT NOT NULL,
+                `fetchedAtEpochMillis` INTEGER NOT NULL,
+                PRIMARY KEY(`issue`)
+            )
+            """.trimIndent(),
+        )
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `caibao_documents` (
+                `issue` TEXT NOT NULL,
+                `edition` TEXT NOT NULL,
+                `sourcePageUrl` TEXT NOT NULL,
+                `imageUrl` TEXT NOT NULL,
+                `localFileName` TEXT NOT NULL,
+                `mimeType` TEXT NOT NULL,
+                `width` INTEGER NOT NULL,
+                `height` INTEGER NOT NULL,
+                `sourceLocalDate` TEXT NOT NULL,
+                `fetchedAtEpochMillis` INTEGER NOT NULL,
+                PRIMARY KEY(`issue`)
+            )
+            """.trimIndent(),
+        )
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `live_content_refresh_metadata` (
+                `contentType` TEXT NOT NULL,
+                `attemptLocalDate` TEXT,
+                `autoAttemptCount` INTEGER NOT NULL,
+                `lastAttemptEpochMillis` INTEGER,
+                `lastSuccessLocalDate` TEXT,
+                `lastSuccessEpochMillis` INTEGER,
+                `lastFailureType` TEXT,
+                PRIMARY KEY(`contentType`)
+            )
+            """.trimIndent(),
+        )
+    }
+}
