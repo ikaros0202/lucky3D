@@ -23,6 +23,9 @@ interface LiveContentDao {
     @Query("SELECT * FROM caibao_documents ORDER BY cachedLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
     suspend fun latestCaibao(): CaibaoDocumentEntity?
 
+    @Query("SELECT * FROM caibao_documents ORDER BY cachedLocalDate DESC, fetchedAtEpochMillis DESC")
+    suspend fun allCaibao(): List<CaibaoDocumentEntity>
+
     @Query("SELECT * FROM live_content_refresh_metadata WHERE contentType = :contentType LIMIT 1")
     suspend fun refreshMetadata(contentType: String): LiveContentRefreshMetadataEntity?
 
