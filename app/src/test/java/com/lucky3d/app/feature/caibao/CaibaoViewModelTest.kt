@@ -3,6 +3,7 @@ package com.lucky3d.app.feature.caibao
 import com.google.common.truth.Truth.assertThat
 import com.lucky3d.app.MainDispatcherRule
 import com.lucky3d.app.core.model.CaibaoDocument
+import com.lucky3d.app.data.repository.CaibaoImageReadResult
 import com.lucky3d.app.data.repository.LiveContentRepository
 import com.lucky3d.app.domain.livecontent.LiveContentFailure
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
@@ -61,6 +62,7 @@ class CaibaoViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.document).isEqualTo(cached)
+        assertThat(viewModel.uiState.value.imageBytes).isEqualTo(IMAGE_BYTES)
         assertThat(viewModel.uiState.value.refreshState)
             .isEqualTo(LiveContentRefreshState.Refreshing)
     }
@@ -77,6 +79,7 @@ class CaibaoViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.document).isEqualTo(cached)
+        assertThat(viewModel.uiState.value.imageBytes).isEqualTo(IMAGE_BYTES)
         assertThat(viewModel.uiState.value.hasCachedContent).isTrue()
         assertThat(viewModel.uiState.value.refreshState)
             .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.NETWORK))
@@ -97,11 +100,49 @@ class CaibaoViewModelTest {
             .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.INVALID_IMAGE))
     }
 
+    @Test
+    fun `validated local image bytes make cached document readable`() = runTest {
+        val cached = caibao()
+        val repository = FakeLiveContentRepository().apply {
+            caibao.value = cached
+            imageReadResult = CaibaoImageReadResult.Loaded(IMAGE_BYTES)
+        }
+
+        val viewModel = CaibaoViewModel(repository)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.document).isEqualTo(cached)
+        assertThat(viewModel.uiState.value.imageBytes).isEqualTo(IMAGE_BYTES)
+        assertThat(viewModel.uiState.value.localImageAvailable).isTrue()
+        assertThat(repository.readDocuments).containsExactly(cached)
+    }
+
+    @Test
+    fun `unreadable local image is never exposed as cached content`() = runTest {
+        val cached = caibao()
+        val repository = FakeLiveContentRepository().apply {
+            caibao.value = cached
+            imageReadResult =
+                CaibaoImageReadResult.Unavailable(LiveContentFailure.INVALID_IMAGE)
+        }
+
+        val viewModel = CaibaoViewModel(repository)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.document).isNull()
+        assertThat(viewModel.uiState.value.imageBytes).isNull()
+        assertThat(viewModel.uiState.value.hasCachedContent).isFalse()
+        assertThat(repository.readDocuments).containsExactly(cached)
+    }
+
     private class FakeLiveContentRepository : LiveContentRepository {
         val caibao = MutableStateFlow<CaibaoDocument?>(null)
         val caibaoState =
             MutableStateFlow<LiveContentRefreshState>(LiveContentRefreshState.Idle)
         val caibaoRefreshTriggers = mutableListOf<LiveRefreshTrigger>()
+        val readDocuments = mutableListOf<CaibaoDocument>()
+        var imageReadResult: CaibaoImageReadResult =
+            CaibaoImageReadResult.Loaded(IMAGE_BYTES)
 
         override val trialNumber = MutableStateFlow(null)
         override val trialRefreshState =
@@ -122,9 +163,10 @@ class CaibaoViewModelTest {
 
         override suspend fun readCaibaoImage(
             document: CaibaoDocument,
-        ) = com.lucky3d.app.data.repository.CaibaoImageReadResult.Unavailable(
-            LiveContentFailure.FILE_IO,
-        )
+        ): CaibaoImageReadResult {
+            readDocuments += document
+            return imageReadResult
+        }
 
         override suspend fun cleanCaibaoCache() = Unit
     }
@@ -143,4 +185,8 @@ class CaibaoViewModelTest {
         cachedLocalDate = LocalDate.parse("2026-07-31"),
         fetchedAtEpochMillis = 1L,
     )
+
+    private companion object {
+        val IMAGE_BYTES = byteArrayOf(1, 2, 3, 4)
+    }
 }
