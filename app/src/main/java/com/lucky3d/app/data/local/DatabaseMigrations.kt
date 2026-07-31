@@ -91,6 +91,7 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
             CREATE TABLE IF NOT EXISTS `trial_numbers` (
                 `issue` TEXT NOT NULL,
                 `number` TEXT NOT NULL,
+                `source` TEXT NOT NULL,
                 `sourcePageUrl` TEXT NOT NULL,
                 `sourceLocalDate` TEXT NOT NULL,
                 `fetchedAtEpochMillis` INTEGER NOT NULL,
@@ -103,13 +104,15 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
             CREATE TABLE IF NOT EXISTS `caibao_documents` (
                 `issue` TEXT NOT NULL,
                 `edition` TEXT NOT NULL,
+                `title` TEXT NOT NULL,
                 `sourcePageUrl` TEXT NOT NULL,
                 `imageUrl` TEXT NOT NULL,
                 `localFileName` TEXT NOT NULL,
+                `sha256` TEXT NOT NULL,
                 `mimeType` TEXT NOT NULL,
                 `width` INTEGER NOT NULL,
                 `height` INTEGER NOT NULL,
-                `sourceLocalDate` TEXT NOT NULL,
+                `cachedLocalDate` TEXT NOT NULL,
                 `fetchedAtEpochMillis` INTEGER NOT NULL,
                 PRIMARY KEY(`issue`)
             )
@@ -124,6 +127,7 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
                 `lastAttemptEpochMillis` INTEGER,
                 `lastSuccessLocalDate` TEXT,
                 `lastSuccessEpochMillis` INTEGER,
+                `nextAllowedAutoAttemptEpochMillis` INTEGER,
                 `lastFailureType` TEXT,
                 PRIMARY KEY(`contentType`)
             )

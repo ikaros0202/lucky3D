@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "b80dd3abcb4cb8f1a68e7aad787920ab",
+    "identityHash": "2450663022fb983a65592b259e81fe24",
     "entities": [
       {
         "tableName": "draws",
@@ -436,7 +436,7 @@
       },
       {
         "tableName": "trial_numbers",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`issue` TEXT NOT NULL, `number` TEXT NOT NULL, `sourcePageUrl` TEXT NOT NULL, `sourceLocalDate` TEXT NOT NULL, `fetchedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`issue`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`issue` TEXT NOT NULL, `number` TEXT NOT NULL, `source` TEXT NOT NULL, `sourcePageUrl` TEXT NOT NULL, `sourceLocalDate` TEXT NOT NULL, `fetchedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`issue`))",
         "fields": [
           {
             "fieldPath": "issue",
@@ -447,6 +447,12 @@
           {
             "fieldPath": "number",
             "columnName": "number",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -478,7 +484,7 @@
       },
       {
         "tableName": "caibao_documents",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`issue` TEXT NOT NULL, `edition` TEXT NOT NULL, `sourcePageUrl` TEXT NOT NULL, `imageUrl` TEXT NOT NULL, `localFileName` TEXT NOT NULL, `mimeType` TEXT NOT NULL, `width` INTEGER NOT NULL, `height` INTEGER NOT NULL, `sourceLocalDate` TEXT NOT NULL, `fetchedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`issue`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`issue` TEXT NOT NULL, `edition` TEXT NOT NULL, `title` TEXT NOT NULL, `sourcePageUrl` TEXT NOT NULL, `imageUrl` TEXT NOT NULL, `localFileName` TEXT NOT NULL, `sha256` TEXT NOT NULL, `mimeType` TEXT NOT NULL, `width` INTEGER NOT NULL, `height` INTEGER NOT NULL, `cachedLocalDate` TEXT NOT NULL, `fetchedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`issue`))",
         "fields": [
           {
             "fieldPath": "issue",
@@ -489,6 +495,12 @@
           {
             "fieldPath": "edition",
             "columnName": "edition",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -511,6 +523,12 @@
             "notNull": true
           },
           {
+            "fieldPath": "sha256",
+            "columnName": "sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "mimeType",
             "columnName": "mimeType",
             "affinity": "TEXT",
@@ -529,8 +547,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "sourceLocalDate",
-            "columnName": "sourceLocalDate",
+            "fieldPath": "cachedLocalDate",
+            "columnName": "cachedLocalDate",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -550,7 +568,7 @@
       },
       {
         "tableName": "live_content_refresh_metadata",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`contentType` TEXT NOT NULL, `attemptLocalDate` TEXT, `autoAttemptCount` INTEGER NOT NULL, `lastAttemptEpochMillis` INTEGER, `lastSuccessLocalDate` TEXT, `lastSuccessEpochMillis` INTEGER, `lastFailureType` TEXT, PRIMARY KEY(`contentType`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`contentType` TEXT NOT NULL, `attemptLocalDate` TEXT, `autoAttemptCount` INTEGER NOT NULL, `lastAttemptEpochMillis` INTEGER, `lastSuccessLocalDate` TEXT, `lastSuccessEpochMillis` INTEGER, `nextAllowedAutoAttemptEpochMillis` INTEGER, `lastFailureType` TEXT, PRIMARY KEY(`contentType`))",
         "fields": [
           {
             "fieldPath": "contentType",
@@ -585,6 +603,11 @@
             "affinity": "INTEGER"
           },
           {
+            "fieldPath": "nextAllowedAutoAttemptEpochMillis",
+            "columnName": "nextAllowedAutoAttemptEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
             "fieldPath": "lastFailureType",
             "columnName": "lastFailureType",
             "affinity": "TEXT"
@@ -600,7 +623,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b80dd3abcb4cb8f1a68e7aad787920ab')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2450663022fb983a65592b259e81fe24')"
     ]
   }
 }

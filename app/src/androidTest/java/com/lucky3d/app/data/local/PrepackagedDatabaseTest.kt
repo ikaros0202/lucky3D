@@ -18,7 +18,7 @@ class PrepackagedDatabaseTest {
         val database = Room.databaseBuilder(context, Lucky3dDatabase::class.java, databaseName)
             .createFromAsset(Lucky3dDatabase.ASSET_PATH)
             .setDriver(BundledSQLiteDriver())
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
         try {
             val dao = database.drawDao()

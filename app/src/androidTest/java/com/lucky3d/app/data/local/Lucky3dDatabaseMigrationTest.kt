@@ -53,6 +53,36 @@ class Lucky3dDatabaseMigrationTest {
             assertCount(connection, "draws", 1)
             assertCount(connection, "schemes", 1)
             assertCount(connection, "replays", 1)
+            connection.prepare(
+                "SELECT issue, drawDate, hundreds, tens, ones, officialFingerprint FROM draws",
+            ).use { statement ->
+                assertThat(statement.step()).isTrue()
+                assertThat(statement.getText(0)).isEqualTo("2026201")
+                assertThat(statement.getText(1)).isEqualTo("2026-07-20")
+                assertThat(statement.getLong(2)).isEqualTo(0L)
+                assertThat(statement.getLong(3)).isEqualTo(0L)
+                assertThat(statement.getLong(4)).isEqualTo(7L)
+                assertThat(statement.getText(5)).isEqualTo("draw-fingerprint")
+            }
+            connection.prepare(
+                "SELECT issue, title, candidateNumbersJson, note, isDrawn FROM schemes WHERE id = 'scheme-1'",
+            ).use { statement ->
+                assertThat(statement.step()).isTrue()
+                assertThat(statement.getText(0)).isEqualTo("2026201")
+                assertThat(statement.getText(1)).isEqualTo("保留方案")
+                assertThat(statement.getText(2)).isEqualTo("[\"007\"]")
+                assertThat(statement.getText(3)).isEqualTo("保留备注")
+                assertThat(statement.getLong(4)).isEqualTo(1L)
+            }
+            connection.prepare(
+                "SELECT issue, winningNumber, matchedCandidate, covered FROM replays WHERE schemeId = 'scheme-1'",
+            ).use { statement ->
+                assertThat(statement.step()).isTrue()
+                assertThat(statement.getText(0)).isEqualTo("2026201")
+                assertThat(statement.getText(1)).isEqualTo("007")
+                assertThat(statement.getText(2)).isEqualTo("007")
+                assertThat(statement.getLong(3)).isEqualTo(1L)
+            }
             for (table in listOf("trial_numbers", "caibao_documents", "live_content_refresh_metadata")) {
                 assertCount(connection, table, 0)
             }

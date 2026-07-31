@@ -8,6 +8,7 @@ data class TrialNumberEntity(
     @PrimaryKey
     val issue: String,
     val number: String,
+    val source: String,
     val sourcePageUrl: String,
     val sourceLocalDate: String,
     val fetchedAtEpochMillis: Long,
@@ -18,13 +19,15 @@ data class CaibaoDocumentEntity(
     @PrimaryKey
     val issue: String,
     val edition: String,
+    val title: String,
     val sourcePageUrl: String,
     val imageUrl: String,
     val localFileName: String,
+    val sha256: String,
     val mimeType: String,
     val width: Int,
     val height: Int,
-    val sourceLocalDate: String,
+    val cachedLocalDate: String,
     val fetchedAtEpochMillis: Long,
 )
 
@@ -37,5 +40,6 @@ data class LiveContentRefreshMetadataEntity(
     val lastAttemptEpochMillis: Long?,
     val lastSuccessLocalDate: String?,
     val lastSuccessEpochMillis: Long?,
+    val nextAllowedAutoAttemptEpochMillis: Long?,
     val lastFailureType: String?,
 )

@@ -45,6 +45,7 @@ class LiveContentDaoTest {
         )
         assertThat(dao.observeLatestTrial().first()?.sourceLocalDate).isEqualTo("2026-07-21")
         assertThat(dao.refreshMetadata("TRIAL_NUMBER")?.lastSuccessLocalDate).isEqualTo("2026-07-21")
+        assertThat(trialRowCount()).isEqualTo(1L)
     }
 
     @Test
@@ -58,6 +59,33 @@ class LiveContentDaoTest {
         assertThat(dao.observeLatestCaibao().first()).isEqualTo(document)
         assertThat(dao.refreshMetadata("CAIBAO")).isEqualTo(refresh)
         assertThat(dao.observeRefreshMetadata("CAIBAO").first()).isEqualTo(refresh)
+    }
+
+    @Test
+    fun caibaoAndMetadataBothRollBackWhenMetadataWriteFails() = runTest {
+        database.useConnection(isReadOnly = false) { connection ->
+            connection.usePrepared(
+                """
+                CREATE TRIGGER abort_caibao_metadata
+                BEFORE INSERT ON live_content_refresh_metadata
+                WHEN NEW.contentType = 'CAIBAO'
+                BEGIN
+                    SELECT RAISE(ABORT, 'metadata write failed');
+                END
+                """.trimIndent(),
+            ) { statement -> statement.step() }
+        }
+
+        val failure = runCatching {
+            dao.upsertCaibaoAndMetadata(
+                caibao(issue = "2026202", date = "2026-07-21"),
+                metadata(contentType = "CAIBAO", successDate = "2026-07-21"),
+            )
+        }.exceptionOrNull()
+
+        assertThat(failure).isNotNull()
+        assertThat(dao.latestCaibao()).isNull()
+        assertThat(dao.refreshMetadata("CAIBAO")).isNull()
     }
 
     @Test
@@ -82,6 +110,7 @@ class LiveContentDaoTest {
     private fun trial(issue: String, number: String, date: String) = TrialNumberEntity(
         issue = issue,
         number = number,
+        source = "CJCP_SIMULATED",
         sourcePageUrl = "https://m.cjcp.cn/kjhsjh/3dls/",
         sourceLocalDate = date,
         fetchedAtEpochMillis = 100L,
@@ -90,13 +119,15 @@ class LiveContentDaoTest {
     private fun caibao(issue: String, date: String) = CaibaoDocumentEntity(
         issue = issue,
         edition = "A11",
+        title = "福彩3D彩吧彩报第三版",
         sourcePageUrl = "https://m.cz89.com/tuku/A11.htm",
         imageUrl = "https://tuku.cz89.com/ftp/app/$issue/A11.jpg",
         localFileName = "$issue-A11.jpg",
+        sha256 = "a".repeat(64),
         mimeType = "image/jpeg",
         width = 720,
         height = 1280,
-        sourceLocalDate = date,
+        cachedLocalDate = date,
         fetchedAtEpochMillis = 100L,
     )
 
@@ -110,6 +141,7 @@ class LiveContentDaoTest {
         lastAttemptEpochMillis = 100L,
         lastSuccessLocalDate = successDate,
         lastSuccessEpochMillis = if (successDate == null) null else 100L,
+        nextAllowedAutoAttemptEpochMillis = if (successDate == null) 200L else null,
         lastFailureType = null,
     )
 
@@ -156,4 +188,12 @@ class LiveContentDaoTest {
         revision = 1,
         calculatedAtEpochMillis = 20L,
     )
+
+    private suspend fun trialRowCount(): Long =
+        database.useConnection(isReadOnly = true) { connection ->
+            connection.usePrepared("SELECT COUNT(*) FROM trial_numbers") { statement ->
+                assertThat(statement.step()).isTrue()
+                statement.getLong(0)
+            }
+        }
 }

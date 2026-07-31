@@ -11,7 +11,7 @@ interface LiveContentDao {
     @Query("SELECT * FROM trial_numbers ORDER BY sourceLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
     fun observeLatestTrial(): Flow<TrialNumberEntity?>
 
-    @Query("SELECT * FROM caibao_documents ORDER BY sourceLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
+    @Query("SELECT * FROM caibao_documents ORDER BY cachedLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
     fun observeLatestCaibao(): Flow<CaibaoDocumentEntity?>
 
     @Query("SELECT * FROM live_content_refresh_metadata WHERE contentType = :contentType LIMIT 1")
@@ -20,7 +20,7 @@ interface LiveContentDao {
     @Query("SELECT * FROM trial_numbers ORDER BY sourceLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
     suspend fun latestTrial(): TrialNumberEntity?
 
-    @Query("SELECT * FROM caibao_documents ORDER BY sourceLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
+    @Query("SELECT * FROM caibao_documents ORDER BY cachedLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
     suspend fun latestCaibao(): CaibaoDocumentEntity?
 
     @Query("SELECT * FROM live_content_refresh_metadata WHERE contentType = :contentType LIMIT 1")
@@ -38,7 +38,7 @@ interface LiveContentDao {
     @Query("DELETE FROM trial_numbers")
     suspend fun deleteTrials()
 
-    @Query("SELECT * FROM caibao_documents WHERE sourceLocalDate < :cutoffDate")
+    @Query("SELECT * FROM caibao_documents WHERE cachedLocalDate < :cutoffDate")
     suspend fun caibaoOlderThan(cutoffDate: String): List<CaibaoDocumentEntity>
 
     @Query("DELETE FROM caibao_documents WHERE issue IN (:issues)")
