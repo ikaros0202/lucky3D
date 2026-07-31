@@ -77,4 +77,27 @@ class CjcpTrialHtmlParserTest {
             assertThat(parser.parse(html)).isEqualTo(RemoteParseResult.Failure(LiveContentRemoteFailure.InvalidPayload))
         }
     }
+
+    @Test
+    fun `real affirmative provenance variants are accepted and negated variants rejected`() {
+        val real = fixture.replace("试机号由彩经网模拟数据生成，仅供参考。", "3D开机号和试机号是彩经网生成的模拟数据，仅供参考！")
+        val tagged = real.replace("3D开机号和试机号是彩经网生成的模拟数据", "<b>3D开机号</b>和&nbsp;试机号 是 彩经网生成的模拟数据")
+        assertThat(parser.parse(real)).isInstanceOf(RemoteParseResult.Success::class.java)
+        assertThat(parser.parse(tagged)).isInstanceOf(RemoteParseResult.Success::class.java)
+        listOf("试机号由彩经网没有模拟生成", "试机号不是彩经网生成的模拟数据", "试机号非彩经网生成的模拟数据", "试机号可能是彩经网生成的模拟数据").forEach { notice ->
+            assertThat(parser.parse(fixture.replace("试机号由彩经网模拟数据生成，仅供参考。", notice)))
+                .isEqualTo(RemoteParseResult.Failure(LiveContentRemoteFailure.InvalidSource))
+        }
+    }
+
+    @Test
+    fun `whole cells allow only normalized issue and trial values`() {
+        val validSuffix = fixture.replace("2026201期", "2026201期").replace("<span>&nbsp;0</span><b>07</b>", "<span>0</span> 0 7")
+        assertThat(parser.parse(validSuffix)).isInstanceOf(RemoteParseResult.Success::class.java)
+        listOf(
+            fixture.replace("2026201期", "abc2026201"),
+            fixture.replace("<b>07</b>", "<b>07推荐</b>"),
+            fixture.replace("<b>07</b>", "<b>07 123</b>"),
+        ).forEach { html -> assertThat(parser.parse(html)).isEqualTo(RemoteParseResult.Failure(LiveContentRemoteFailure.InvalidPayload)) }
+    }
 }

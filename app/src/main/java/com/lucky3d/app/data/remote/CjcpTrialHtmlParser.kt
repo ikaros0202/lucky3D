@@ -16,11 +16,9 @@ class CjcpTrialHtmlParser : TrialHtmlParser {
         ROW.findAll(table).forEach { row ->
             val cells = CELL.findAll(row.groupValues[1]).map { normalize(it.groupValues[1]) }.toList()
             if (cells.size <= maxOf(issueColumn, trialColumn)) return@forEach
-            val issues = ISSUE.findAll(cells[issueColumn]).map { it.value }.toList()
-            val numberTokens = DIGITS.findAll(cells[trialColumn].replace(WHITESPACE, "")).map { it.value }.toList()
-            if (issues.size == 1 && numberTokens.size == 1 && NUMBER.matches(numberTokens.single())) {
-                val issue = issues.single()
-                val number = numberTokens.single()
+            val issue = cells[issueColumn].takeIf { ISSUE_CELL.matches(it) }?.removeSuffix("期")
+            val number = cells[trialColumn].replace(WHITESPACE, "")
+            if (issue != null && NUMBER.matches(number)) {
                 return RemoteParseResult.Success(TrialRemoteRecord(issue, number))
             }
         }
@@ -29,7 +27,7 @@ class CjcpTrialHtmlParser : TrialHtmlParser {
 
     private fun hasPositiveSimulationNotice(document: String): Boolean =
         NOTICE_BLOCK.findAll(document).map { normalize(it.groupValues[2]) }.any { text ->
-            POSITIVE_NOTICE.containsMatchIn(text)
+            POSITIVE_NOTICE.containsMatchIn(text) && !NEGATED_OR_AMBIGUOUS.containsMatchIn(text)
         }
 
     private fun normalize(value: String): String =
@@ -57,9 +55,9 @@ class CjcpTrialHtmlParser : TrialHtmlParser {
         private val TAG = Regex("(?is)<[^>]+>")
         private val WHITESPACE = Regex("\\s+")
         private val NUMERIC_ENTITY = Regex("&#(\\d+);")
-        private val ISSUE = Regex("(?<!\\d)20\\d{5}(?!\\d)")
+        private val ISSUE_CELL = Regex("20\\d{5}期?")
         private val NUMBER = Regex("[0-9]{3}")
-        private val DIGITS = Regex("[0-9]+")
-        private val POSITIVE_NOTICE = Regex("试机号\\s*由\\s*彩经网.*?(?:模拟数据|模拟生成)")
+        private val POSITIVE_NOTICE = Regex("(?:试机号\\s*由\\s*彩经网\\s*模拟数据生成|(?:3D开机号和)?试机号\\s*是\\s*彩经网生成的模拟数据)")
+        private val NEGATED_OR_AMBIGUOUS = Regex("不|非|没有|未|无法|疑似|可能|或许")
     }
 }
