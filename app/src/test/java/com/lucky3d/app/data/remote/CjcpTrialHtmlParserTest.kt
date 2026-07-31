@@ -61,4 +61,20 @@ class CjcpTrialHtmlParserTest {
         assertThat(parser.parse(unrelated)).isEqualTo(RemoteParseResult.Failure(LiveContentRemoteFailure.InvalidSource))
         assertThat(parser.parse(negated)).isEqualTo(RemoteParseResult.Failure(LiveContentRemoteFailure.InvalidSource))
     }
+
+    @Test
+    fun `ambiguous provenance and repeated header or cell values are rejected`() {
+        val noGeneration = fixture.replace("试机号由彩经网模拟数据生成，仅供参考。", "试机号没有模拟生成。")
+        val comment = fixture.replace("试机号由彩经网模拟数据生成，仅供参考。", "<!-- <p>试机号由彩经网模拟数据生成</p> -->")
+        val duplicateHeader = fixture.replace("<th>试机号</th>", "<th>试机号</th><th>试机号</th>")
+        val duplicateIssue = fixture.replace("2026201期", "2026201期 2026200期")
+        val duplicateNumber = fixture.replace("<b>07</b>", "<b>07 008</b>")
+
+        listOf(noGeneration, comment).forEach { html ->
+            assertThat(parser.parse(html)).isEqualTo(RemoteParseResult.Failure(LiveContentRemoteFailure.InvalidSource))
+        }
+        listOf(duplicateHeader, duplicateIssue, duplicateNumber).forEach { html ->
+            assertThat(parser.parse(html)).isEqualTo(RemoteParseResult.Failure(LiveContentRemoteFailure.InvalidPayload))
+        }
+    }
 }

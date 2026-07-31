@@ -108,13 +108,8 @@ class Cz89CaibaoDataSourceTest {
         server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(""))
         assertThat(source.fetchImage(imageUrl)).isEqualTo(CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidPayload))
 
-        server.enqueue(MockResponse().setBodyDelay(5, TimeUnit.SECONDS).setBody(fixture))
-        val deferred = async { Cz89CaibaoDataSource(OkHttpClient(), server.url("/A11.htm")).fetchLatestDescriptor() }
-        assertThat(server.takeRequest(1, TimeUnit.SECONDS)).isNotNull()
-        deferred.cancel()
-        var cancellation: CancellationException? = null
-        try { deferred.await() } catch (error: CancellationException) { cancellation = error }
-        assertThat(cancellation).isNotNull()
+        server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBodyDelay(1, TimeUnit.SECONDS).setBody("image"))
+        assertThat(source.fetchImage(imageUrl)).isEqualTo(CaibaoImageResult.Failure(LiveContentRemoteFailure.Network))
     }
 
     @Test
@@ -136,5 +131,23 @@ class Cz89CaibaoDataSourceTest {
         var cancellation: CancellationException? = null
         try { deferred.await() } catch (error: CancellationException) { cancellation = error }
         assertThat(cancellation).isNotNull()
+    }
+
+    @Test
+    fun `cancelling an in-flight page fetch uses a clean request queue`() = runTest {
+        val cleanServer = MockWebServer().also { it.start() }
+        try {
+            cleanServer.enqueue(MockResponse().setBodyDelay(5, TimeUnit.SECONDS).setBody(fixture))
+            val deferred = async(Dispatchers.Default) {
+                Cz89CaibaoDataSource(OkHttpClient(), cleanServer.url("/A11.htm")).fetchLatestDescriptor()
+            }
+            assertThat(cleanServer.takeRequest(1, TimeUnit.SECONDS)).isNotNull()
+            deferred.cancel()
+            var cancellation: CancellationException? = null
+            try { deferred.await() } catch (error: CancellationException) { cancellation = error }
+            assertThat(cancellation).isNotNull()
+        } finally {
+            cleanServer.shutdown()
+        }
     }
 }
