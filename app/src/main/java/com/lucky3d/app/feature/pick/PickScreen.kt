@@ -1,19 +1,23 @@
 package com.lucky3d.app.feature.pick
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
@@ -35,6 +39,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -45,6 +51,8 @@ import com.lucky3d.app.core.ui.EmptyState
 import com.lucky3d.app.core.ui.InlineMessage
 import com.lucky3d.app.core.ui.InlineStatusBanner
 import com.lucky3d.app.core.ui.MessageKind
+import com.lucky3d.app.core.ui.FlowingCinnabarHeader
+import com.lucky3d.app.core.ui.MatteNumberBall
 import com.lucky3d.app.domain.attributes.DrawNumber
 import com.lucky3d.app.domain.attributes.GroupShape
 import com.lucky3d.app.domain.filter.BigCountAllowed
@@ -74,6 +82,10 @@ fun PickScreen(
     onSetObservationWindow: (Int) -> Unit,
     onSetPlayType: (PlayType) -> Unit,
     onSetMode: (PickMode) -> Unit,
+    onSelectManualPosition: (Int) -> Unit,
+    onSelectManualDigit: (Int) -> Unit,
+    onRemoveManualBet: (DrawNumber) -> Unit,
+    onClearManual: () -> Unit,
     onAddCondition: (FilterCondition) -> Unit,
     onEditCondition: (String, FilterCondition) -> Unit,
     onSetConditionEnabled: (String, Boolean) -> Unit,
@@ -92,6 +104,7 @@ fun PickScreen(
     var editingConditionId by rememberSaveable { mutableStateOf<String?>(null) }
     var saveTemplateDialogOpen by rememberSaveable { mutableStateOf(false) }
     var saveSchemeDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var moreMethodsExpanded by rememberSaveable { mutableStateOf(false) }
     val editingCondition = state.conditions
         .firstOrNull { it.id == editingConditionId }
         ?.condition
@@ -100,15 +113,27 @@ fun PickScreen(
         modifier = modifier
             .fillMaxSize()
             .testTag("pick_list")
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 20.dp),
+            .padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 10.dp),
     ) {
         item {
-            Text(
-                text = stringResource(R.string.pick_title),
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.semantics { heading() },
+            FlowingCinnabarHeader(
+                title = stringResource(R.string.pick_title),
+                subtitle = state.targetIssue.takeIf(String::isNotBlank)?.let { "第 $it 期" },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { heading() },
+                actions = {
+                    if (state.mode == PickMode.MANUAL) {
+                        TextButton(onClick = onClearManual) {
+                            Text(
+                                stringResource(R.string.pick_manual_clear),
+                                color = Color.White,
+                            )
+                        }
+                    }
+                },
             )
         }
         item {
@@ -118,6 +143,8 @@ fun PickScreen(
                 onSetObservationWindow = onSetObservationWindow,
                 onSetPlayType = onSetPlayType,
                 onSetMode = onSetMode,
+                moreMethodsExpanded = moreMethodsExpanded,
+                onToggleMoreMethods = { moreMethodsExpanded = !moreMethodsExpanded },
             )
         }
         if (saveStatus == PickSaveStatus.SAVED || saveStatus == PickSaveStatus.FAILED) {
@@ -142,7 +169,15 @@ fun PickScreen(
                 )
             }
         }
-        if (state.mode == PickMode.FILTER) {
+        if (state.mode == PickMode.MANUAL) {
+            item {
+                ManualPickSection(
+                    state = state,
+                    onSelectPosition = onSelectManualPosition,
+                    onSelectDigit = onSelectManualDigit,
+                )
+            }
+        } else if (state.mode == PickMode.FILTER) {
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -192,7 +227,7 @@ fun PickScreen(
                     )
                 }
             }
-        } else {
+        } else if (state.mode == PickMode.DAN_TUO) {
             item {
                 DanTuoEditor(
                     danDigits = state.danDigits,
@@ -229,26 +264,32 @@ fun PickScreen(
             }
         }
         item {
-            PickSummary(
-                state = state,
-                onSetMultiplier = onSetMultiplier,
-                onSaveTemplate = { saveTemplateDialogOpen = true },
-                onSaveScheme = { saveSchemeDialogOpen = true },
-            )
-        }
-        item {
             Text(
-                stringResource(R.string.pick_candidates),
+                stringResource(
+                    if (state.mode == PickMode.MANUAL) {
+                        R.string.pick_manual_numbers
+                    } else {
+                        R.string.pick_candidates
+                    },
+                ),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() },
             )
         }
         if (state.candidates.isEmpty()) {
             item {
-                EmptyState(
-                    title = stringResource(R.string.pick_conflict_title),
-                    detail = state.conflict?.message.orEmpty(),
-                )
+                if (state.mode == PickMode.MANUAL) {
+                    Text(
+                        stringResource(R.string.pick_manual_empty),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                } else {
+                    EmptyState(
+                        title = stringResource(R.string.pick_conflict_title),
+                        detail = state.conflict?.message.orEmpty(),
+                    )
+                }
             }
         } else {
             itemsIndexed(
@@ -259,8 +300,21 @@ fun PickScreen(
                     candidate = candidate,
                     permutations = state.candidatePermutations[index],
                     showPermutations = state.playType != PlayType.STRAIGHT,
+                    onRemove = if (state.mode == PickMode.MANUAL) {
+                        { onRemoveManualBet(candidate) }
+                    } else {
+                        null
+                    },
                 )
             }
+        }
+        item {
+            PickSummary(
+                state = state,
+                onSetMultiplier = onSetMultiplier,
+                onSaveTemplate = { saveTemplateDialogOpen = true },
+                onSaveScheme = { saveSchemeDialogOpen = true },
+            )
         }
     }
 
@@ -310,9 +364,15 @@ private fun PickContextControls(
     onSetObservationWindow: (Int) -> Unit,
     onSetPlayType: (PlayType) -> Unit,
     onSetMode: (PickMode) -> Unit,
+    moreMethodsExpanded: Boolean,
+    onToggleMoreMethods: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             OutlinedTextField(
                 value = state.targetIssue,
                 onValueChange = onSetTargetIssue,
@@ -320,43 +380,137 @@ private fun PickContextControls(
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
+            TextButton(onClick = onToggleMoreMethods) {
+                Text(stringResource(R.string.pick_more_methods))
+            }
+        }
+        if (moreMethodsExpanded) {
             OutlinedTextField(
                 value = state.observationWindow.toString(),
                 onValueChange = { it.toIntOrNull()?.let(onSetObservationWindow) },
                 label = { Text(stringResource(R.string.pick_observation_window)) },
                 singleLine = true,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
             )
-        }
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PlayType.entries.forEach { playType ->
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 FilterChip(
-                    selected = state.playType == playType,
-                    onClick = { onSetPlayType(playType) },
-                    label = { Text(playTypeLabel(playType)) },
+                    selected = state.mode == PickMode.MANUAL,
+                    onClick = { onSetMode(PickMode.MANUAL) },
+                    label = { Text(stringResource(R.string.pick_manual_mode)) },
+                )
+                FilterChip(
+                    selected = state.mode == PickMode.FILTER &&
+                        state.playType == PlayType.GROUP3,
+                    onClick = {
+                        onSetMode(PickMode.FILTER)
+                        onSetPlayType(PlayType.GROUP3)
+                    },
+                    label = { Text(stringResource(R.string.pick_play_group3)) },
+                )
+                FilterChip(
+                    selected = state.mode == PickMode.FILTER &&
+                        state.playType == PlayType.GROUP6,
+                    onClick = {
+                        onSetMode(PickMode.FILTER)
+                        onSetPlayType(PlayType.GROUP6)
+                    },
+                    label = { Text(stringResource(R.string.pick_play_group6)) },
+                )
+                FilterChip(
+                    selected = state.mode == PickMode.FILTER &&
+                        state.playType == PlayType.STRAIGHT,
+                    onClick = {
+                        onSetMode(PickMode.FILTER)
+                        onSetPlayType(PlayType.STRAIGHT)
+                    },
+                    label = { Text(stringResource(R.string.pick_mode_filter)) },
+                )
+                FilterChip(
+                    selected = state.mode == PickMode.DAN_TUO,
+                    onClick = { onSetMode(PickMode.DAN_TUO) },
+                    label = { Text(stringResource(R.string.pick_mode_dan_tuo)) },
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PickMode.entries.forEach { mode ->
-                FilterChip(
-                    selected = state.mode == mode,
-                    onClick = { onSetMode(mode) },
-                    label = {
-                        Text(
-                            stringResource(
-                                if (mode == PickMode.FILTER) {
-                                    R.string.pick_mode_filter
-                                } else {
-                                    R.string.pick_mode_dan_tuo
-                                },
-                            ),
-                        )
-                    },
-                )
+    }
+}
+
+@Composable
+private fun ManualPickSection(
+    state: PickUiState,
+    onSelectPosition: (Int) -> Unit,
+    onSelectDigit: (Int) -> Unit,
+) {
+    val positionLabels = listOf(
+        stringResource(R.string.pick_manual_hundreds),
+        stringResource(R.string.pick_manual_tens),
+        stringResource(R.string.pick_manual_ones),
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("manual_pick"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            stringResource(R.string.pick_manual_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            state.manualDigits.forEachIndexed { index, digit ->
+                val displayed = digit?.toString() ?: "-"
+                Column(
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable { onSelectPosition(index) }
+                        .testTag("manual_ball_$index")
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(positionLabels[index], style = MaterialTheme.typography.labelMedium)
+                    MatteNumberBall(
+                        text = displayed,
+                        selected = state.activeManualPosition == index,
+                        contentDescription = stringResource(
+                            R.string.pick_manual_ball_description,
+                            positionLabels[index],
+                            displayed,
+                        ),
+                        modifier = Modifier.size(64.dp),
+                    )
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            (0..9).chunked(5).forEach { digits ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    digits.forEach { digit ->
+                        OutlinedButton(
+                            onClick = { onSelectDigit(digit) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .testTag("manual_digit_$digit"),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                        ) {
+                            Text(
+                                digit.toString(),
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -476,36 +630,58 @@ private fun PickSummary(
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(
-                stringResource(
-                    R.string.pick_summary,
-                    state.betCount,
-                    state.multiplier,
-                    state.amountYuan,
-                ),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            OutlinedTextField(
-                value = state.multiplier.toString(),
-                onValueChange = { it.toIntOrNull()?.let(onSetMultiplier) },
-                label = { Text(stringResource(R.string.pick_multiplier)) },
-                singleLine = true,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(
+                        R.string.pick_summary,
+                        state.betCount,
+                        state.multiplier,
+                        state.amountYuan,
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = { onSetMultiplier(state.multiplier - 1) },
+                        modifier = Modifier.size(48.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    ) {
+                        Text("−")
+                    }
+                    Text("${state.multiplier} 倍")
+                    OutlinedButton(
+                        onClick = { onSetMultiplier(state.multiplier + 1) },
+                        modifier = Modifier.size(48.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    ) {
+                        Text("+")
+                    }
+                }
+            }
+            Text(
+                stringResource(R.string.pick_reconcile_only),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.76f),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = onSaveTemplate,
-                    enabled = state.conditions.isNotEmpty() && state.mode == PickMode.FILTER,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Outlined.Save, contentDescription = null)
-                    Text(
-                        stringResource(R.string.pick_save_template),
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
+                if (state.mode == PickMode.FILTER) {
+                    OutlinedButton(
+                        onClick = onSaveTemplate,
+                        enabled = state.conditions.isNotEmpty(),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.pick_save_template))
+                    }
                 }
                 Button(
                     onClick = onSaveScheme,
@@ -530,37 +706,38 @@ private fun CandidateRow(
     candidate: DrawNumber,
     permutations: List<DrawNumber>,
     showPermutations: Boolean,
+    onRemove: (() -> Unit)?,
 ) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(candidate.value, style = MaterialTheme.typography.titleMedium)
-        if (showPermutations) {
-            Text(
-                stringResource(
-                    R.string.pick_candidate_permutations,
-                    candidate.value,
-                    permutations.joinToString(" ") { it.value },
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(candidate.value, style = MaterialTheme.typography.titleMedium)
+            if (showPermutations) {
+                Text(
+                    stringResource(
+                        R.string.pick_candidate_permutations,
+                        candidate.value,
+                        permutations.joinToString(" ") { it.value },
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
-        HorizontalDivider()
+        onRemove?.let {
+            TextButton(onClick = it) {
+                Icon(Icons.Outlined.Close, contentDescription = null)
+                Text(stringResource(R.string.pick_delete))
+            }
+        }
     }
+    HorizontalDivider()
 }
-
-@Composable
-private fun playTypeLabel(playType: PlayType): String = stringResource(
-    when (playType) {
-        PlayType.STRAIGHT -> R.string.pick_play_straight
-        PlayType.GROUP3 -> R.string.pick_play_group3
-        PlayType.GROUP6 -> R.string.pick_play_group6
-    },
-)
 
 @Composable
 private fun conditionSummary(condition: FilterCondition): String = when (condition) {

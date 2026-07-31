@@ -177,6 +177,17 @@
     <string name="trend_no_data_title">没有可用于走势图的数据</string>
     <string name="trend_no_data_detail">请返回首页确认内置数据是否可读取。</string>
     <string name="pick_title">选号</string>
+    <string name="pick_manual_title">普通单选</string>
+    <string name="pick_manual_hundreds">百位</string>
+    <string name="pick_manual_tens">十位</string>
+    <string name="pick_manual_ones">个位</string>
+    <string name="pick_manual_ball_description">%1$s，当前为%2$s</string>
+    <string name="pick_manual_numbers">我的号码</string>
+    <string name="pick_manual_empty">选择三位数字后会自动加入</string>
+    <string name="pick_manual_clear">清空</string>
+    <string name="pick_more_methods">更多选号方式</string>
+    <string name="pick_manual_mode">普通单选</string>
+    <string name="pick_reconcile_only">仅用于方案核对</string>
     <string name="pick_target_issue">目标期号</string>
     <string name="pick_observation_window">观察期数</string>
     <string name="pick_play_straight">单选</string>

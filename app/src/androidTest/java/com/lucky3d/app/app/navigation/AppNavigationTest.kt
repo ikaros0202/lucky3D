@@ -53,6 +53,7 @@ class AppNavigationTest {
         composeRule
             .onNodeWithContentDescription("号码筛选")
             .performClick()
+        composeRule.onNodeWithText("更多选号方式").performClick()
         composeRule.onNodeWithText("组选6").performClick().assertIsSelected()
 
         composeRule.onNodeWithContentDescription("首页").performClick()

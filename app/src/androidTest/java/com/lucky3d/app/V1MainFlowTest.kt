@@ -6,7 +6,6 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import org.junit.Rule
 import org.junit.Test
 
@@ -25,9 +24,9 @@ class V1MainFlowTest {
         composeRule.onNodeWithContentDescription("号码筛选")
             .performClick()
             .assertIsSelected()
-        composeRule.onNodeWithText("1000 注 · 1 倍 · ¥2000")
-            .performScrollTo()
-            .assertIsDisplayed()
+        composeRule.onNodeWithText("普通单选").assertIsDisplayed()
+        composeRule.onNodeWithText("0 注 · 1 倍 · ¥0").assertIsDisplayed()
+        composeRule.onNodeWithText("仅用于方案核对").assertIsDisplayed()
 
         composeRule.onNodeWithContentDescription("已保存方案")
             .performClick()

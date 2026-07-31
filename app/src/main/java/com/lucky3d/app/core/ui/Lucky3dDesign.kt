@@ -53,7 +53,7 @@ fun FlowingCinnabarHeader(
 ) {
     val visualColors = Lucky3dDesign.colors
     CompositionLocalProvider(
-        LocalContentColor provides MaterialTheme.colorScheme.onPrimary,
+        LocalContentColor provides Color.White,
     ) {
         Row(
             modifier = modifier
