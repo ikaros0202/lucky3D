@@ -19,10 +19,16 @@ class Cz89CaibaoDataSource(
         issue != null && CaibaoRemoteRules.isApprovedImageUrl(imageUrl, issue)
     },
 ) : CaibaoDataSource {
+    private val noRedirectClient = client.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
+
     override suspend fun fetchLatestDescriptor(): CaibaoDescriptorResult = withContext(ioDispatcher) {
         val request = Request.Builder().url(endpoint).header("Accept", "text/html").build()
         try {
-            client.newCall(request).execute().use { response ->
+            noRedirectClient.newCall(request).execute().use { response ->
+                if (response.code in 300..399) return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidSource)
                 if (!response.isSuccessful) return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.Http)
                 if (!samePage(response.request.url, endpoint)) {
                     return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidSource)
@@ -46,7 +52,8 @@ class Cz89CaibaoDataSource(
         if (!imageUrlPolicy(imageUrl)) return@withContext CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidSource)
         val request = Request.Builder().url(imageUrl).header("Accept", "image/jpeg, image/png").build()
         try {
-            client.newCall(request).execute().use { response ->
+            noRedirectClient.newCall(request).execute().use { response ->
+                if (response.code in 300..399) return@withContext CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidSource)
                 if (!response.isSuccessful) return@withContext CaibaoImageResult.Failure(LiveContentRemoteFailure.Http)
                 if (response.request.url != request.url || !imageUrlPolicy(response.request.url.toString())) {
                     return@withContext CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidSource)
@@ -61,7 +68,11 @@ class Cz89CaibaoDataSource(
                 }
                 when (val body = response.body.readBytesBounded(MAX_IMAGE_BYTES)) {
                     is BoundedRead.TooLarge -> CaibaoImageResult.Failure(LiveContentRemoteFailure.TooLarge)
-                    is BoundedRead.Value -> CaibaoImageResult.Success(body.value, mimeType)
+                    is BoundedRead.Value -> if (body.value.isEmpty()) {
+                        CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidPayload)
+                    } else {
+                        CaibaoImageResult.Success(body.value, mimeType)
+                    }
                 }
             }
         } catch (exception: CancellationException) {

@@ -58,6 +58,7 @@ class CjcpTrialDataSourceTest {
 
         assertThat(CjcpTrialDataSource(OkHttpClient(), server.url("/trial")).fetchLatest())
             .isEqualTo(TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidSource))
+        assertThat(redirectServer.requestCount).isEqualTo(0)
     }
 
     @Test

@@ -7,9 +7,6 @@ class Cz89CaibaoHtmlParser : CaibaoHtmlParser {
         if (html.toByteArray(Charsets.UTF_8).size > MAX_HTML_BYTES) return invalid()
         val title = TITLE.find(html)?.groupValues?.get(1)?.let(::normalize) ?: return invalid()
         if (!title.contains(COLUMN_TITLE)) return invalid()
-        val issues = ISSUE.findAll(normalize(html)).map { it.value }.toSet()
-        if (issues.size != 1) return invalid()
-        val issue = issues.single()
         val rawImageUrls = IMAGE_SRC.findAll(html)
             .map { it.groupValues[2] }
             .filter { it.contains("A11.jpg") }
@@ -20,6 +17,7 @@ class Cz89CaibaoHtmlParser : CaibaoHtmlParser {
             .toSet()
         if (imageUrls.size != 1) return invalid()
         val imageUrl = imageUrls.single()
+        val issue = IMAGE_ISSUE.find(imageUrl)?.groupValues?.get(1) ?: return invalid()
         if (!CaibaoRemoteRules.isApprovedImageUrl(imageUrl, issue)) return invalid()
         return RemoteParseResult.Success(
             CaibaoRemoteDescriptor(
@@ -51,6 +49,6 @@ class Cz89CaibaoHtmlParser : CaibaoHtmlParser {
         private val IMAGE_SRC = Regex("(?is)<img\\b[^>]*?\\bsrc\\s*=\\s*(['\"])(.*?)\\1")
         private val TAG = Regex("(?is)<[^>]+>")
         private val WHITESPACE = Regex("\\s+")
-        private val ISSUE = Regex("(?<!\\d)20\\d{5}(?!\\d)")
+        private val IMAGE_ISSUE = Regex("^https://tuku\\.cz89\\.com/ftp/app/(20\\d{5})/A11\\.jpg$")
     }
 }

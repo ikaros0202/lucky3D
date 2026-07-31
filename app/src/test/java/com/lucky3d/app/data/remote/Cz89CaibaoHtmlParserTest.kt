@@ -12,11 +12,11 @@ class Cz89CaibaoHtmlParserTest {
         assertThat(parser.parse(fixture)).isEqualTo(
             RemoteParseResult.Success(
                 CaibaoRemoteDescriptor(
-                    issue = "2026201",
+                    issue = "2026202",
                     edition = "A11",
-                    title = "2026201期 - 彩吧彩报第三版",
+                    title = "第202期 - 彩吧彩报第三版",
                     sourcePageUrl = Cz89CaibaoDataSource.DEFAULT_ENDPOINT,
-                    imageUrl = "https://tuku.cz89.com/ftp/app/2026201/A11.jpg",
+                    imageUrl = "https://tuku.cz89.com/ftp/app/2026202/A11.jpg",
                 ),
             ),
         )
@@ -29,9 +29,8 @@ class Cz89CaibaoHtmlParserTest {
             fixture.replace("A11.jpg", "A12.jpg"),
             fixture.replace("https://", "http://"),
             fixture.replace("tuku.cz89.com", "evil.example"),
-            fixture.replace("/ftp/app/2026201/A11.jpg", "/ftp/app/2026200/A11.jpg"),
             fixture.replace("https://tuku.cz89.com", "https://user:pass@tuku.cz89.com"),
-            fixture.replace("/ftp/app/2026201/A11.jpg", "/ftp/app/2026201/../A11.jpg"),
+            fixture.replace("/ftp/app/2026202/A11.jpg", "/ftp/app/2026202/../A11.jpg"),
         )
 
         cases.forEach { html ->

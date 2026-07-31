@@ -17,10 +17,16 @@ class CjcpTrialDataSource(
     private val parser: TrialHtmlParser = CjcpTrialHtmlParser(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : TrialDataSource {
+    private val noRedirectClient = client.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
+
     override suspend fun fetchLatest(): TrialRemoteResult = withContext(ioDispatcher) {
         val request = Request.Builder().url(endpoint).header("Accept", "text/html").build()
         try {
-            client.newCall(request).execute().use { response ->
+            noRedirectClient.newCall(request).execute().use { response ->
+                if (response.code in 300..399) return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidSource)
                 if (!response.isSuccessful) return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.Http)
                 if (!samePage(response.request.url, endpoint)) {
                     return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidSource)

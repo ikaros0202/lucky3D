@@ -11,10 +11,11 @@ import org.junit.Test
 
 class Cz89CaibaoDataSourceTest {
     private lateinit var server: MockWebServer
+    private lateinit var redirectServer: MockWebServer
     private lateinit var fixture: String
 
-    @Before fun setUp() { server = MockWebServer().also { it.start() }; fixture = checkNotNull(javaClass.classLoader?.getResource("fixtures/cz89-a11.html")).readText() }
-    @After fun tearDown() { server.shutdown() }
+    @Before fun setUp() { server = MockWebServer().also { it.start() }; redirectServer = MockWebServer().also { it.start() }; fixture = checkNotNull(javaClass.classLoader?.getResource("fixtures/cz89-a11.html")).readText() }
+    @After fun tearDown() { server.shutdown(); redirectServer.shutdown() }
 
     @Test fun `production endpoint is fixed`() { assertThat(Cz89CaibaoDataSource.DEFAULT_ENDPOINT).isEqualTo("https://m.cz89.com/tuku/A11.htm") }
 
@@ -36,6 +37,21 @@ class Cz89CaibaoDataSourceTest {
         assertThat(source.fetchLatestDescriptor()).isEqualTo(CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidPayload))
         server.enqueue(MockResponse().setBody("x").setHeader("Content-Length", Cz89CaibaoDataSource.MAX_HTML_BYTES + 1))
         assertThat(source.fetchLatestDescriptor()).isEqualTo(CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.TooLarge))
+    }
+
+    @Test
+    fun `page and image redirects do not contact their target origins`() = runTest {
+        val pageSource = Cz89CaibaoDataSource(OkHttpClient(), server.url("/A11.htm"))
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", redirectServer.url("/other")))
+        redirectServer.enqueue(MockResponse().setBody(fixture))
+        assertThat(pageSource.fetchLatestDescriptor()).isEqualTo(CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidSource))
+        assertThat(redirectServer.requestCount).isEqualTo(0)
+
+        val imageUrl = server.url("/image.jpg").toString()
+        val imageSource = Cz89CaibaoDataSource(OkHttpClient(), server.url("/A11.htm"), imageUrlPolicy = { it == imageUrl })
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", redirectServer.url("/image.jpg")))
+        assertThat(imageSource.fetchImage(imageUrl)).isEqualTo(CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidSource))
+        assertThat(redirectServer.requestCount).isEqualTo(0)
     }
 
     @Test
@@ -61,5 +77,15 @@ class Cz89CaibaoDataSourceTest {
         assertThat(result).isInstanceOf(CaibaoImageResult.Success::class.java)
         assertThat((result as CaibaoImageResult.Success).mimeType).isEqualTo("image/jpeg")
         assertThat(result.bytes.toList()).containsExactly('j'.code.toByte(), 'p'.code.toByte(), 'e'.code.toByte(), 'g'.code.toByte()).inOrder()
+    }
+
+    @Test
+    fun `empty images are invalid payload whether length is absent or zero`() = runTest {
+        val testUrl = server.url("/image.jpg").toString()
+        val source = Cz89CaibaoDataSource(OkHttpClient(), server.url("/A11.htm"), imageUrlPolicy = { it == testUrl })
+        server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setChunkedBody("", 1))
+        assertThat(source.fetchImage(testUrl)).isEqualTo(CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidPayload))
+        server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody("").setHeader("Content-Length", 0))
+        assertThat(source.fetchImage(testUrl)).isEqualTo(CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidPayload))
     }
 }
