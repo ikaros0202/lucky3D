@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -42,10 +44,10 @@ fun TrendChart(
     val horizontalState = rememberScrollState()
     val verticalState = rememberScrollState()
     val colors = MaterialTheme.colorScheme
-    val labelWidthDp = 72.dp
-    val cellWidthDp = 34.dp * state.scale
-    val rowHeightDp = 34.dp
-    val headerHeightDp = 38.dp
+    val labelWidthDp = 52.dp
+    val cellWidthDp = 30.dp * state.scale
+    val rowHeightDp = 20.dp
+    val headerHeightDp = 22.dp
     val chartWidthDp = labelWidthDp + cellWidthDp * 10
     val chartHeightDp = headerHeightDp + rowHeightDp * state.visibleDraws.size
     val positions = remember(state.visiblePositions) {
@@ -63,7 +65,7 @@ fun TrendChart(
 
     Box(
         modifier = modifier
-            .height(520.dp)
+            .fillMaxSize()
             .horizontalScroll(horizontalState)
             .verticalScroll(verticalState)
             .semantics { contentDescription = accessibilitySummary },
@@ -113,8 +115,6 @@ fun TrendChart(
                 gridColor = colors.outlineVariant,
                 textColor = colors.onSurfaceVariant,
                 primary = colors.primary,
-                secondary = colors.secondary,
-                tertiary = colors.tertiary,
             )
         }
     }
@@ -130,18 +130,16 @@ private fun DrawScope.drawTrendGrid(
     gridColor: Color,
     textColor: Color,
     primary: Color,
-    secondary: Color,
-    tertiary: Color,
 ) {
     val paint = android.graphics.Paint().apply {
         isAntiAlias = true
         textAlign = android.graphics.Paint.Align.CENTER
-        textSize = 12.dp.toPx()
+        textSize = 10.dp.toPx()
         color = textColor.toArgbValue()
     }
     val issuePaint = android.graphics.Paint(paint).apply {
         textAlign = android.graphics.Paint.Align.LEFT
-        textSize = 11.dp.toPx()
+        textSize = 9.dp.toPx()
     }
     for (column in 0..10) {
         val x = labelWidth + column * cellWidth
@@ -181,15 +179,10 @@ private fun DrawScope.drawTrendGrid(
         }
     }
 
-    val positionColors = mapOf(
-        TrendPosition.HUNDREDS to primary,
-        TrendPosition.TENS to secondary,
-        TrendPosition.ONES to tertiary,
-    )
     val visiblePoints = state.points.groupBy(TrendPoint::position)
     TrendPosition.entries.filter(state.visiblePositions::contains).forEachIndexed { positionIndex, position ->
         val points = visiblePoints[position].orEmpty().sortedBy(TrendPoint::rowIndex)
-        val color = positionColors.getValue(position)
+        val color = primary
         val centers = points.map { point ->
             val displayRow = state.visibleDraws.lastIndex - point.rowIndex
             val offset = (positionIndex - 1) * 4.dp.toPx()
@@ -204,9 +197,18 @@ private fun DrawScope.drawTrendGrid(
                 start = start,
                 end = end,
                 strokeWidth = when (position) {
-                    TrendPosition.HUNDREDS -> 2.dp.toPx()
-                    TrendPosition.TENS -> 1.5.dp.toPx()
+                    TrendPosition.HUNDREDS -> 1.6.dp.toPx()
+                    TrendPosition.TENS -> 1.2.dp.toPx()
                     TrendPosition.ONES -> 1.dp.toPx()
+                },
+                pathEffect = when (position) {
+                    TrendPosition.HUNDREDS -> null
+                    TrendPosition.TENS -> PathEffect.dashPathEffect(
+                        floatArrayOf(5.dp.toPx(), 3.dp.toPx()),
+                    )
+                    TrendPosition.ONES -> PathEffect.dashPathEffect(
+                        floatArrayOf(2.dp.toPx(), 3.dp.toPx()),
+                    )
                 },
             )
         }
@@ -214,6 +216,7 @@ private fun DrawScope.drawTrendGrid(
             drawMarker(
                 center = center,
                 position = position,
+                digit = points[index].digit,
                 color = color,
                 selected = points[index] == state.selectedPoint,
             )
@@ -224,6 +227,7 @@ private fun DrawScope.drawTrendGrid(
 private fun DrawScope.drawMarker(
     center: Offset,
     position: TrendPosition,
+    digit: Int,
     color: Color,
     selected: Boolean,
 ) {
@@ -255,6 +259,18 @@ private fun DrawScope.drawMarker(
             style = Stroke(width = 2.dp.toPx()),
         )
     }
+    drawContext.canvas.nativeCanvas.drawText(
+        digit.toString(),
+        center.x,
+        center.y + 3.2.dp.toPx(),
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            textAlign = android.graphics.Paint.Align.CENTER
+            textSize = 9.dp.toPx()
+            this.color = android.graphics.Color.WHITE
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        },
+    )
 }
 
 private fun Color.toArgbValue(): Int =
