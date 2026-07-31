@@ -625,6 +625,7 @@ class DefaultLiveContentRepositoryTest {
             rootDirectory = root,
             imageBoundsReader = ImageBoundsReader { throw IllegalStateException("reader failed") },
             imageIntegrityValidator = ImageIntegrityValidator { _, _ -> true },
+            imagePixelValidator = com.lucky3d.app.data.file.ImagePixelValidator { _, _ -> true },
             ioDispatcher = kotlinx.coroutines.Dispatchers.Unconfined,
         )
         val repository = repository(
@@ -728,6 +729,7 @@ class DefaultLiveContentRepositoryTest {
             rootDirectory = root,
             imageBoundsReader = ImageBoundsReader { bounds },
             imageIntegrityValidator = ImageIntegrityValidator { _, _ -> true },
+            imagePixelValidator = com.lucky3d.app.data.file.ImagePixelValidator { _, _ -> true },
             atomicFileMover = AtomicFileMover { source, target ->
                 Files.move(
                     source.toPath(),

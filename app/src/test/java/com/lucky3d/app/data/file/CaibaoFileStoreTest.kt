@@ -80,6 +80,7 @@ class CaibaoFileStoreTest {
         val store = CaibaoFileStore(
             rootDirectory = root,
             imageBoundsReader = ImageBoundsReader { ImageBounds(1, 1) },
+            imagePixelValidator = ImagePixelValidator { _, _ -> true },
             ioDispatcher = Dispatchers.Unconfined,
         )
 
@@ -455,6 +456,7 @@ class CaibaoFileStoreTest {
     ) = CaibaoFileStore(
         rootDirectory = root,
         imageBoundsReader = ImageBoundsReader { bounds },
+        imagePixelValidator = ImagePixelValidator { _, _ -> true },
         atomicFileMover = mover,
         caibaoFileWriter = writer,
         ioDispatcher = Dispatchers.Unconfined,

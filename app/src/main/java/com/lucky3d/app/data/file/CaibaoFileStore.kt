@@ -2,6 +2,8 @@ package com.lucky3d.app.data.file
 
 import android.graphics.BitmapFactory
 import com.lucky3d.app.domain.livecontent.LiveContentFailure
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
@@ -9,6 +11,7 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.zip.CRC32
+import java.util.zip.InflaterInputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +28,10 @@ fun interface ImageBoundsReader {
 
 fun interface ImageIntegrityValidator {
     fun isValid(bytes: ByteArray, mimeType: String): Boolean
+}
+
+fun interface ImagePixelValidator {
+    fun isValid(bytes: ByteArray, bounds: ImageBounds): Boolean
 }
 
 fun interface AtomicFileMover {
@@ -69,6 +76,7 @@ class CaibaoFileStore(
     private val rootDirectory: File,
     private val imageBoundsReader: ImageBoundsReader = BitmapFactoryImageBoundsReader,
     private val imageIntegrityValidator: ImageIntegrityValidator = DefaultImageIntegrityValidator,
+    private val imagePixelValidator: ImagePixelValidator = BitmapFactoryImagePixelValidator,
     private val atomicFileMover: AtomicFileMover = JavaAtomicFileMover,
     private val caibaoFileWriter: CaibaoFileWriter = FileOutputStreamCaibaoFileWriter,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -83,13 +91,12 @@ class CaibaoFileStore(
         if (bytes.isEmpty() || mimeType !in SUPPORTED_MIME_TYPES || !signatureMatches(bytes, mimeType)) {
             fail(LiveContentFailure.INVALID_IMAGE)
         }
-        if (!imageIntegrityValidator.isValid(bytes, mimeType)) {
-            fail(LiveContentFailure.INVALID_IMAGE)
-        }
+        if (!imageIntegrityValidator.isValid(bytes, mimeType)) fail(LiveContentFailure.INVALID_IMAGE)
         val bounds = imageBoundsReader.read(bytes)
         if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
             fail(LiveContentFailure.INVALID_IMAGE)
         }
+        if (!imagePixelValidator.isValid(bytes, bounds)) fail(LiveContentFailure.INVALID_IMAGE)
         ensureRootDirectory()
         val sha256 = bytes.sha256()
         val extension = if (mimeType == JPEG_MIME_TYPE) "jpg" else "png"
@@ -162,7 +169,8 @@ class CaibaoFileStore(
             !signatureMatches(bytes, expectedMimeType) ||
             !imageIntegrityValidator.isValid(bytes, expectedMimeType) ||
             bounds?.width != expectedWidth ||
-            bounds.height != expectedHeight
+            bounds.height != expectedHeight ||
+            !imagePixelValidator.isValid(bytes, bounds)
         ) {
             fail(LiveContentFailure.INVALID_IMAGE)
         }
@@ -335,6 +343,12 @@ object DefaultImageIntegrityValidator : ImageIntegrityValidator {
         var chunkIndex = 0
         var hasIhdr = false
         var hasIdat = false
+        var width = 0
+        var height = 0
+        var bitDepth = 0
+        var colorType = 0
+        var interlace = 0
+        val compressedPixels = ByteArrayOutputStream()
         while (offset < bytes.size) {
             if (bytes.size - offset < PNG_CHUNK_OVERHEAD_BYTES) return false
             val dataLength = bytes.readUnsignedInt(offset)
@@ -351,22 +365,53 @@ object DefaultImageIntegrityValidator : ImageIntegrityValidator {
             if (expectedCrc != actualCrc) return false
 
             val isIhdr = bytes.matchesAscii(typeOffset, "IHDR")
+            val isPlte = bytes.matchesAscii(typeOffset, "PLTE")
             val isIdat = bytes.matchesAscii(typeOffset, "IDAT")
             val isIend = bytes.matchesAscii(typeOffset, "IEND")
+            val isUnknownCritical =
+                bytes[typeOffset].unsigned() and PNG_ANCILLARY_BIT == 0 &&
+                    !isIhdr &&
+                    !isPlte &&
+                    !isIdat &&
+                    !isIend
             if (chunkIndex == 0 && !isIhdr) return false
+            if (isUnknownCritical) return false
             when {
                 isIhdr -> {
                     if (hasIhdr || chunkIndex != 0 || dataLength != PNG_IHDR_DATA_BYTES.toLong()) {
                         return false
                     }
-                    val width = bytes.readUnsignedInt(dataOffset)
-                    val height = bytes.readUnsignedInt(dataOffset + PNG_DIMENSION_BYTES)
-                    if (width == 0L || height == 0L) return false
+                    val parsedWidth = bytes.readUnsignedInt(dataOffset)
+                    val parsedHeight = bytes.readUnsignedInt(dataOffset + PNG_DIMENSION_BYTES)
+                    if (
+                        parsedWidth == 0L ||
+                        parsedHeight == 0L ||
+                        parsedWidth > Int.MAX_VALUE ||
+                        parsedHeight > Int.MAX_VALUE
+                    ) {
+                        return false
+                    }
+                    width = parsedWidth.toInt()
+                    height = parsedHeight.toInt()
+                    bitDepth = bytes[dataOffset + PNG_BIT_DEPTH_OFFSET].unsigned()
+                    colorType = bytes[dataOffset + PNG_COLOR_TYPE_OFFSET].unsigned()
+                    val compression = bytes[dataOffset + PNG_COMPRESSION_OFFSET].unsigned()
+                    val filter = bytes[dataOffset + PNG_FILTER_OFFSET].unsigned()
+                    interlace = bytes[dataOffset + PNG_INTERLACE_OFFSET].unsigned()
+                    if (
+                        !validPngBitDepth(bitDepth, colorType) ||
+                        compression != 0 ||
+                        filter != 0 ||
+                        interlace !in 0..1
+                    ) {
+                        return false
+                    }
                     hasIhdr = true
                 }
 
                 isIdat -> {
                     if (!hasIhdr) return false
+                    compressedPixels.write(bytes, dataOffset, dataLength.toInt())
                     hasIdat = true
                 }
 
@@ -374,7 +419,15 @@ object DefaultImageIntegrityValidator : ImageIntegrityValidator {
                     return hasIhdr &&
                         hasIdat &&
                         dataLength == 0L &&
-                        chunkEnd == bytes.size.toLong()
+                        chunkEnd == bytes.size.toLong() &&
+                        validPngPixelStream(
+                            compressed = compressedPixels.toByteArray(),
+                            width = width,
+                            height = height,
+                            bitDepth = bitDepth,
+                            colorType = colorType,
+                            interlace = interlace,
+                        )
                 }
             }
             offset = chunkEnd.toInt()
@@ -382,6 +435,89 @@ object DefaultImageIntegrityValidator : ImageIntegrityValidator {
         }
         return false
     }
+
+    private fun validPngBitDepth(bitDepth: Int, colorType: Int): Boolean = when (colorType) {
+        0 -> bitDepth in setOf(1, 2, 4, 8, 16)
+        2 -> bitDepth == 8 || bitDepth == 16
+        3 -> bitDepth in setOf(1, 2, 4, 8)
+        4, 6 -> bitDepth == 8 || bitDepth == 16
+        else -> false
+    }
+
+    private fun validPngPixelStream(
+        compressed: ByteArray,
+        width: Int,
+        height: Int,
+        bitDepth: Int,
+        colorType: Int,
+        interlace: Int,
+    ): Boolean {
+        val samplesPerPixel = when (colorType) {
+            0, 3 -> 1
+            2 -> 3
+            4 -> 2
+            6 -> 4
+            else -> return false
+        }
+        val bitsPerPixel = bitDepth * samplesPerPixel
+        val passes = if (interlace == 0) {
+            listOf(PngPass(0, 0, 1, 1))
+        } else {
+            ADAM7_PASSES
+        }
+        var expectedBytes = 0L
+        passes.forEach { pass ->
+            val passWidth = passSize(width, pass.xStart, pass.xStep)
+            val passHeight = passSize(height, pass.yStart, pass.yStep)
+            if (passWidth > 0 && passHeight > 0) {
+                val rowBytes = (passWidth.toLong() * bitsPerPixel + 7L) / 8L
+                expectedBytes += passHeight.toLong() * (rowBytes + PNG_FILTER_BYTE)
+                if (expectedBytes > MAX_PNG_DECOMPRESSED_BYTES) return false
+            }
+        }
+        val pixels = inflateExactly(compressed, expectedBytes.toInt()) ?: return false
+        var pixelOffset = 0
+        passes.forEach { pass ->
+            val passWidth = passSize(width, pass.xStart, pass.xStep)
+            val passHeight = passSize(height, pass.yStart, pass.yStep)
+            if (passWidth > 0 && passHeight > 0) {
+                val rowBytes = ((passWidth.toLong() * bitsPerPixel + 7L) / 8L).toInt()
+                repeat(passHeight) {
+                    if (pixels[pixelOffset].unsigned() !in PNG_FILTER_TYPES) return false
+                    pixelOffset += PNG_FILTER_BYTE + rowBytes
+                }
+            }
+        }
+        return pixelOffset == pixels.size
+    }
+
+    private fun inflateExactly(compressed: ByteArray, expectedBytes: Int): ByteArray? {
+        val inflated = ByteArray(expectedBytes)
+        return try {
+            InflaterInputStream(ByteArrayInputStream(compressed)).use { input ->
+                var offset = 0
+                while (offset < inflated.size) {
+                    val read = input.read(inflated, offset, inflated.size - offset)
+                    if (read < 0) return null
+                    offset += read
+                }
+                if (input.read() != -1) return null
+            }
+            inflated
+        } catch (_: RuntimeException) {
+            null
+        }
+    }
+
+    private fun passSize(fullSize: Int, start: Int, step: Int): Int =
+        if (fullSize <= start) 0 else (fullSize - start + step - 1) / step
+
+    private data class PngPass(
+        val xStart: Int,
+        val yStart: Int,
+        val xStep: Int,
+        val yStep: Int,
+    )
 
     private fun isValidJpeg(bytes: ByteArray): Boolean {
         if (bytes.size < JPEG_MINIMUM_BYTES ||
@@ -475,6 +611,14 @@ object DefaultImageIntegrityValidator : ImageIntegrityValidator {
     private const val PNG_DIMENSION_BYTES = 4
     private const val PNG_IHDR_DATA_BYTES = 13
     private const val PNG_CHUNK_OVERHEAD_BYTES = 12
+    private const val PNG_BIT_DEPTH_OFFSET = 8
+    private const val PNG_COLOR_TYPE_OFFSET = 9
+    private const val PNG_COMPRESSION_OFFSET = 10
+    private const val PNG_FILTER_OFFSET = 11
+    private const val PNG_INTERLACE_OFFSET = 12
+    private const val PNG_ANCILLARY_BIT = 0x20
+    private const val PNG_FILTER_BYTE = 1
+    private const val MAX_PNG_DECOMPRESSED_BYTES = 32 * 1024 * 1024L
     private const val JPEG_MARKER_PREFIX = 0xFF
     private const val JPEG_STUFFED_BYTE = 0x00
     private const val JPEG_TEMPORARY = 0x01
@@ -495,6 +639,16 @@ object DefaultImageIntegrityValidator : ImageIntegrityValidator {
     private const val JPEG_SOS_BASE_LENGTH = 6
     private const val JPEG_SOS_COMPONENT_BYTES = 2
     private val JPEG_RESTART_MARKERS = 0xD0..0xD7
+    private val PNG_FILTER_TYPES = 0..4
+    private val ADAM7_PASSES = listOf(
+        PngPass(0, 0, 8, 8),
+        PngPass(4, 0, 8, 8),
+        PngPass(0, 4, 4, 8),
+        PngPass(2, 0, 4, 4),
+        PngPass(0, 2, 2, 4),
+        PngPass(1, 0, 2, 2),
+        PngPass(0, 1, 1, 2),
+    )
     private val JPEG_SOF_MARKERS = setOf(
         0xC0,
         0xC1,
@@ -532,6 +686,34 @@ private object BitmapFactoryImageBoundsReader : ImageBoundsReader {
             null
         }
     }
+}
+
+private object BitmapFactoryImagePixelValidator : ImagePixelValidator {
+    override fun isValid(bytes: ByteArray, bounds: ImageBounds): Boolean {
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize(bounds)
+        }
+        val bitmap = try {
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+        } catch (_: RuntimeException) {
+            null
+        } ?: return false
+        bitmap.recycle()
+        return true
+    }
+
+    private fun sampleSize(bounds: ImageBounds): Int {
+        var sampleSize = 1
+        while (
+            bounds.width / sampleSize > MAX_PIXEL_DECODE_DIMENSION ||
+            bounds.height / sampleSize > MAX_PIXEL_DECODE_DIMENSION
+        ) {
+            sampleSize *= 2
+        }
+        return sampleSize
+    }
+
+    private const val MAX_PIXEL_DECODE_DIMENSION = 2_048
 }
 
 private object JavaAtomicFileMover : AtomicFileMover {
