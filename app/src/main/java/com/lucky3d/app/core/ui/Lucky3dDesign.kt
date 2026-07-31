@@ -110,34 +110,78 @@ fun CrystalNumberBall(
                 val base = Brush.radialGradient(
                     colors = listOf(
                         visualColors.crystalHighlight,
-                        primary.copy(alpha = 0.92f),
+                        primary.copy(alpha = 0.96f),
                         visualColors.primaryDeep,
                     ),
                     center = Offset(size.width * 0.38f, size.height * 0.30f),
                     radius = radius * 1.35f,
                 )
-                val upperFacet = Path().apply {
-                    moveTo(size.width * 0.10f, size.height * 0.38f)
-                    lineTo(size.width * 0.50f, size.height * 0.03f)
-                    lineTo(size.width * 0.72f, size.height * 0.42f)
+                val upperLeftFacet = Path().apply {
+                    moveTo(size.width * 0.06f, size.height * 0.38f)
+                    lineTo(size.width * 0.32f, size.height * 0.08f)
+                    lineTo(size.width * 0.49f, size.height * 0.34f)
                     close()
                 }
-                val lowerFacet = Path().apply {
-                    moveTo(size.width * 0.18f, size.height * 0.70f)
-                    lineTo(size.width * 0.60f, size.height * 0.48f)
-                    lineTo(size.width * 0.90f, size.height * 0.82f)
-                    lineTo(size.width * 0.48f, size.height * 0.98f)
+                val upperRightFacet = Path().apply {
+                    moveTo(size.width * 0.32f, size.height * 0.08f)
+                    lineTo(size.width * 0.73f, size.height * 0.07f)
+                    lineTo(size.width * 0.57f, size.height * 0.40f)
+                    lineTo(size.width * 0.49f, size.height * 0.34f)
+                    close()
+                }
+                val rightFacet = Path().apply {
+                    moveTo(size.width * 0.73f, size.height * 0.07f)
+                    lineTo(size.width * 0.96f, size.height * 0.39f)
+                    lineTo(size.width * 0.68f, size.height * 0.56f)
+                    lineTo(size.width * 0.57f, size.height * 0.40f)
+                    close()
+                }
+                val lowerRightFacet = Path().apply {
+                    moveTo(size.width * 0.68f, size.height * 0.56f)
+                    lineTo(size.width * 0.93f, size.height * 0.72f)
+                    lineTo(size.width * 0.62f, size.height * 0.96f)
+                    lineTo(size.width * 0.48f, size.height * 0.65f)
+                    close()
+                }
+                val lowerLeftFacet = Path().apply {
+                    moveTo(size.width * 0.07f, size.height * 0.63f)
+                    lineTo(size.width * 0.48f, size.height * 0.65f)
+                    lineTo(size.width * 0.62f, size.height * 0.96f)
+                    lineTo(size.width * 0.23f, size.height * 0.87f)
+                    close()
+                }
+                val centerFacet = Path().apply {
+                    moveTo(size.width * 0.49f, size.height * 0.34f)
+                    lineTo(size.width * 0.68f, size.height * 0.56f)
+                    lineTo(size.width * 0.48f, size.height * 0.65f)
+                    lineTo(size.width * 0.24f, size.height * 0.50f)
                     close()
                 }
                 onDrawBehind {
                     drawCircle(brush = base, radius = radius, center = center)
                     drawPath(
-                        path = upperFacet,
+                        path = upperLeftFacet,
                         color = visualColors.crystalHighlight.copy(alpha = 0.34f),
                     )
                     drawPath(
-                        path = lowerFacet,
-                        color = visualColors.crystalLavender.copy(alpha = 0.22f),
+                        path = upperRightFacet,
+                        color = visualColors.crystalRose.copy(alpha = 0.20f),
+                    )
+                    drawPath(
+                        path = rightFacet,
+                        color = visualColors.crystalHighlight.copy(alpha = 0.16f),
+                    )
+                    drawPath(
+                        path = lowerRightFacet,
+                        color = visualColors.crystalLavender.copy(alpha = 0.20f),
+                    )
+                    drawPath(
+                        path = lowerLeftFacet,
+                        color = visualColors.crystalHighlight.copy(alpha = 0.14f),
+                    )
+                    drawPath(
+                        path = centerFacet,
+                        color = visualColors.crystalRose.copy(alpha = 0.18f),
                     )
                     drawCircle(
                         color = visualColors.crystalHighlight.copy(alpha = 0.78f),
@@ -145,8 +189,14 @@ fun CrystalNumberBall(
                         center = Offset(size.width * 0.29f, size.height * 0.22f),
                     )
                     drawCircle(
-                        color = visualColors.crystalBorder,
-                        radius = radius - 1.dp.toPx(),
+                        color = Color.White.copy(alpha = 0.74f),
+                        radius = radius - 1.5.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 1.5.dp.toPx()),
+                    )
+                    drawCircle(
+                        color = visualColors.crystalBorder.copy(alpha = 0.82f),
+                        radius = radius * 0.89f,
                         center = center,
                         style = Stroke(width = 1.dp.toPx()),
                     )

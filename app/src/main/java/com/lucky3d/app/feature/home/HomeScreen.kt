@@ -519,7 +519,7 @@ private fun OfficialDrawHero(
                         CrystalNumberBall(
                             digit = digit,
                             contentDescription = digit.toString(),
-                            modifier = Modifier.size(84.dp),
+                            modifier = Modifier.size(96.dp),
                         )
                     }
                 }
@@ -1392,7 +1392,7 @@ private fun PositionInsightsSection(
                     PositionCrystalDial(
                         position = position,
                         modifier = Modifier
-                            .fillMaxHeight()
+                            .sizeIn(maxWidth = 104.dp, maxHeight = 104.dp)
                             .aspectRatio(1f),
                     )
                 }
