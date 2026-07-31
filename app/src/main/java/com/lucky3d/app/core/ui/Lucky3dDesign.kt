@@ -22,8 +22,13 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -93,32 +98,71 @@ fun CrystalNumberBall(
     modifier: Modifier = Modifier,
 ) {
     val visualColors = Lucky3dDesign.colors
+    val primary = MaterialTheme.colorScheme.primary
     NumberBallContainer(
         modifier = modifier
-            .sizeIn(minWidth = 64.dp, minHeight = 64.dp)
-            .shadow(4.dp, CircleShape)
+            .sizeIn(minWidth = 56.dp, minHeight = 56.dp)
+            .shadow(8.dp, CircleShape)
             .clip(CircleShape)
-            .background(
-                brush = Brush.linearGradient(
+            .drawWithCache {
+                val radius = size.minDimension / 2f
+                val center = Offset(size.width / 2f, size.height / 2f)
+                val base = Brush.radialGradient(
                     colors = listOf(
                         visualColors.crystalHighlight,
-                        visualColors.crystalRose,
-                        MaterialTheme.colorScheme.primaryContainer,
+                        primary.copy(alpha = 0.92f),
+                        visualColors.primaryDeep,
                     ),
-                ),
-            )
-            .border(1.dp, visualColors.crystalBorder, CircleShape)
+                    center = Offset(size.width * 0.38f, size.height * 0.30f),
+                    radius = radius * 1.35f,
+                )
+                val upperFacet = Path().apply {
+                    moveTo(size.width * 0.10f, size.height * 0.38f)
+                    lineTo(size.width * 0.50f, size.height * 0.03f)
+                    lineTo(size.width * 0.72f, size.height * 0.42f)
+                    close()
+                }
+                val lowerFacet = Path().apply {
+                    moveTo(size.width * 0.18f, size.height * 0.70f)
+                    lineTo(size.width * 0.60f, size.height * 0.48f)
+                    lineTo(size.width * 0.90f, size.height * 0.82f)
+                    lineTo(size.width * 0.48f, size.height * 0.98f)
+                    close()
+                }
+                onDrawBehind {
+                    drawCircle(brush = base, radius = radius, center = center)
+                    drawPath(
+                        path = upperFacet,
+                        color = visualColors.crystalHighlight.copy(alpha = 0.34f),
+                    )
+                    drawPath(
+                        path = lowerFacet,
+                        color = visualColors.crystalLavender.copy(alpha = 0.22f),
+                    )
+                    drawCircle(
+                        color = visualColors.crystalHighlight.copy(alpha = 0.78f),
+                        radius = radius * 0.12f,
+                        center = Offset(size.width * 0.29f, size.height * 0.22f),
+                    )
+                    drawCircle(
+                        color = visualColors.crystalBorder,
+                        radius = radius - 1.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 1.dp.toPx()),
+                    )
+                }
+            }
             .clearAndSetSemantics {
                 this.contentDescription = contentDescription
             },
     ) {
         Text(
             text = digit.toString(),
-            color = MaterialTheme.colorScheme.primary,
+            color = Color.White,
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold,
-            fontSize = 40.sp,
-            lineHeight = 44.sp,
+            fontSize = 32.sp,
+            lineHeight = 36.sp,
         )
     }
 }

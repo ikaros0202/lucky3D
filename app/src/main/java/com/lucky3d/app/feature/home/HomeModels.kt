@@ -2,7 +2,9 @@ package com.lucky3d.app.feature.home
 
 import androidx.compose.runtime.Immutable
 import com.lucky3d.app.core.model.DrawRecord
+import com.lucky3d.app.core.model.TrialNumber
 import com.lucky3d.app.data.repository.DrawQuery
+import com.lucky3d.app.domain.livecontent.LiveContentRefreshState
 
 enum class HomeSyncState {
     LOCAL,
@@ -15,10 +17,13 @@ enum class HomeSyncState {
 @Immutable
 data class HomeUiState(
     val latest: DrawRecord? = null,
-    val recent: List<DrawRecord> = emptyList(),
+    val insights: HomeInsights = HomeInsights.Empty,
     val syncState: HomeSyncState = HomeSyncState.LOCAL,
     val lastSuccessEpochMillis: Long? = null,
     val failureType: String? = null,
+    val trialNumber: TrialNumber? = null,
+    val trialState: LiveContentRefreshState = LiveContentRefreshState.Idle,
+    val isBeforeTrialReleaseWindow: Boolean = false,
 )
 
 enum class HistoryInputError {

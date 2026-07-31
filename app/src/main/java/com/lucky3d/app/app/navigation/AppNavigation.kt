@@ -1,12 +1,22 @@
 package com.lucky3d.app.app.navigation
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
@@ -15,12 +25,10 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,10 +41,13 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
@@ -65,7 +76,10 @@ import kotlinx.serialization.Serializable
 private data object RootDestination : NavKey
 
 @Serializable
-private data object HistoryDestination : NavKey
+private data class HistoryDestination(
+    val issue: String? = null,
+    val date: String? = null,
+) : NavKey
 
 @Serializable
 private data object SettingsDestination : NavKey
@@ -79,12 +93,16 @@ fun AppNavigation() {
         entryProvider = entryProvider {
             entry<RootDestination> {
                 MainShell(
-                    onOpenHistory = { backStack.add(HistoryDestination) },
+                    onOpenHistory = { issue, date ->
+                        backStack.add(HistoryDestination(issue = issue, date = date))
+                    },
                     onOpenSettings = { backStack.add(SettingsDestination) },
                 )
             }
-            entry<HistoryDestination> {
+            entry<HistoryDestination> { destination ->
                 HistoryRoute(
+                    issue = destination.issue,
+                    date = destination.date,
                     onBack = { backStack.removeLastOrNull() },
                 )
             }
@@ -99,7 +117,7 @@ fun AppNavigation() {
 
 @Composable
 private fun MainShell(
-    onOpenHistory: () -> Unit,
+    onOpenHistory: (issue: String?, date: String?) -> Unit,
     onOpenSettings: () -> Unit,
     reminderViewModel: ReminderViewModel = hiltViewModel(),
 ) {
@@ -120,25 +138,51 @@ private fun MainShell(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
+            Surface(
+                modifier = Modifier.navigationBarsPadding(),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
                 tonalElevation = 0.dp,
             ) {
-                MainTab.entries.forEach { tab ->
-                    val selected = selectedTab == tab
-                    val tabLabel = androidx.compose.ui.res.stringResource(tab.labelRes)
-                    val tabAccessibilityLabel =
-                        androidx.compose.ui.res.stringResource(tab.accessibilityLabelRes)
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = { selectedTabName = tab.name },
-                        icon = {
-                            Icon(
-                                imageVector = tab.icon(),
-                                contentDescription = null,
-                            )
-                        },
-                        label = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                ) {
+                    MainTab.entries.forEach { tab ->
+                        val selected = selectedTab == tab
+                        val tabLabel = androidx.compose.ui.res.stringResource(tab.labelRes)
+                        val tabAccessibilityLabel =
+                            androidx.compose.ui.res.stringResource(tab.accessibilityLabelRes)
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clickable { selectedTabName = tab.name }
+                                .semantics {
+                                    contentDescription = tabAccessibilityLabel
+                                    this.selected = selected
+                                }
+                                .padding(top = 3.dp, bottom = 2.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(
+                                2.dp,
+                                Alignment.CenterVertically,
+                            ),
+                        ) {
+                            if (selected && tab == MainTab.HOME) {
+                                CrystalHomeIcon()
+                            } else {
+                                Icon(
+                                    imageVector = tab.icon(),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                    tint = if (selected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
                             Text(
                                 text = tabLabel,
                                 fontWeight = if (selected) {
@@ -146,22 +190,29 @@ private fun MainShell(
                                 } else {
                                     FontWeight.Medium
                                 },
+                                fontSize = 11.sp,
+                                lineHeight = 12.sp,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                             )
-                        },
-                        alwaysShowLabel = true,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        modifier = Modifier
-                            .heightIn(min = 64.dp)
-                            .semantics {
-                                contentDescription = tabAccessibilityLabel
-                            },
-                    )
+                            Box(
+                                modifier = Modifier
+                                    .width(18.dp)
+                                    .height(2.dp)
+                                    .background(
+                                        color = if (selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.surface
+                                        },
+                                        shape = CircleShape,
+                                    ),
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -175,9 +226,6 @@ private fun MainShell(
                 when (selectedTab) {
                     MainTab.HOME -> HomeRoute(
                         onOpenHistory = onOpenHistory,
-                        onOpenTrend = { selectedTabName = MainTab.TREND.name },
-                        onOpenPick = { selectedTabName = MainTab.PICK.name },
-                        onOpenSchemes = { selectedTabName = MainTab.PLANS.name },
                         onOpenSettings = onOpenSettings,
                     )
                     MainTab.TREND -> TrendRoute()
@@ -193,32 +241,63 @@ private fun MainShell(
 }
 
 @Composable
+private fun CrystalHomeIcon() {
+    val primary = MaterialTheme.colorScheme.primary
+    val highlight = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.55f)
+    Canvas(modifier = Modifier.size(24.dp)) {
+        val gem = Path().apply {
+            moveTo(size.width * 0.50f, 0f)
+            lineTo(size.width * 0.92f, size.height * 0.30f)
+            lineTo(size.width * 0.78f, size.height * 0.92f)
+            lineTo(size.width * 0.22f, size.height * 0.92f)
+            lineTo(size.width * 0.08f, size.height * 0.30f)
+            close()
+        }
+        val facet = Path().apply {
+            moveTo(size.width * 0.50f, 0f)
+            lineTo(size.width * 0.50f, size.height * 0.92f)
+            lineTo(size.width * 0.08f, size.height * 0.30f)
+            close()
+        }
+        drawPath(gem, primary)
+        drawPath(facet, highlight)
+    }
+}
+
+@Composable
 private fun HomeRoute(
-    onOpenHistory: () -> Unit,
-    onOpenTrend: () -> Unit,
-    onOpenPick: () -> Unit,
-    onOpenSchemes: () -> Unit,
+    onOpenHistory: (issue: String?, date: String?) -> Unit,
     onOpenSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel) {
+        viewModel.onHomeVisible()
+    }
     HomeScreen(
         state = state,
         onRefresh = viewModel::refresh,
-        onOpenHistory = onOpenHistory,
-        onOpenTrend = onOpenTrend,
-        onOpenPick = onOpenPick,
-        onOpenSchemes = onOpenSchemes,
+        onRefreshTrial = viewModel::refreshTrial,
+        onOpenIssue = { issue -> onOpenHistory(issue, null) },
+        onOpenDate = { date -> onOpenHistory(null, date) },
         onOpenSettings = onOpenSettings,
     )
 }
 
 @Composable
 private fun HistoryRoute(
+    issue: String?,
+    date: String?,
     onBack: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(issue, date) {
+        when {
+            issue != null -> viewModel.searchIssue(issue)
+            date != null -> viewModel.searchDateRange(date, date)
+        }
+    }
     HistoryScreen(
         state = state,
         onBack = onBack,
