@@ -451,14 +451,15 @@ class DefaultLiveContentRepositoryTest {
 
             assertThat(undeletable.exists()).isTrue()
             assertThat(store.caibaoDocuments.values).containsExactly(cached)
-            assertThat(store.metadata(LiveContentType.CAIBAO)?.lastFailure)
+            assertThat(store.metadata(LiveContentType.CAIBAO)).isNull()
+            assertThat(store.metadata(LiveContentType.CAIBAO_CLEANUP)?.lastFailure)
                 .isEqualTo(LiveContentFailure.FILE_IO)
             assertThat(repository.caibaoRefreshState.first())
                 .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.FILE_IO))
         }
 
     @Test
-    fun `successful cleanup retry clears its persisted FILE IO failure and restores idle state`() =
+    fun `successful cleanup after repository recreation clears persisted cleanup failure`() =
         runTest {
             val cached = caibao(
                 "2026198",
@@ -479,22 +480,26 @@ class DefaultLiveContentRepositoryTest {
                 updateCaibaoFlow()
                 setMetadata(initialMetadata)
             }
-            val repository = repository(store, scope = backgroundScope)
+            val firstRepository = repository(store, scope = backgroundScope)
 
-            repository.cleanCaibaoCache()
+            firstRepository.cleanCaibaoCache()
 
-            val failedMetadata = requireNotNull(store.metadata(LiveContentType.CAIBAO))
-            assertThat(failedMetadata.lastFailure).isEqualTo(LiveContentFailure.FILE_IO)
-            assertThat(repository.caibaoRefreshState.first())
+            val cleanupFailure =
+                requireNotNull(store.metadata(LiveContentType.CAIBAO_CLEANUP))
+            assertThat(cleanupFailure.lastFailure).isEqualTo(LiveContentFailure.FILE_IO)
+            assertThat(store.metadata(LiveContentType.CAIBAO)).isEqualTo(initialMetadata)
+            assertThat(firstRepository.caibaoRefreshState.first())
                 .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.FILE_IO))
 
             File(undeletable, "child").delete()
             undeletable.delete()
-            repository.cleanCaibaoCache()
+            val recreatedRepository = repository(store, scope = backgroundScope)
+            recreatedRepository.cleanCaibaoCache()
 
-            assertThat(store.metadata(LiveContentType.CAIBAO))
-                .isEqualTo(failedMetadata.copy(lastFailure = null))
-            assertThat(repository.caibaoRefreshState.first())
+            assertThat(store.metadata(LiveContentType.CAIBAO_CLEANUP))
+                .isEqualTo(cleanupFailure.copy(lastFailure = null))
+            assertThat(store.metadata(LiveContentType.CAIBAO)).isEqualTo(initialMetadata)
+            assertThat(recreatedRepository.caibaoRefreshState.first())
                 .isEqualTo(LiveContentRefreshState.Idle)
         }
 
@@ -510,12 +515,13 @@ class DefaultLiveContentRepositoryTest {
         repository.cleanCaibaoCache()
 
         assertThat(store.metadata(LiveContentType.CAIBAO)).isEqualTo(refreshFailure)
+        assertThat(store.metadata(LiveContentType.CAIBAO_CLEANUP)).isNull()
         assertThat(repository.caibaoRefreshState.first())
             .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.INVALID_HTML))
     }
 
     @Test
-    fun `successful cleanup does not clear a later refresh FILE IO failure`() = runTest {
+    fun `cleanup after recreation clears cleanup row but preserves refresh FILE IO`() = runTest {
         val cached = caibao(
             "2026198",
             "2026198-A11-000000000004.jpg",
@@ -546,6 +552,8 @@ class DefaultLiveContentRepositoryTest {
         )
 
         repository.cleanCaibaoCache()
+        val cleanupFailure = requireNotNull(store.metadata(LiveContentType.CAIBAO_CLEANUP))
+        assertThat(cleanupFailure.lastFailure).isEqualTo(LiveContentFailure.FILE_IO)
         File(undeletable, "child").delete()
         undeletable.delete()
 
@@ -556,11 +564,36 @@ class DefaultLiveContentRepositoryTest {
         assertThat(refreshFailure.lastFailure).isEqualTo(LiveContentFailure.FILE_IO)
         assertThat(refreshFailure.lastAttemptEpochMillis).isEqualTo(NOW.toEpochMilli())
 
-        repository.cleanCaibaoCache()
+        val recreatedRepository = repository(store, scope = backgroundScope)
+        recreatedRepository.cleanCaibaoCache()
 
+        assertThat(store.metadata(LiveContentType.CAIBAO_CLEANUP))
+            .isEqualTo(cleanupFailure.copy(lastFailure = null))
         assertThat(store.metadata(LiveContentType.CAIBAO)).isEqualTo(refreshFailure)
-        assertThat(repository.caibaoRefreshState.first())
+        assertThat(recreatedRepository.caibaoRefreshState.first())
             .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.FILE_IO))
+    }
+
+    @Test
+    fun `caibao state prefers refresh failure over cleanup failure`() = runTest {
+        val store = FakeLiveContentStore().apply {
+            setMetadata(
+                metadata(
+                    type = LiveContentType.CAIBAO,
+                    failure = LiveContentFailure.INVALID_HTML,
+                ),
+            )
+            setMetadata(
+                metadata(
+                    type = LiveContentType.CAIBAO_CLEANUP,
+                    failure = LiveContentFailure.FILE_IO,
+                ),
+            )
+        }
+        val repository = repository(store, scope = backgroundScope)
+
+        assertThat(repository.caibaoRefreshState.first())
+            .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.INVALID_HTML))
     }
 
     @Test
@@ -585,6 +618,8 @@ class DefaultLiveContentRepositoryTest {
         assertThat(store.caibaoDocuments.values).containsExactly(cached)
         assertThat(root.listFiles().orEmpty().map { it.name })
             .containsExactly(cached.localFileName)
+        assertThat(store.metadata(LiveContentType.CAIBAO_CLEANUP)?.lastFailure)
+            .isEqualTo(LiveContentFailure.DATABASE)
         assertThat(repository.caibaoRefreshState.first())
             .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.DATABASE))
     }

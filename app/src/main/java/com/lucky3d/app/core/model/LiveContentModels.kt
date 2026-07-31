@@ -5,6 +5,7 @@ import java.time.LocalDate
 enum class LiveContentType {
     TRIAL_NUMBER,
     CAIBAO,
+    CAIBAO_CLEANUP,
 }
 
 enum class TrialSource {

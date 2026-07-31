@@ -246,6 +246,17 @@ filesDir/live-content/caibao/{issue}-A11-{sha256-prefix}.jpg
 - 下次允许自动尝试时间；
 - 最近失败类型。
 
+V1.1 使用三个逻辑行：
+
+- `TRIAL_NUMBER`：只保存试机号刷新策略和刷新结果。
+- `CAIBAO`：只保存彩报页面/图片刷新策略和刷新结果。
+- `CAIBAO_CLEANUP`：内部清理错误作用域，只持久化彩报文件/Room 清理的
+  `lastFailure`。它不传入 `RefreshPolicy`，不记录或消耗刷新次数，不设置冷却，也不代表
+  彩报远端刷新成功或失败。
+
+`CAIBAO_CLEANUP` 复用现有以文本 `contentType` 为主键的 metadata 表，不增加表或字段。
+成功清理只清除该行的 `lastFailure`；彩报刷新只读写 `CAIBAO` 行，两者不能互相覆盖。
+
 迁移必须是增量迁移 `MIGRATION_3_4`，不得使用 destructive migration。预置数据库仍作为初始安装来源；构建时同步生成并验证 Room v4 schema。
 
 ## 8. 错误模型与降级
@@ -275,6 +286,10 @@ enum class LiveContentFailure {
 - 试机号是旧日期：显示日期与“非今日数据”，不伪装成当天内容。
 - 彩报下载中：保留旧图并显示非阻塞进度；没有旧图时显示固定比例占位区。
 - 解析结构变化：拒绝写库并记录 `INVALID_HTML`，不猜测号码或图片地址。
+
+彩报刷新状态由 Repository 稳定合并三类来源，优先级固定为：
+运行时状态 > `CAIBAO` 刷新失败 > `CAIBAO_CLEANUP` 清理失败 > `Idle`。因此进程重建后
+成功清理可以清除持久化清理错误，同时不会误清或遮蔽真实彩报刷新错误。
 
 ## 9. 页面集成
 
