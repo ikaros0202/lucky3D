@@ -132,12 +132,13 @@ class HomeScreenTest {
     }
 
     @Test
-    fun officialCorrectionExplainsAffectedResultsWereRecalculated() {
+    fun correctionUsesUserFacingUpdateCopy() {
         setHomeContent(
             HomeUiState(syncState = HomeSyncState.CORRECTED),
         )
 
-        composeRule.onNodeWithText("官方数据有修正").assertIsDisplayed()
+        composeRule.onNodeWithText("开奖号已更新").assertIsDisplayed()
+        composeRule.onNodeWithText("官方数据有修正").assertDoesNotExist()
         composeRule.onNodeWithText("相关期号、指标和方案复盘已重新计算。").assertDoesNotExist()
     }
 
