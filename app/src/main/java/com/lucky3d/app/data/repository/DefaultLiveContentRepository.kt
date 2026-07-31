@@ -92,6 +92,7 @@ class DefaultLiveContentRepository internal constructor(
     private val trialInFlight = InFlightRefresh()
     private val caibaoInFlight = InFlightRefresh()
     private val caibaoOperationMutex = Mutex()
+    private var cleanupOwnedCaibaoFailure: LiveContentFailure? = null
 
     override val trialNumber: Flow<TrialNumber?> = store.observeTrial()
     override val caibaoDocument: Flow<CaibaoDocument?> = store.observeCaibao().map { document ->
@@ -116,7 +117,7 @@ class DefaultLiveContentRepository internal constructor(
         caibaoOperationMutex.withLock {
             val failure = cleanCaibaoCacheInternal()
             if (failure == null) {
-                caibaoRuntimeState.value = null
+                clearCleanupFailureAfterSuccessfulCleanup()
             } else {
                 recordCleanupFailure(failure)
             }
@@ -270,6 +271,7 @@ class DefaultLiveContentRepository internal constructor(
         if (latest?.issue == descriptor.issue) {
             return try {
                 store.recordMetadata(successMetadata)
+                cleanupOwnedCaibaoFailure = null
                 caibaoRuntimeState.value = null
                 LiveContentRefreshResult.Success
             } catch (exception: Exception) {
@@ -342,6 +344,7 @@ class DefaultLiveContentRepository internal constructor(
         )
         try {
             store.commitCaibao(document, successMetadata)
+            cleanupOwnedCaibaoFailure = null
         } catch (exception: Exception) {
             exception.rethrowCancellation()
             val compensated = try {
@@ -359,7 +362,7 @@ class DefaultLiveContentRepository internal constructor(
             recordCleanupFailure(cleanupFailure)
             return LiveContentRefreshResult.Failed(cleanupFailure)
         }
-        caibaoRuntimeState.value = null
+        clearCleanupFailureAfterSuccessfulCleanup()
         return LiveContentRefreshResult.Success
     }
 
@@ -418,6 +421,9 @@ class DefaultLiveContentRepository internal constructor(
         )
         return try {
             store.recordMetadata(failed)
+            if (type == LiveContentType.CAIBAO) {
+                cleanupOwnedCaibaoFailure = null
+            }
             runtime.value = null
             LiveContentRefreshResult.Failed(failure)
         } catch (exception: Exception) {
@@ -443,8 +449,8 @@ class DefaultLiveContentRepository internal constructor(
         val cutoff = clock.instant().atZone(BEIJING).toLocalDate().minusDays(2)
         var failure: LiveContentFailure? = null
         documents.filter { it.cachedLocalDate < cutoff }.forEach { document ->
-            try {
-                fileStore.delete(document.localFileName)
+            val stagedDeletion = try {
+                fileStore.stageDelete(document.localFileName)
             } catch (exception: Exception) {
                 exception.rethrowCancellation()
                 failure = LiveContentFailure.FILE_IO
@@ -454,7 +460,20 @@ class DefaultLiveContentRepository internal constructor(
                 store.deleteCaibao(document.issue)
             } catch (exception: Exception) {
                 exception.rethrowCancellation()
-                failure = LiveContentFailure.DATABASE
+                failure = try {
+                    fileStore.rollbackDelete(stagedDeletion)
+                    LiveContentFailure.DATABASE
+                } catch (rollbackException: Exception) {
+                    rollbackException.rethrowCancellation()
+                    LiveContentFailure.FILE_IO
+                }
+                return@forEach
+            }
+            try {
+                fileStore.commitDelete(stagedDeletion)
+            } catch (exception: Exception) {
+                exception.rethrowCancellation()
+                failure = LiveContentFailure.FILE_IO
             }
         }
         return failure
@@ -465,15 +484,46 @@ class DefaultLiveContentRepository internal constructor(
             store.metadata(LiveContentType.CAIBAO)
         } catch (exception: Exception) {
             exception.rethrowCancellation()
-            null
+            caibaoRuntimeState.value = LiveContentRefreshState.Failed(LiveContentFailure.DATABASE)
+            return
         }
         val failed = (previous ?: emptyMetadata(LiveContentType.CAIBAO)).copy(lastFailure = failure)
         try {
             store.recordMetadata(failed)
+            cleanupOwnedCaibaoFailure = failure
+            caibaoRuntimeState.value = LiveContentRefreshState.Failed(failure)
         } catch (exception: Exception) {
             exception.rethrowCancellation()
+            caibaoRuntimeState.value = LiveContentRefreshState.Failed(LiveContentFailure.DATABASE)
         }
-        caibaoRuntimeState.value = LiveContentRefreshState.Failed(failure)
+    }
+
+    private suspend fun clearCleanupFailureAfterSuccessfulCleanup() {
+        val ownedFailure = cleanupOwnedCaibaoFailure
+        if (ownedFailure == null) {
+            caibaoRuntimeState.value = null
+            return
+        }
+        val current = try {
+            store.metadata(LiveContentType.CAIBAO)
+        } catch (exception: Exception) {
+            exception.rethrowCancellation()
+            caibaoRuntimeState.value = LiveContentRefreshState.Failed(LiveContentFailure.DATABASE)
+            return
+        }
+        if (current?.lastFailure != ownedFailure) {
+            cleanupOwnedCaibaoFailure = null
+            caibaoRuntimeState.value = null
+            return
+        }
+        try {
+            store.recordMetadata(current.copy(lastFailure = null))
+            cleanupOwnedCaibaoFailure = null
+            caibaoRuntimeState.value = null
+        } catch (exception: Exception) {
+            exception.rethrowCancellation()
+            caibaoRuntimeState.value = LiveContentRefreshState.Failed(LiveContentFailure.DATABASE)
+        }
     }
 
     private suspend fun sharedRefresh(

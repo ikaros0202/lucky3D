@@ -9,6 +9,7 @@ import com.lucky3d.app.data.file.AtomicFileMover
 import com.lucky3d.app.data.file.CaibaoFileStore
 import com.lucky3d.app.data.file.ImageBounds
 import com.lucky3d.app.data.file.ImageBoundsReader
+import com.lucky3d.app.data.file.ImageIntegrityValidator
 import com.lucky3d.app.data.remote.CaibaoDataSource
 import com.lucky3d.app.data.remote.CaibaoDescriptorResult
 import com.lucky3d.app.data.remote.CaibaoImageResult
@@ -456,6 +457,138 @@ class DefaultLiveContentRepositoryTest {
                 .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.FILE_IO))
         }
 
+    @Test
+    fun `successful cleanup retry clears its persisted FILE IO failure and restores idle state`() =
+        runTest {
+            val cached = caibao(
+                "2026198",
+                "2026198-A11-000000000004.jpg",
+                LocalDate.of(2026, 7, 28),
+            )
+            val undeletable = File(root, cached.localFileName).apply {
+                mkdir()
+                File(this, "child").writeText("keep")
+            }
+            val initialMetadata = metadata(LiveContentType.CAIBAO).copy(
+                lastSuccessLocalDate = LocalDate.of(2026, 7, 30),
+                lastSuccessEpochMillis = NOW.minusSeconds(86_400).toEpochMilli(),
+                nextAllowedAutoAttemptEpochMillis = NOW.plusSeconds(7_200).toEpochMilli(),
+            )
+            val store = FakeLiveContentStore().apply {
+                caibaoDocuments[cached.issue] = cached
+                updateCaibaoFlow()
+                setMetadata(initialMetadata)
+            }
+            val repository = repository(store, scope = backgroundScope)
+
+            repository.cleanCaibaoCache()
+
+            val failedMetadata = requireNotNull(store.metadata(LiveContentType.CAIBAO))
+            assertThat(failedMetadata.lastFailure).isEqualTo(LiveContentFailure.FILE_IO)
+            assertThat(repository.caibaoRefreshState.first())
+                .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.FILE_IO))
+
+            File(undeletable, "child").delete()
+            undeletable.delete()
+            repository.cleanCaibaoCache()
+
+            assertThat(store.metadata(LiveContentType.CAIBAO))
+                .isEqualTo(failedMetadata.copy(lastFailure = null))
+            assertThat(repository.caibaoRefreshState.first())
+                .isEqualTo(LiveContentRefreshState.Idle)
+        }
+
+    @Test
+    fun `successful cleanup does not clear a caibao refresh failure it does not own`() = runTest {
+        val refreshFailure = metadata(
+            type = LiveContentType.CAIBAO,
+            failure = LiveContentFailure.INVALID_HTML,
+        )
+        val store = FakeLiveContentStore().apply { setMetadata(refreshFailure) }
+        val repository = repository(store, scope = backgroundScope)
+
+        repository.cleanCaibaoCache()
+
+        assertThat(store.metadata(LiveContentType.CAIBAO)).isEqualTo(refreshFailure)
+        assertThat(repository.caibaoRefreshState.first())
+            .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.INVALID_HTML))
+    }
+
+    @Test
+    fun `successful cleanup does not clear a later refresh FILE IO failure`() = runTest {
+        val cached = caibao(
+            "2026198",
+            "2026198-A11-000000000004.jpg",
+            LocalDate.of(2026, 7, 28),
+        )
+        val undeletable = File(root, cached.localFileName).apply {
+            mkdir()
+            File(this, "child").writeText("keep")
+        }
+        val initialMetadata = metadata(LiveContentType.CAIBAO).copy(
+            lastAttemptEpochMillis = NOW.minusSeconds(60).toEpochMilli(),
+        )
+        val store = FakeLiveContentStore().apply {
+            caibaoDocuments[cached.issue] = cached
+            updateCaibaoFlow()
+            setMetadata(initialMetadata)
+        }
+        val failingFileStore = CaibaoFileStore(
+            rootDirectory = root,
+            imageBoundsReader = ImageBoundsReader { throw IllegalStateException("reader failed") },
+            imageIntegrityValidator = ImageIntegrityValidator { _, _ -> true },
+            ioDispatcher = kotlinx.coroutines.Dispatchers.Unconfined,
+        )
+        val repository = repository(
+            store = store,
+            fileStore = failingFileStore,
+            scope = backgroundScope,
+        )
+
+        repository.cleanCaibaoCache()
+        File(undeletable, "child").delete()
+        undeletable.delete()
+
+        val refreshResult = repository.refreshCaibao(LiveRefreshTrigger.MANUAL)
+        assertThat(refreshResult)
+            .isEqualTo(LiveContentRefreshResult.Failed(LiveContentFailure.FILE_IO))
+        val refreshFailure = requireNotNull(store.metadata(LiveContentType.CAIBAO))
+        assertThat(refreshFailure.lastFailure).isEqualTo(LiveContentFailure.FILE_IO)
+        assertThat(refreshFailure.lastAttemptEpochMillis).isEqualTo(NOW.toEpochMilli())
+
+        repository.cleanCaibaoCache()
+
+        assertThat(store.metadata(LiveContentType.CAIBAO)).isEqualTo(refreshFailure)
+        assertThat(repository.caibaoRefreshState.first())
+            .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.FILE_IO))
+    }
+
+    @Test
+    fun `cleanup restores staged file and retains metadata when Room deletion fails`() = runTest {
+        val cached = caibao(
+            "2026198",
+            "2026198-A11-000000000004.jpg",
+            LocalDate.of(2026, 7, 28),
+        )
+        val cachedFile = File(root, cached.localFileName).apply { writeText("cached") }
+        val store = FakeLiveContentStore().apply {
+            caibaoDocuments[cached.issue] = cached
+            updateCaibaoFlow()
+            failCaibaoDelete = true
+        }
+        val repository = repository(store, scope = backgroundScope)
+
+        repository.cleanCaibaoCache()
+
+        assertThat(cachedFile.exists()).isTrue()
+        assertThat(cachedFile.readText()).isEqualTo("cached")
+        assertThat(store.caibaoDocuments.values).containsExactly(cached)
+        assertThat(root.listFiles().orEmpty().map { it.name })
+            .containsExactly(cached.localFileName)
+        assertThat(repository.caibaoRefreshState.first())
+            .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.DATABASE))
+    }
+
     private fun TestScope.repository(
         store: FakeLiveContentStore = FakeLiveContentStore(),
         trialRemote: TrialDataSource = FakeTrialDataSource(
@@ -477,6 +610,7 @@ class DefaultLiveContentRepositoryTest {
         CaibaoFileStore(
             rootDirectory = root,
             imageBoundsReader = ImageBoundsReader { bounds },
+            imageIntegrityValidator = ImageIntegrityValidator { _, _ -> true },
             atomicFileMover = AtomicFileMover { source, target ->
                 Files.move(
                     source.toPath(),
@@ -501,6 +635,7 @@ class DefaultLiveContentRepositoryTest {
         }
         var trialCommits = 0
         var failCaibaoCommit = false
+        var failCaibaoDelete = false
 
         override fun observeTrial(): Flow<TrialNumber?> = trial
 
@@ -548,6 +683,7 @@ class DefaultLiveContentRepositoryTest {
         }
 
         override suspend fun deleteCaibao(issue: String) {
+            if (failCaibaoDelete) throw IllegalStateException("Room delete failed")
             caibaoDocuments.remove(issue)
             updateCaibaoFlow()
         }
