@@ -79,6 +79,54 @@ class DefaultLiveContentRepositoryTest {
     }
 
     @Test
+    fun `validated caibao image read returns committed private file bytes`() = runTest {
+        val fileStore = fileStore(bounds = ImageBounds(640, 480))
+        val stored = fileStore.commit(
+            fileStore.stageAndValidate("2026201", JPEG_BYTES, "image/jpeg"),
+        )
+        val document = caibao(
+            issue = "2026201",
+            fileName = stored.fileName,
+            date = LocalDate.of(2026, 7, 31),
+        ).copy(
+            sha256 = stored.sha256,
+            mimeType = stored.mimeType,
+            width = stored.width,
+            height = stored.height,
+        )
+        val repository = repository(
+            fileStore = fileStore,
+            scope = backgroundScope,
+        )
+
+        val result = repository.readCaibaoImage(document)
+
+        assertThat(result).isInstanceOf(CaibaoImageReadResult.Loaded::class.java)
+        assertThat((result as CaibaoImageReadResult.Loaded).bytes).isEqualTo(JPEG_BYTES)
+    }
+
+    @Test
+    fun `missing caibao image invalidates stale database document`() = runTest {
+        val document = caibao(
+            issue = "2026201",
+            fileName = "2026201-A11-000000000001.jpg",
+            date = LocalDate.of(2026, 7, 31),
+        )
+        val store = FakeLiveContentStore().apply {
+            caibaoDocuments[document.issue] = document
+            updateCaibaoFlow()
+        }
+        val repository = repository(store = store, scope = backgroundScope)
+
+        assertThat(repository.readCaibaoImage(document))
+            .isEqualTo(CaibaoImageReadResult.Unavailable(LiveContentFailure.FILE_IO))
+        assertThat(store.caibaoDocuments).isEmpty()
+        assertThat(repository.caibaoDocument.first()).isNull()
+        assertThat(repository.caibaoRefreshState.first())
+            .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.FILE_IO))
+    }
+
+    @Test
     fun `caibao flow hides a cache older than the three Beijing date window`() = runTest {
         val expired = caibao("2026198", "expired.jpg", LocalDate.of(2026, 7, 28))
         val store = FakeLiveContentStore().apply {

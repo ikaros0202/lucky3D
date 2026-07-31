@@ -92,6 +92,12 @@ class LifecycleSyncObserverTest {
             trigger: LiveRefreshTrigger,
         ): LiveContentRefreshResult = LiveContentRefreshResult.Success
 
+        override suspend fun readCaibaoImage(
+            document: CaibaoDocument,
+        ) = com.lucky3d.app.data.repository.CaibaoImageReadResult.Unavailable(
+            com.lucky3d.app.domain.livecontent.LiveContentFailure.FILE_IO,
+        )
+
         override suspend fun cleanCaibaoCache() {
             cleanupCalls += 1
         }

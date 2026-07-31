@@ -252,6 +252,62 @@ class CaibaoFileStoreTest {
     }
 
     @Test
+    fun `validated read returns only the committed image matching stored metadata`() = runTest {
+        val bytes = jpegBytes("cached-reader")
+        val store = store(bounds = ImageBounds(720, 1280))
+        val stored = store.commit(
+            store.stageAndValidate("2026201", bytes, "image/jpeg"),
+        )
+
+        val loaded = store.readValidated(
+            fileName = stored.fileName,
+            expectedSha256 = stored.sha256,
+            expectedMimeType = stored.mimeType,
+            expectedWidth = stored.width,
+            expectedHeight = stored.height,
+        )
+
+        assertThat(loaded).isEqualTo(bytes)
+    }
+
+    @Test
+    fun `validated read rejects missing unsafe or metadata mismatched cache files`() = runTest {
+        val bytes = pngBytes("cached-reader")
+        val store = store(bounds = ImageBounds(720, 1280))
+        val stored = store.commit(
+            store.stageAndValidate("2026201", bytes, "image/png"),
+        )
+
+        assertFailure(LiveContentFailure.INVALID_IMAGE) {
+            store.readValidated(
+                fileName = stored.fileName,
+                expectedSha256 = "0".repeat(64),
+                expectedMimeType = stored.mimeType,
+                expectedWidth = stored.width,
+                expectedHeight = stored.height,
+            )
+        }
+        assertFailure(LiveContentFailure.FILE_IO) {
+            store.readValidated(
+                fileName = "2026202-A11-0123456789ab.png",
+                expectedSha256 = sha256(bytes),
+                expectedMimeType = "image/png",
+                expectedWidth = 720,
+                expectedHeight = 1280,
+            )
+        }
+        assertThrowsIllegalArgument {
+            store.readValidated(
+                fileName = "../outside.png",
+                expectedSha256 = sha256(bytes),
+                expectedMimeType = "image/png",
+                expectedWidth = 720,
+                expectedHeight = 1280,
+            )
+        }
+    }
+
+    @Test
     fun `staged delete atomically hides a cache file and rollback restores its bytes`() = runTest {
         val mover = RecordingAtomicMover()
         val store = store(mover = mover)

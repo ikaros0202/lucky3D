@@ -238,6 +238,12 @@ class HomeViewModelTest {
             trigger: LiveRefreshTrigger,
         ): LiveContentRefreshResult = LiveContentRefreshResult.Success
 
+        override suspend fun readCaibaoImage(
+            document: com.lucky3d.app.core.model.CaibaoDocument,
+        ) = com.lucky3d.app.data.repository.CaibaoImageReadResult.Unavailable(
+            LiveContentFailure.FILE_IO,
+        )
+
         override suspend fun cleanCaibaoCache() = Unit
     }
 

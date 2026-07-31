@@ -137,6 +137,38 @@ class CaibaoFileStore(
         )
     }
 
+    suspend fun readValidated(
+        fileName: String,
+        expectedSha256: String,
+        expectedMimeType: String,
+        expectedWidth: Int,
+        expectedHeight: Int,
+    ): ByteArray = withContext(ioDispatcher) {
+        val file = safeFile(fileName)
+        if (!file.exists() || !file.isFile) fail(LiveContentFailure.FILE_IO)
+        if (file.length() <= 0L || file.length() > MAX_IMAGE_BYTES) {
+            fail(LiveContentFailure.INVALID_IMAGE)
+        }
+        val bytes = try {
+            file.readBytes()
+        } catch (exception: Exception) {
+            exception.rethrowCancellation()
+            fail(LiveContentFailure.FILE_IO, exception)
+        }
+        val bounds = imageBoundsReader.read(bytes)
+        if (
+            bytes.sha256() != expectedSha256.lowercase() ||
+            expectedMimeType !in SUPPORTED_MIME_TYPES ||
+            !signatureMatches(bytes, expectedMimeType) ||
+            !imageIntegrityValidator.isValid(bytes, expectedMimeType) ||
+            bounds?.width != expectedWidth ||
+            bounds.height != expectedHeight
+        ) {
+            fail(LiveContentFailure.INVALID_IMAGE)
+        }
+        bytes
+    }
+
     suspend fun rollback(stagedOrStored: File) = withContext(ioDispatcher) {
         requireRootFile(stagedOrStored)
         deleteFile(stagedOrStored)

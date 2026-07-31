@@ -116,6 +116,26 @@ class DefaultLiveContentRepository internal constructor(
             caibaoOperationMutex.withLock { performCaibaoRefresh(trigger) }
         }
 
+    override suspend fun readCaibaoImage(document: CaibaoDocument): CaibaoImageReadResult =
+        caibaoOperationMutex.withLock {
+            try {
+                CaibaoImageReadResult.Loaded(
+                    fileStore.readValidated(
+                        fileName = document.localFileName,
+                        expectedSha256 = document.sha256,
+                        expectedMimeType = document.mimeType,
+                        expectedWidth = document.width,
+                        expectedHeight = document.height,
+                    ),
+                )
+            } catch (failure: CaibaoFileException) {
+                unavailableCaibaoImage(document, failure.failure)
+            } catch (exception: Exception) {
+                exception.rethrowCancellation()
+                unavailableCaibaoImage(document, LiveContentFailure.FILE_IO)
+            }
+        }
+
     override suspend fun cleanCaibaoCache() {
         caibaoOperationMutex.withLock {
             val failure = cleanCaibaoCacheInternal()
@@ -125,6 +145,47 @@ class DefaultLiveContentRepository internal constructor(
                 recordCleanupFailure(failure)
             }
         }
+    }
+
+    private suspend fun unavailableCaibaoImage(
+        document: CaibaoDocument,
+        readFailure: LiveContentFailure,
+    ): CaibaoImageReadResult.Unavailable {
+        var cleanupFailure: LiveContentFailure? = null
+        val stagedDeletion = try {
+            fileStore.stageDelete(document.localFileName)
+        } catch (exception: Exception) {
+            exception.rethrowCancellation()
+            cleanupFailure = LiveContentFailure.FILE_IO
+            null
+        }
+        try {
+            store.deleteCaibao(document.issue)
+        } catch (exception: Exception) {
+            exception.rethrowCancellation()
+            var failure = LiveContentFailure.DATABASE
+            if (stagedDeletion != null) {
+                try {
+                    fileStore.rollbackDelete(stagedDeletion)
+                } catch (rollbackException: Exception) {
+                    rollbackException.rethrowCancellation()
+                    failure = LiveContentFailure.FILE_IO
+                }
+            }
+            caibaoRuntimeState.value = LiveContentRefreshState.Failed(failure)
+            return CaibaoImageReadResult.Unavailable(failure)
+        }
+        if (stagedDeletion != null) {
+            try {
+                fileStore.commitDelete(stagedDeletion)
+            } catch (exception: Exception) {
+                exception.rethrowCancellation()
+                cleanupFailure = LiveContentFailure.FILE_IO
+            }
+        }
+        val failure = cleanupFailure ?: readFailure
+        caibaoRuntimeState.value = LiveContentRefreshState.Failed(failure)
+        return CaibaoImageReadResult.Unavailable(failure)
     }
 
     private suspend fun performTrialRefresh(

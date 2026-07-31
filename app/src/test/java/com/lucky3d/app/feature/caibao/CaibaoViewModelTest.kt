@@ -120,6 +120,12 @@ class CaibaoViewModelTest {
             return LiveContentRefreshResult.Success
         }
 
+        override suspend fun readCaibaoImage(
+            document: CaibaoDocument,
+        ) = com.lucky3d.app.data.repository.CaibaoImageReadResult.Unavailable(
+            LiveContentFailure.FILE_IO,
+        )
+
         override suspend fun cleanCaibaoCache() = Unit
     }
 
