@@ -3,6 +3,7 @@ package com.lucky3d.app.data.remote
 import com.google.common.truth.Truth.assertThat
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.runTest
@@ -121,5 +122,19 @@ class Cz89CaibaoDataSourceTest {
         server.enqueue(MockResponse().setHeader("Content-Type", "text/html; charset=GBK").setBody(fixture))
         assertThat(Cz89CaibaoDataSource(OkHttpClient(), server.url("/A11.htm")).fetchLatestDescriptor())
             .isEqualTo(CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidPayload))
+    }
+
+    @Test
+    fun `cancelling an in-flight image fetch reaches the caller as cancellation`() = runTest {
+        val imageUrl = server.url("/image.jpg").toString()
+        val source = Cz89CaibaoDataSource(OkHttpClient(), server.url("/A11.htm"), imageUrlPolicy = { it == imageUrl })
+        server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBodyDelay(5, TimeUnit.SECONDS).setBody("image"))
+        val deferred = async(Dispatchers.Default) { source.fetchImage(imageUrl) }
+        assertThat(server.takeRequest(1, TimeUnit.SECONDS)).isNotNull()
+
+        deferred.cancel()
+        var cancellation: CancellationException? = null
+        try { deferred.await() } catch (error: CancellationException) { cancellation = error }
+        assertThat(cancellation).isNotNull()
     }
 }
