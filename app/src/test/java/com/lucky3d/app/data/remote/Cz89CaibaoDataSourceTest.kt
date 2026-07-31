@@ -1,6 +1,10 @@
 package com.lucky3d.app.data.remote
 
 import com.google.common.truth.Truth.assertThat
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -87,5 +91,35 @@ class Cz89CaibaoDataSourceTest {
         assertThat(source.fetchImage(testUrl)).isEqualTo(CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidPayload))
         server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody("").setHeader("Content-Length", 0))
         assertThat(source.fetchImage(testUrl)).isEqualTo(CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidPayload))
+    }
+
+    @Test
+    fun `page and image timeout cancellation HTTP and empty-body paths are typed`() = runTest {
+        val client = OkHttpClient.Builder().callTimeout(100, TimeUnit.MILLISECONDS).build()
+        server.enqueue(MockResponse().setBodyDelay(1, TimeUnit.SECONDS).setBody(fixture))
+        assertThat(Cz89CaibaoDataSource(client, server.url("/A11.htm")).fetchLatestDescriptor())
+            .isEqualTo(CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.Network))
+
+        val imageUrl = server.url("/image.jpg").toString()
+        val source = Cz89CaibaoDataSource(client, server.url("/A11.htm"), imageUrlPolicy = { it == imageUrl })
+        server.enqueue(MockResponse().setResponseCode(503))
+        assertThat(source.fetchImage(imageUrl)).isEqualTo(CaibaoImageResult.Failure(LiveContentRemoteFailure.Http))
+        server.enqueue(MockResponse().setHeader("Content-Type", "image/png").setBody(""))
+        assertThat(source.fetchImage(imageUrl)).isEqualTo(CaibaoImageResult.Failure(LiveContentRemoteFailure.InvalidPayload))
+
+        server.enqueue(MockResponse().setBodyDelay(5, TimeUnit.SECONDS).setBody(fixture))
+        val deferred = async { Cz89CaibaoDataSource(OkHttpClient(), server.url("/A11.htm")).fetchLatestDescriptor() }
+        assertThat(server.takeRequest(1, TimeUnit.SECONDS)).isNotNull()
+        deferred.cancel()
+        var cancellation: CancellationException? = null
+        try { deferred.await() } catch (error: CancellationException) { cancellation = error }
+        assertThat(cancellation).isNotNull()
+    }
+
+    @Test
+    fun `non UTF8 HTML declarations are rejected instead of guessing bytes`() = runTest {
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/html; charset=GBK").setBody(fixture))
+        assertThat(Cz89CaibaoDataSource(OkHttpClient(), server.url("/A11.htm")).fetchLatestDescriptor())
+            .isEqualTo(CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidPayload))
     }
 }

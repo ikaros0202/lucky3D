@@ -3,6 +3,10 @@ package com.lucky3d.app.data.remote
 import com.google.common.truth.Truth.assertThat
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -23,7 +27,7 @@ class CjcpTrialDataSourceTest {
 
     @Test
     fun `successful page uses injected endpoint and parser`() = runTest {
-        server.enqueue(MockResponse().setBody(fixture).setHeader("Content-Type", "text/html; charset=unknown-charset"))
+        server.enqueue(MockResponse().setBody(fixture).setHeader("Content-Type", "text/html; charset=UTF-8"))
         val source = CjcpTrialDataSource(OkHttpClient(), server.url("/trial"))
 
         assertThat(source.fetchLatest()).isEqualTo(TrialRemoteResult.Success(TrialRemoteRecord("2026201", "007")))
@@ -68,5 +72,25 @@ class CjcpTrialDataSourceTest {
 
         assertThat(CjcpTrialDataSource(client, server.url("/trial")).fetchLatest())
             .isEqualTo(TrialRemoteResult.Failure(LiveContentRemoteFailure.Network))
+    }
+
+    @Test
+    fun `non UTF8 HTML declaration is rejected instead of guessing bytes`() = runTest {
+        server.enqueue(MockResponse().setBody(fixture).setHeader("Content-Type", "text/html; charset=GBK"))
+
+        assertThat(CjcpTrialDataSource(OkHttpClient(), server.url("/trial")).fetchLatest())
+            .isEqualTo(TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidPayload))
+    }
+
+    @Test
+    fun `cancelling an in-flight network fetch reaches the caller as cancellation`() = runTest {
+        server.enqueue(MockResponse().setBodyDelay(5, TimeUnit.SECONDS).setBody(fixture))
+        val deferred = async(Dispatchers.Default) { CjcpTrialDataSource(OkHttpClient(), server.url("/trial")).fetchLatest() }
+        assertThat(server.takeRequest(1, TimeUnit.SECONDS)).isNotNull()
+
+        deferred.cancel()
+        var cancellation: CancellationException? = null
+        try { deferred.await() } catch (error: CancellationException) { cancellation = error }
+        assertThat(cancellation).isNotNull()
     }
 }

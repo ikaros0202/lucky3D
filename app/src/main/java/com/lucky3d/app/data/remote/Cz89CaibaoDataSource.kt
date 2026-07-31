@@ -30,6 +30,7 @@ class Cz89CaibaoDataSource(
             noRedirectClient.newCall(request).execute().use { response ->
                 if (response.code in 300..399) return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidSource)
                 if (!response.isSuccessful) return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.Http)
+                if (!response.hasUtf8HtmlCharset()) return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidPayload)
                 if (!samePage(response.request.url, endpoint)) {
                     return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidSource)
                 }

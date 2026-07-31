@@ -9,6 +9,7 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import okhttp3.ResponseBody
 
 class CjcpTrialDataSource(
@@ -28,6 +29,7 @@ class CjcpTrialDataSource(
             noRedirectClient.newCall(request).execute().use { response ->
                 if (response.code in 300..399) return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidSource)
                 if (!response.isSuccessful) return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.Http)
+                if (!response.hasUtf8HtmlCharset()) return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidPayload)
                 if (!samePage(response.request.url, endpoint)) {
                     return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidSource)
                 }
@@ -86,3 +88,10 @@ internal fun samePage(actual: HttpUrl, expected: HttpUrl): Boolean =
         actual.port == expected.port &&
         actual.encodedPath == expected.encodedPath &&
         actual.query == expected.query
+
+internal fun Response.hasUtf8HtmlCharset(): Boolean {
+    val charset = CHARSET.find(header("Content-Type").orEmpty())?.groupValues?.get(1)?.trim()?.trim('"')
+    return charset == null || charset.equals("utf-8", ignoreCase = true) || charset.equals("utf8", ignoreCase = true)
+}
+
+private val CHARSET = Regex("(?i)charset\\s*=\\s*([^;]+)")
