@@ -135,12 +135,28 @@ class CaibaoViewModelTest {
         assertThat(repository.readDocuments).containsExactly(cached)
     }
 
+    @Test
+    fun `decode failure delegates matching document cleanup`() = runTest {
+        val cached = caibao()
+        val repository = FakeLiveContentRepository().apply {
+            caibao.value = cached
+        }
+        val viewModel = CaibaoViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.onImageDecodeFailed(cached)
+        advanceUntilIdle()
+
+        assertThat(repository.invalidatedDocuments).containsExactly(cached)
+    }
+
     private class FakeLiveContentRepository : LiveContentRepository {
         val caibao = MutableStateFlow<CaibaoDocument?>(null)
         val caibaoState =
             MutableStateFlow<LiveContentRefreshState>(LiveContentRefreshState.Idle)
         val caibaoRefreshTriggers = mutableListOf<LiveRefreshTrigger>()
         val readDocuments = mutableListOf<CaibaoDocument>()
+        val invalidatedDocuments = mutableListOf<CaibaoDocument>()
         var imageReadResult: CaibaoImageReadResult =
             CaibaoImageReadResult.Loaded(IMAGE_BYTES)
 
@@ -166,6 +182,10 @@ class CaibaoViewModelTest {
         ): CaibaoImageReadResult {
             readDocuments += document
             return imageReadResult
+        }
+
+        override suspend fun invalidateCaibaoImage(document: CaibaoDocument) {
+            invalidatedDocuments += document
         }
 
         override suspend fun cleanCaibaoCache() = Unit

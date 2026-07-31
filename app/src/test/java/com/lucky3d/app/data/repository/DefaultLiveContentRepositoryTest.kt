@@ -127,6 +127,40 @@ class DefaultLiveContentRepositoryTest {
     }
 
     @Test
+    fun `decode failure discards matching private file and database document`() = runTest {
+        val fileStore = fileStore(bounds = ImageBounds(640, 480))
+        val stored = fileStore.commit(
+            fileStore.stageAndValidate("2026201", JPEG_BYTES, "image/jpeg"),
+        )
+        val document = caibao(
+            issue = "2026201",
+            fileName = stored.fileName,
+            date = LocalDate.of(2026, 7, 31),
+        ).copy(
+            sha256 = stored.sha256,
+            mimeType = stored.mimeType,
+            width = stored.width,
+            height = stored.height,
+        )
+        val store = FakeLiveContentStore().apply {
+            caibaoDocuments[document.issue] = document
+            updateCaibaoFlow()
+        }
+        val repository = repository(
+            store = store,
+            fileStore = fileStore,
+            scope = backgroundScope,
+        )
+
+        repository.invalidateCaibaoImage(document)
+
+        assertThat(File(root, document.localFileName).exists()).isFalse()
+        assertThat(store.caibaoDocuments).isEmpty()
+        assertThat(repository.caibaoRefreshState.first())
+            .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.INVALID_IMAGE))
+    }
+
+    @Test
     fun `caibao flow hides a cache older than the three Beijing date window`() = runTest {
         val expired = caibao("2026198", "expired.jpg", LocalDate.of(2026, 7, 28))
         val store = FakeLiveContentStore().apply {

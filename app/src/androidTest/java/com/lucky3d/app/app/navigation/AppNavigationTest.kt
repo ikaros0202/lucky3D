@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,18 +35,17 @@ class AppNavigationTest {
     }
 
     @Test
-    fun caibaoTabShowsBundledReadOnlyContent() {
+    fun caibaoTabShowsLiveReaderWithoutDeveloperPlaceholderCopy() {
         composeRule
             .onNodeWithContentDescription("彩报")
             .performClick()
             .assertIsSelected()
+        composeRule.onAllNodesWithText("彩报")[0].assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("更新彩报").assertIsDisplayed()
         composeRule
             .onNodeWithText("当前为静态示意内容，不会自动更新")
-            .assertIsDisplayed()
-        composeRule
-            .onNodeWithContentDescription("彩报静态占位图：桌面上的报纸")
-            .assertIsDisplayed()
-        composeRule.onNodeWithText("刷新").assertDoesNotExist()
+            .assertDoesNotExist()
+        composeRule.onNodeWithText("随应用安装", substring = true).assertDoesNotExist()
     }
 
     @Test

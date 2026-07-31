@@ -244,6 +244,10 @@ class HomeViewModelTest {
             LiveContentFailure.FILE_IO,
         )
 
+        override suspend fun invalidateCaibaoImage(
+            document: com.lucky3d.app.core.model.CaibaoDocument,
+        ) = Unit
+
         override suspend fun cleanCaibaoCache() = Unit
     }
 

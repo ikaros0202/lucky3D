@@ -98,6 +98,8 @@ class LifecycleSyncObserverTest {
             com.lucky3d.app.domain.livecontent.LiveContentFailure.FILE_IO,
         )
 
+        override suspend fun invalidateCaibaoImage(document: CaibaoDocument) = Unit
+
         override suspend fun cleanCaibaoCache() {
             cleanupCalls += 1
         }

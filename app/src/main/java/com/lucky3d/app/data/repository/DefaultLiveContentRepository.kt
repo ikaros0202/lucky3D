@@ -136,6 +136,12 @@ class DefaultLiveContentRepository internal constructor(
             }
         }
 
+    override suspend fun invalidateCaibaoImage(document: CaibaoDocument) {
+        caibaoOperationMutex.withLock {
+            unavailableCaibaoImage(document, LiveContentFailure.INVALID_IMAGE)
+        }
+    }
+
     override suspend fun cleanCaibaoCache() {
         caibaoOperationMutex.withLock {
             val failure = cleanCaibaoCacheInternal()
@@ -151,6 +157,17 @@ class DefaultLiveContentRepository internal constructor(
         document: CaibaoDocument,
         readFailure: LiveContentFailure,
     ): CaibaoImageReadResult.Unavailable {
+        val current = try {
+            store.latestCaibao()
+        } catch (exception: Exception) {
+            exception.rethrowCancellation()
+            caibaoRuntimeState.value =
+                LiveContentRefreshState.Failed(LiveContentFailure.DATABASE)
+            return CaibaoImageReadResult.Unavailable(LiveContentFailure.DATABASE)
+        }
+        if (current != document) {
+            return CaibaoImageReadResult.Unavailable(readFailure)
+        }
         var cleanupFailure: LiveContentFailure? = null
         val stagedDeletion = try {
             fileStore.stageDelete(document.localFileName)

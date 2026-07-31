@@ -55,7 +55,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.lucky3d.app.R
-import com.lucky3d.app.feature.caibao.CaibaoScreen
+import com.lucky3d.app.feature.caibao.CaibaoRoute
 import com.lucky3d.app.feature.home.HistoryScreen
 import com.lucky3d.app.feature.home.HistoryViewModel
 import com.lucky3d.app.feature.home.HomeScreen
@@ -237,7 +237,7 @@ private fun MainShell(
                         onStartPick = { selectedTabName = MainTab.PICK.name },
                         onDetailVisibilityChanged = { schemeDetailVisible = it },
                     )
-                    MainTab.CAIBAO -> CaibaoScreen()
+                    MainTab.CAIBAO -> CaibaoRoute()
                 }
             }
         }

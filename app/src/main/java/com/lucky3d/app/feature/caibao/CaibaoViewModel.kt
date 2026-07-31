@@ -52,6 +52,12 @@ class CaibaoViewModel @Inject constructor(
         }
     }
 
+    fun onImageDecodeFailed(document: CaibaoDocument) {
+        viewModelScope.launch {
+            repository.invalidateCaibaoImage(document)
+        }
+    }
+
     private suspend fun loadContent(document: CaibaoDocument?): CaibaoContent {
         if (document == null) return CaibaoContent()
         return when (val result = repository.readCaibaoImage(document)) {

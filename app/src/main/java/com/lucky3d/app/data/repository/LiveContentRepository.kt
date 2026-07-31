@@ -22,5 +22,6 @@ interface LiveContentRepository {
     suspend fun refreshTrial(trigger: LiveRefreshTrigger): LiveContentRefreshResult
     suspend fun refreshCaibao(trigger: LiveRefreshTrigger): LiveContentRefreshResult
     suspend fun readCaibaoImage(document: CaibaoDocument): CaibaoImageReadResult
+    suspend fun invalidateCaibaoImage(document: CaibaoDocument)
     suspend fun cleanCaibaoCache()
 }
