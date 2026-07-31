@@ -15,9 +15,8 @@ class V1MainFlowTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun viewAnalyzeFilterAndVisitPersistenceSurfacesUsesRoomBackedData() {
-        composeRule.onNodeWithText("2026198期").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("开奖号 685").assertIsDisplayed()
+    fun fivePrimaryTabsRemainUsableWithCurrentRoomBackedData() {
+        composeRule.onNodeWithContentDescription("柔光晶体开奖台").assertIsDisplayed()
 
         composeRule.onNodeWithContentDescription("走势分析")
             .performClick()
@@ -34,7 +33,12 @@ class V1MainFlowTest {
             .performClick()
             .assertIsSelected()
 
-        composeRule.onNodeWithContentDescription("彩报静态预览").performClick()
-        composeRule.onNodeWithText("当前为静态示意内容，不会自动更新").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("彩报")
+            .performClick()
+            .assertIsSelected()
+        composeRule.onNodeWithContentDescription("更新彩报").assertIsDisplayed()
+        composeRule
+            .onNodeWithText("当前为静态示意内容，不会自动更新")
+            .assertDoesNotExist()
     }
 }
