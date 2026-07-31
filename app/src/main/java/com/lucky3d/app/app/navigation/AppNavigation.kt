@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
@@ -16,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -33,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -117,13 +120,17 @@ private fun MainShell(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp,
+            ) {
                 MainTab.entries.forEach { tab ->
+                    val selected = selectedTab == tab
                     val tabLabel = androidx.compose.ui.res.stringResource(tab.labelRes)
                     val tabAccessibilityLabel =
                         androidx.compose.ui.res.stringResource(tab.accessibilityLabelRes)
                     NavigationBarItem(
-                        selected = selectedTab == tab,
+                        selected = selected,
                         onClick = { selectedTabName = tab.name },
                         icon = {
                             Icon(
@@ -131,11 +138,29 @@ private fun MainShell(
                                 contentDescription = null,
                             )
                         },
-                        label = { Text(tabLabel) },
-                        alwaysShowLabel = true,
-                        modifier = Modifier.semantics {
-                            contentDescription = tabAccessibilityLabel
+                        label = {
+                            Text(
+                                text = tabLabel,
+                                fontWeight = if (selected) {
+                                    FontWeight.SemiBold
+                                } else {
+                                    FontWeight.Medium
+                                },
+                            )
                         },
+                        alwaysShowLabel = true,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        modifier = Modifier
+                            .heightIn(min = 64.dp)
+                            .semantics {
+                                contentDescription = tabAccessibilityLabel
+                            },
                     )
                 }
             }

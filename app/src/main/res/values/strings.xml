@@ -10,7 +10,7 @@
     <string name="nav_trend_a11y">走势分析</string>
     <string name="nav_pick_a11y">号码筛选</string>
     <string name="nav_plans_a11y">已保存方案</string>
-    <string name="nav_caibao_a11y">彩报静态预览</string>
+    <string name="nav_caibao_a11y">彩报</string>
     <string name="caibao_title">彩报</string>
     <string name="caibao_static_notice">当前为静态示意内容，不会自动更新</string>
     <string name="caibao_description">这是一张随应用安装的报纸占位图，不是实际的福彩分析内容。</string>
