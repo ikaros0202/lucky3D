@@ -3,6 +3,7 @@ package com.lucky3d.app.feature.trend
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -243,8 +244,9 @@ private fun LockedTrendColumn(
             onSetWindow = onSetWindow,
             showLabel = lockedWidth > 108.dp,
             modifier = Modifier
+                .offset(y = (-2).dp)
                 .fillMaxWidth()
-                .height(TrendGroupHeight),
+                .height(48.dp),
         )
         Row(
             modifier = Modifier
@@ -327,7 +329,12 @@ private fun TrendPeriodSelector(
     Row(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .clickable { expanded = true }
+            .semantics {
+                contentDescription = selectorDescription
+                selected = true
+            }
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showLabel) {
@@ -340,14 +347,9 @@ private fun TrendPeriodSelector(
         }
         Box(modifier = Modifier.weight(1f)) {
             Surface(
-                onClick = { expanded = true },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(36.dp)
-                    .semantics {
-                        contentDescription = selectorDescription
-                        selected = true
-                    },
+                    .height(36.dp),
                 shape = RoundedCornerShape(8.dp),
                 color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(
