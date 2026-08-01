@@ -17,7 +17,7 @@ class TrendScreenTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun confirmedCinnabarLayoutKeepsCoreTrendContentOnOneScreen() {
+    fun approvedLongTableKeepsThePrototypeStructureAndRequiredPeriods() {
         composeRule.setContent {
             Lucky3DTheme {
                 TrendScreen(
@@ -34,28 +34,29 @@ class TrendScreenTest {
 
         composeRule.onNodeWithText("Lucky3D").assertIsDisplayed()
         composeRule.onNodeWithText("走势").assertIsDisplayed()
-        composeRule.onNodeWithText("2026198期").assertIsDisplayed()
+        composeRule.onNodeWithText("本地数据").assertIsDisplayed()
         composeRule.onNodeWithText("10期").assertIsDisplayed()
         composeRule.onNodeWithText("30期").assertIsDisplayed().assertIsSelected()
         composeRule.onNodeWithText("50期").assertIsDisplayed()
         composeRule.onNodeWithText("100期").assertIsDisplayed()
         composeRule.onNodeWithText("自定义").assertIsDisplayed()
+        composeRule.onNodeWithText("期号").assertIsDisplayed()
+        composeRule.onNodeWithText("开奖号").assertIsDisplayed()
         composeRule.onNodeWithText("百位").assertIsDisplayed()
         composeRule.onNodeWithText("十位").assertIsDisplayed()
         composeRule.onNodeWithText("个位").assertIsDisplayed()
-        composeRule.onNodeWithText("回到最新").assertIsDisplayed()
         composeRule
-            .onNodeWithContentDescription("走势网格，最新10行可见")
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图")
             .assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("2026199期待开奖").assertExists()
+        composeRule.onNodeWithText("出现次数").assertExists()
+        composeRule.onNodeWithText("当前遗漏").assertExists()
+        composeRule.onNodeWithText("平均遗漏").assertExists()
+        composeRule.onNodeWithText("最大遗漏").assertExists()
         composeRule
             .onNodeWithContentDescription("当前点位：2026198期，百位数字6，遗漏0")
             .assertIsDisplayed()
-        composeRule
-            .onNodeWithText("遗漏与冷热统计 · 百位 · 30期")
-            .assertIsDisplayed()
-        composeRule
-            .onNodeWithContentDescription("数字7，当前48，平均8.07，最大51，出现0次，冷")
-            .assertIsDisplayed()
+        composeRule.onNodeWithText("回到最新").assertDoesNotExist()
         composeRule.onNodeWithText("数据来源").assertDoesNotExist()
         composeRule.onNodeWithText("内部窗口策略").assertDoesNotExist()
     }

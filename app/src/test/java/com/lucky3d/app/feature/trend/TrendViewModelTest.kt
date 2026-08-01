@@ -60,6 +60,43 @@ class TrendViewModelTest {
     }
 
     @Test
+    fun `trend table exposes thirty omission cells per draw in issue order`() = runTest {
+        val records = records(120)
+        val viewModel = TrendViewModel(FakeTrendRepository(records))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+
+        assertThat(state.tableRows.map(TrendTableRow::issue))
+            .containsExactlyElementsIn(records.takeLast(30).map(DrawRecord::issue))
+            .inOrder()
+        assertThat(state.tableRows.first().omissions).hasSize(30)
+        assertThat(state.tableRows.first().omissions.take(10))
+            .containsExactlyElementsIn(
+                (0..9).map { digit ->
+                    OmissionCalculator.calculateVisibleWindow(
+                        records.map { it.number.hundreds },
+                        digit,
+                        30,
+                    ).omissionByDraw.first()
+                },
+            )
+            .inOrder()
+    }
+
+    @Test
+    fun `trend table always retains all three position groups`() = runTest {
+        val viewModel = TrendViewModel(FakeTrendRepository(records(120)))
+        advanceUntilIdle()
+
+        viewModel.togglePosition(TrendPosition.HUNDREDS)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.tableRows).isNotEmpty()
+        assertThat(viewModel.uiState.value.tableRows.first().omissions).hasSize(30)
+    }
+
+    @Test
     fun `hiding a position removes its points without changing selected window`() = runTest {
         val viewModel = TrendViewModel(FakeTrendRepository(records(120)))
         advanceUntilIdle()
