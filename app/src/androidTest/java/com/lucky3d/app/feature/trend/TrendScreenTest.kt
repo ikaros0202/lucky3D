@@ -2,9 +2,12 @@ package com.lucky3d.app.feature.trend
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.lucky3d.app.core.model.DrawRecord
 import com.lucky3d.app.domain.attributes.DrawNumber
 import com.lucky3d.app.domain.omission.HeatLevel
@@ -23,28 +26,28 @@ class TrendScreenTest {
                 TrendScreen(
                     state = normalState(),
                     onSetWindow = {},
-                    onTogglePosition = {},
                     onSelectPoint = {},
-                    onShowStatistics = {},
-                    onScaleChange = {},
-                    onReturnLatest = {},
                 )
             }
         }
 
         composeRule.onNodeWithText("Lucky3D").assertIsDisplayed()
-        composeRule.onNodeWithText("走势").assertIsDisplayed()
+        composeRule.onAllNodesWithText("走势").assertCountEquals(2)
         composeRule.onNodeWithText("本地数据").assertIsDisplayed()
+        composeRule
+            .onNodeWithContentDescription("显示期数，当前30期")
+            .assertIsDisplayed()
+            .assertIsSelected()
+            .performClick()
         composeRule.onNodeWithText("10期").assertIsDisplayed()
-        composeRule.onNodeWithText("30期").assertIsDisplayed().assertIsSelected()
-        composeRule.onNodeWithText("50期").assertIsDisplayed()
-        composeRule.onNodeWithText("100期").assertIsDisplayed()
-        composeRule.onNodeWithText("自定义").assertIsDisplayed()
+        composeRule.onNodeWithText("50期").assertDoesNotExist()
+        composeRule.onNodeWithText("100期").assertDoesNotExist()
+        composeRule.onNodeWithText("自定义").assertDoesNotExist()
         composeRule.onNodeWithText("期号").assertIsDisplayed()
         composeRule.onNodeWithText("开奖号").assertIsDisplayed()
         composeRule.onNodeWithText("百位").assertIsDisplayed()
-        composeRule.onNodeWithText("十位").assertIsDisplayed()
-        composeRule.onNodeWithText("个位").assertIsDisplayed()
+        composeRule.onNodeWithText("十位").assertExists()
+        composeRule.onNodeWithText("个位").assertExists()
         composeRule
             .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图")
             .assertIsDisplayed()
@@ -68,11 +71,7 @@ class TrendScreenTest {
                 TrendScreen(
                     state = normalState().copy(selectedPoint = null),
                     onSetWindow = {},
-                    onTogglePosition = {},
                     onSelectPoint = {},
-                    onShowStatistics = {},
-                    onScaleChange = {},
-                    onReturnLatest = {},
                 )
             }
         }
@@ -80,6 +79,27 @@ class TrendScreenTest {
         composeRule
             .onNodeWithContentDescription("当前点位：2026198期，百位数字8，遗漏9")
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun emptyStateKeepsTheApprovedHeaderAndExplainsMissingData() {
+        composeRule.setContent {
+            Lucky3DTheme {
+                TrendScreen(
+                    state = TrendUiState(),
+                    onSetWindow = {},
+                    onSelectPoint = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Lucky3D").assertIsDisplayed()
+        composeRule.onNodeWithText("本地数据").assertIsDisplayed()
+        composeRule.onNodeWithText("没有可用于走势图的数据").assertIsDisplayed()
+        composeRule.onNodeWithText("请返回首页确认内置数据是否可读取。").assertIsDisplayed()
+        composeRule
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图")
+            .assertDoesNotExist()
     }
 
     private fun normalState(): TrendUiState {
@@ -102,6 +122,13 @@ class TrendScreenTest {
         val selected = TrendPoint("2026198", 9, TrendPosition.HUNDREDS, 6, 0)
         return TrendUiState(
             visibleDraws = draws,
+            tableRows = draws.mapIndexed { rowIndex, draw ->
+                TrendTableRow(
+                    issue = draw.issue,
+                    drawNumber = draw.number.value,
+                    omissions = List(30) { column -> (rowIndex + column) % 49 },
+                )
+            },
             points = points,
             selectedPoint = selected,
             statistics = listOf(

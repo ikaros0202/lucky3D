@@ -323,18 +323,17 @@ private fun TrendRoute(
     var defaultsApplied by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(settings.defaultObservationWindow, defaultsApplied) {
         if (!defaultsApplied) {
-            viewModel.setWindow(settings.defaultObservationWindow)
+            val approvedTrendWindow = settings.defaultObservationWindow
+                .takeIf { it == 10 || it == 30 }
+                ?: 30
+            viewModel.setWindow(approvedTrendWindow)
             defaultsApplied = true
         }
     }
     TrendScreen(
         state = state,
         onSetWindow = viewModel::setWindow,
-        onTogglePosition = viewModel::togglePosition,
         onSelectPoint = viewModel::selectPoint,
-        onShowStatistics = viewModel::showStatistics,
-        onScaleChange = viewModel::setScale,
-        onReturnLatest = viewModel::selectLatest,
     )
 }
 

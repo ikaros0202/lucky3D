@@ -1,282 +1,740 @@
 package com.lucky3d.app.feature.trend
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.lucky3d.app.R
+import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.floor
+
+private val TrendCellWidth = 34.dp
+private val TrendRowHeight = 32.dp
+private val TrendGroupHeight = 44.dp
+private const val TrendDigitCount = 30
+private const val FutureRowCount = 2
+private const val SummaryRowCount = 4
 
 @Composable
 fun TrendChart(
     state: TrendUiState,
     accessibilitySummary: String,
-    issueHeader: String,
+    onSetWindow: (Int) -> Unit,
     onSelectPoint: (TrendPoint?) -> Unit,
-    onScaleChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val density = LocalDensity.current
-    val horizontalState = rememberScrollState()
-    val verticalState = rememberScrollState()
     val colors = MaterialTheme.colorScheme
-    val labelWidthDp = 52.dp
-    val cellWidthDp = 30.dp * state.scale
-    val rowHeightDp = 20.dp
-    val headerHeightDp = 22.dp
-    val chartWidthDp = labelWidthDp + cellWidthDp * 10
-    val chartHeightDp = headerHeightDp + rowHeightDp * state.visibleDraws.size
-    val positions = remember(state.visiblePositions) {
-        TrendPosition.entries.filter(state.visiblePositions::contains)
-    }
-    val pointLookup = remember(state.points) {
-        state.points.groupBy { it.rowIndex to it.digit }
-    }
-    val displayedRowCount = state.visibleDraws.size
-    LaunchedEffect(state.selectedPoint) {
-        if (state.selectedPoint?.rowIndex == state.visibleDraws.lastIndex) {
-            verticalState.animateScrollTo(0)
-        }
+    val density = LocalDensity.current
+    val horizontalScrollState = rememberScrollState()
+    val cellWidth = TrendCellWidth
+    val bodyRowCount = state.tableRows.size + FutureRowCount + SummaryRowCount
+    val bodyHeight = TrendRowHeight * bodyRowCount
+    val tableHeight = TrendGroupHeight + TrendRowHeight + bodyHeight
+    val totalContentWidth = cellWidth * TrendDigitCount
+    val positionLabels = listOf(
+        stringResource(R.string.trend_position_hundreds),
+        stringResource(R.string.trend_position_tens),
+        stringResource(R.string.trend_position_ones),
+    )
+    val summaryLabels = listOf(
+        stringResource(R.string.trend_occurrence_count),
+        stringResource(R.string.trend_current_omission),
+        stringResource(R.string.trend_average_omission),
+        stringResource(R.string.trend_max_omission),
+    )
+    val futureIssues = remember(state.tableRows) {
+        nextIssues(state.tableRows.lastOrNull()?.issue)
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
-            .fillMaxSize()
-            .horizontalScroll(horizontalState)
-            .verticalScroll(verticalState)
+            .fillMaxWidth()
+            .height(tableHeight)
             .semantics { contentDescription = accessibilitySummary },
     ) {
-        Canvas(
-            modifier = Modifier
-                .width(chartWidthDp)
-                .height(chartHeightDp)
-                .pointerInput(state.scale) {
-                    detectTransformGestures { _, _, zoom, _ ->
-                        if (zoom != 1f) onScaleChange(state.scale * zoom)
-                    }
-                }
-                .pointerInput(state.points, state.scale) {
-                    detectTapGestures { tap ->
-                        val labelWidthPx = with(density) { labelWidthDp.toPx() }
-                        val headerHeightPx = with(density) { headerHeightDp.toPx() }
-                        val cellWidthPx = with(density) { cellWidthDp.toPx() }
-                        val rowHeightPx = with(density) { rowHeightDp.toPx() }
-                        val digit = floor((tap.x - labelWidthPx) / cellWidthPx).toInt()
-                        val displayRow = floor((tap.y - headerHeightPx) / rowHeightPx).toInt()
-                        val chronologicalRow = displayedRowCount - 1 - displayRow
-                        val point = if (
-                            digit in 0..9 &&
-                            chronologicalRow in 0 until displayedRowCount
-                        ) {
-                            pointLookup[chronologicalRow to digit]
-                                ?.firstOrNull { it.position in positions }
-                        } else {
-                            null
-                        }
-                        onSelectPoint(point)
-                    }
-                },
-        ) {
-            val labelWidth = labelWidthDp.toPx()
-            val cellWidth = cellWidthDp.toPx()
-            val rowHeight = rowHeightDp.toPx()
-            val headerHeight = headerHeightDp.toPx()
-            drawTrendGrid(
+        val lockedWidth = if (maxWidth < 390.dp) 108.dp else 122.dp
+        Row(modifier = Modifier.fillMaxSize()) {
+            LockedTrendColumn(
                 state = state,
-                issueHeader = issueHeader,
-                labelWidth = labelWidth,
-                cellWidth = cellWidth,
-                rowHeight = rowHeight,
-                headerHeight = headerHeight,
-                gridColor = colors.outlineVariant,
-                textColor = colors.onSurfaceVariant,
-                primary = colors.primary,
+                futureIssues = futureIssues,
+                summaryLabels = summaryLabels,
+                onSetWindow = onSetWindow,
+                lockedWidth = lockedWidth,
+                modifier = Modifier
+                    .width(lockedWidth)
+                    .fillMaxHeight(),
             )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .horizontalScroll(horizontalScrollState),
+            ) {
+                TrendGroupHeader(
+                    labels = positionLabels,
+                    cellWidth = cellWidth,
+                    modifier = Modifier.width(totalContentWidth),
+                )
+                TrendDigitHeader(
+                    cellWidth = cellWidth,
+                    modifier = Modifier.width(totalContentWidth),
+                )
+                Canvas(
+                    modifier = Modifier
+                        .width(totalContentWidth)
+                        .height(bodyHeight)
+                        .pointerInput(state.tableRows) {
+                            detectTapGestures { tap ->
+                                val rowHeightPx = with(density) { TrendRowHeight.toPx() }
+                                val cellWidthPx = with(density) { cellWidth.toPx() }
+                                val rowIndex = floor(tap.y / rowHeightPx).toInt()
+                                if (rowIndex !in state.tableRows.indices) {
+                                    onSelectPoint(null)
+                                    return@detectTapGestures
+                                }
+                                val groupIndex = floor(tap.x / (cellWidthPx * 10f)).toInt()
+                                if (groupIndex !in TrendPosition.entries.indices) {
+                                    onSelectPoint(null)
+                                    return@detectTapGestures
+                                }
+                                val row = state.tableRows[rowIndex]
+                                val hitDigit = row.drawNumber[groupIndex].digitToInt()
+                                val hitCenterX = (groupIndex * 10 + hitDigit + 0.5f) * cellWidthPx
+                                val hitCenterY = (rowIndex + 0.5f) * rowHeightPx
+                                val targetRadius = with(density) { 24.dp.toPx() }
+                                if (
+                                    abs(tap.x - hitCenterX) <= targetRadius &&
+                                    abs(tap.y - hitCenterY) <= targetRadius
+                                ) {
+                                    onSelectPoint(
+                                        TrendPoint(
+                                            issue = row.issue,
+                                            rowIndex = rowIndex,
+                                            position = TrendPosition.entries[groupIndex],
+                                            digit = hitDigit,
+                                            omission = row.omissions[groupIndex * 10 + hitDigit],
+                                        ),
+                                    )
+                                } else {
+                                    onSelectPoint(null)
+                                }
+                            }
+                        },
+                ) {
+                    drawTrendBody(
+                        state = state,
+                        cellWidth = cellWidth.toPx(),
+                        rowHeight = TrendRowHeight.toPx(),
+                        gridColor = colors.outlineVariant,
+                        textColor = colors.onSurfaceVariant,
+                        primary = colors.primary,
+                        background = colors.background,
+                        surfaceVariant = colors.surfaceVariant,
+                    )
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .offset(x = lockedWidth)
+                .width(8.dp)
+                .fillMaxHeight()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            colors.onSurface.copy(alpha = 0.07f),
+                            Color.Transparent,
+                        ),
+                    ),
+                )
+                .clearAndSetSemantics { },
+        )
+    }
+}
+
+@Composable
+private fun LockedTrendColumn(
+    state: TrendUiState,
+    futureIssues: List<String>,
+    summaryLabels: List<String>,
+    onSetWindow: (Int) -> Unit,
+    lockedWidth: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val bodyRows = state.tableRows.size + FutureRowCount + SummaryRowCount
+    val bodyHeight = TrendRowHeight * bodyRows
+    val lockedColumnDescription = stringResource(
+        R.string.trend_locked_column_a11y,
+        state.tableRows.size,
+    )
+    Box(
+        modifier = modifier
+            .background(colors.background)
+            .border(1.dp, colors.outlineVariant),
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawLockedColumn(
+                rows = state.tableRows,
+                futureIssues = futureIssues,
+                lockedWidth = lockedWidth.toPx(),
+                groupHeight = TrendGroupHeight.toPx(),
+                rowHeight = TrendRowHeight.toPx(),
+                gridColor = colors.outlineVariant,
+                textColor = colors.onSurface,
+                mutedTextColor = colors.onSurfaceVariant,
+                primary = colors.primary,
+                background = colors.background,
+                surfaceVariant = colors.surfaceVariant,
+            )
+        }
+        TrendPeriodSelector(
+            selectedWindow = state.window,
+            onSetWindow = onSetWindow,
+            showLabel = lockedWidth > 108.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(TrendGroupHeight),
+        )
+        Row(
+            modifier = Modifier
+                .offset(y = TrendGroupHeight)
+                .fillMaxWidth()
+                .height(TrendRowHeight)
+                .background(colors.surfaceVariant.copy(alpha = 0.78f)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TableHeaderText(
+                text = stringResource(R.string.trend_issue_header),
+                modifier = Modifier.weight(0.61f),
+            )
+            TableHeaderText(
+                text = stringResource(R.string.trend_draw_number_header),
+                modifier = Modifier.weight(0.39f),
+            )
+        }
+        futureIssues.forEachIndexed { index, issue ->
+            Box(
+                modifier = Modifier
+                    .offset(
+                        y = TrendGroupHeight +
+                            TrendRowHeight * (state.tableRows.size + 1 + index),
+                    )
+                    .fillMaxWidth()
+                    .height(TrendRowHeight)
+                    .clearAndSetSemantics {
+                        contentDescription = "${issue}期待开奖"
+                    },
+            )
+        }
+        summaryLabels.forEachIndexed { index, label ->
+            Text(
+                text = label,
+                modifier = Modifier
+                    .offset(
+                        y = TrendGroupHeight +
+                            TrendRowHeight * (
+                                state.tableRows.size + FutureRowCount + 1 + index
+                                ),
+                    )
+                    .fillMaxWidth()
+                    .height(TrendRowHeight)
+                    .background(colors.surfaceVariant.copy(alpha = 0.72f))
+                    .padding(horizontal = 6.dp),
+                color = colors.onSurface,
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Start,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .offset(y = TrendGroupHeight + TrendRowHeight)
+                .fillMaxWidth()
+                .height(bodyHeight)
+                .clearAndSetSemantics {
+                    contentDescription = lockedColumnDescription
+                },
+        )
+    }
+}
+
+@Composable
+private fun TrendPeriodSelector(
+    selectedWindow: Int,
+    onSetWindow: (Int) -> Unit,
+    showLabel: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val fixedWindows = listOf(10, 30)
+    val selectedText = stringResource(R.string.trend_window, selectedWindow)
+    val selectorDescription = stringResource(
+        R.string.trend_period_selector_a11y,
+        selectedWindow,
+    )
+    Row(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (showLabel) {
+            Text(
+                text = stringResource(R.string.trend_title),
+                modifier = Modifier.padding(horizontal = 4.dp),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        Box(modifier = Modifier.weight(1f)) {
+            Surface(
+                onClick = { expanded = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .semantics {
+                        contentDescription = selectorDescription
+                        selected = true
+                    },
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant,
+                ),
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 8.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = selectedText,
+                        modifier = Modifier.weight(1f),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = null,
+                        modifier = Modifier.width(16.dp),
+                    )
+                }
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                fixedWindows.forEach { window ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.trend_window, window)) },
+                        onClick = {
+                            expanded = false
+                            onSetWindow(window)
+                        },
+                    )
+                }
+            }
         }
     }
 }
 
-private fun DrawScope.drawTrendGrid(
+@Composable
+private fun TableHeaderText(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.onSurface,
+        fontSize = 10.sp,
+        lineHeight = 12.sp,
+        fontWeight = FontWeight.Medium,
+        textAlign = TextAlign.Center,
+    )
+}
+
+@Composable
+private fun TrendGroupHeader(
+    labels: List<String>,
+    cellWidth: Dp,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .height(TrendGroupHeight)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)),
+    ) {
+        labels.forEachIndexed { index, label ->
+            Box(
+                modifier = Modifier
+                    .width(cellWidth * 10)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.04f + index * 0.03f))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TrendDigitHeader(
+    cellWidth: Dp,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .height(TrendRowHeight)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)),
+    ) {
+        repeat(TrendDigitCount) { column ->
+            Box(
+                modifier = Modifier
+                    .width(cellWidth)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.04f + column / 10 * 0.03f))
+                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = (column % 10).toString(),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawLockedColumn(
+    rows: List<TrendTableRow>,
+    futureIssues: List<String>,
+    lockedWidth: Float,
+    groupHeight: Float,
+    rowHeight: Float,
+    gridColor: Color,
+    textColor: Color,
+    mutedTextColor: Color,
+    primary: Color,
+    background: Color,
+    surfaceVariant: Color,
+) {
+    drawRect(background)
+    drawRect(surfaceVariant.copy(alpha = 0.72f), size = androidx.compose.ui.geometry.Size(lockedWidth, groupHeight + rowHeight))
+    val bodyStart = groupHeight + rowHeight
+    if (rows.isNotEmpty()) {
+        drawRect(
+            color = primary.copy(alpha = 0.10f),
+            topLeft = Offset(0f, bodyStart + (rows.lastIndex * rowHeight)),
+            size = androidx.compose.ui.geometry.Size(lockedWidth, rowHeight),
+        )
+    }
+    futureIssues.indices.forEach { index ->
+        val y = bodyStart + (rows.size + index) * rowHeight
+        drawRect(
+            color = primary.copy(alpha = 0.04f),
+            topLeft = Offset(0f, y),
+            size = androidx.compose.ui.geometry.Size(lockedWidth, rowHeight),
+        )
+        drawHatch(y, lockedWidth, rowHeight, primary.copy(alpha = 0.10f))
+    }
+    repeat(SummaryRowCount) { index ->
+        val y = bodyStart + (rows.size + FutureRowCount + index) * rowHeight
+        drawRect(
+            color = surfaceVariant.copy(alpha = 0.72f),
+            topLeft = Offset(0f, y),
+            size = androidx.compose.ui.geometry.Size(lockedWidth, rowHeight),
+        )
+    }
+    val issueWidth = lockedWidth * 0.61f
+    val summaryStart = bodyStart + (rows.size + FutureRowCount) * rowHeight
+    drawLine(gridColor, Offset(issueWidth, groupHeight), Offset(issueWidth, summaryStart), 1.dp.toPx())
+    val totalRows = 1 + rows.size + FutureRowCount + SummaryRowCount
+    repeat(totalRows + 1) { index ->
+        val y = groupHeight + index * rowHeight
+        drawLine(
+            color = gridColor,
+            start = Offset(0f, y),
+            end = Offset(lockedWidth, y),
+            strokeWidth = if (index > 1 && (index - 1) % 5 == 0) 1.5.dp.toPx() else 0.7.dp.toPx(),
+        )
+    }
+    val issuePaint = tablePaint(textColor, 10.dp.toPx(), monospace = true)
+    val numberPaint = tablePaint(textColor, 11.dp.toPx(), monospace = true, bold = true)
+    val mutedPaint = tablePaint(mutedTextColor, 10.dp.toPx(), monospace = true)
+    rows.forEachIndexed { index, row ->
+        val centerY = bodyStart + (index + 0.5f) * rowHeight
+        drawCenteredText(row.issue, issueWidth / 2f, centerY, issuePaint)
+        drawCenteredText(row.drawNumber, issueWidth + (lockedWidth - issueWidth) / 2f, centerY, numberPaint)
+    }
+    futureIssues.forEachIndexed { index, issue ->
+        val centerY = bodyStart + (rows.size + index + 0.5f) * rowHeight
+        drawCenteredText(issue, issueWidth / 2f, centerY, mutedPaint)
+    }
+}
+
+private fun DrawScope.drawTrendBody(
     state: TrendUiState,
-    issueHeader: String,
-    labelWidth: Float,
     cellWidth: Float,
     rowHeight: Float,
-    headerHeight: Float,
     gridColor: Color,
     textColor: Color,
     primary: Color,
+    background: Color,
+    surfaceVariant: Color,
 ) {
-    val paint = android.graphics.Paint().apply {
-        isAntiAlias = true
-        textAlign = android.graphics.Paint.Align.CENTER
-        textSize = 10.dp.toPx()
-        color = textColor.toArgbValue()
+    val rows = state.tableRows
+    val bodyRows = rows.size + FutureRowCount + SummaryRowCount
+    drawRect(background)
+    repeat(3) { group ->
+        drawRect(
+            color = primary.copy(alpha = 0.04f + group * 0.03f),
+            topLeft = Offset(group * 10 * cellWidth, 0f),
+            size = androidx.compose.ui.geometry.Size(10 * cellWidth, size.height),
+        )
     }
-    val issuePaint = android.graphics.Paint(paint).apply {
-        textAlign = android.graphics.Paint.Align.LEFT
-        textSize = 9.dp.toPx()
+    if (rows.isNotEmpty()) {
+        drawRect(
+            color = primary.copy(alpha = 0.10f),
+            topLeft = Offset(0f, rows.lastIndex * rowHeight),
+            size = androidx.compose.ui.geometry.Size(size.width, rowHeight),
+        )
     }
-    for (column in 0..10) {
-        val x = labelWidth + column * cellWidth
+    repeat(FutureRowCount) { index ->
+        val y = (rows.size + index) * rowHeight
+        drawRect(
+            color = primary.copy(alpha = 0.04f),
+            topLeft = Offset(0f, y),
+            size = androidx.compose.ui.geometry.Size(size.width, rowHeight),
+        )
+        drawHatch(y, size.width, rowHeight, primary.copy(alpha = 0.10f))
+    }
+    repeat(SummaryRowCount) { index ->
+        val y = (rows.size + FutureRowCount + index) * rowHeight
+        drawRect(
+            color = surfaceVariant.copy(alpha = 0.30f),
+            topLeft = Offset(0f, y),
+            size = androidx.compose.ui.geometry.Size(size.width, rowHeight),
+        )
+    }
+    repeat(TrendDigitCount + 1) { column ->
+        val x = column * cellWidth
         drawLine(
             color = gridColor,
             start = Offset(x, 0f),
             end = Offset(x, size.height),
-            strokeWidth = 1.dp.toPx(),
+            strokeWidth = if (column % 10 == 0) 1.5.dp.toPx() else 0.7.dp.toPx(),
         )
     }
-    for (row in 0..state.visibleDraws.size) {
-        val y = headerHeight + row * rowHeight
+    repeat(bodyRows + 1) { row ->
+        val y = row * rowHeight
         drawLine(
             color = gridColor,
             start = Offset(0f, y),
             end = Offset(size.width, y),
-            strokeWidth = 1.dp.toPx(),
+            strokeWidth = if (row in 1..rows.size && row % 5 == 0) 1.5.dp.toPx() else 0.7.dp.toPx(),
         )
     }
-    drawContext.canvas.nativeCanvas.apply {
-        drawText(issueHeader, 8.dp.toPx(), headerHeight * 0.68f, issuePaint)
-        (0..9).forEach { digit ->
-            drawText(
-                digit.toString(),
-                labelWidth + (digit + 0.5f) * cellWidth,
-                headerHeight * 0.68f,
-                paint,
-            )
+    val omissionPaint = tablePaint(textColor.copy(alpha = 0.76f), 9.dp.toPx(), monospace = true)
+    val statPaint = tablePaint(textColor, 9.dp.toPx(), monospace = true, bold = true)
+    rows.forEachIndexed { rowIndex, row ->
+        repeat(TrendDigitCount) { column ->
+            val group = column / 10
+            val digit = column % 10
+            if (row.drawNumber[group].digitToInt() != digit) {
+                drawCenteredText(
+                    row.omissions[column].toString(),
+                    (column + 0.5f) * cellWidth,
+                    (rowIndex + 0.5f) * rowHeight,
+                    omissionPaint,
+                )
+            }
         }
-        state.visibleDraws.asReversed().forEachIndexed { displayRow, draw ->
-            drawText(
-                draw.issue,
-                8.dp.toPx(),
-                headerHeight + (displayRow + 0.62f) * rowHeight,
-                issuePaint,
+    }
+    drawTrendLinesAndHits(rows, state.selectedPoint, cellWidth, rowHeight, primary)
+    val statisticsByPosition = state.statistics.associateBy(TrendPositionStatistics::position)
+    repeat(TrendDigitCount) { column ->
+        val position = TrendPosition.entries[column / 10]
+        val digit = column % 10
+        val stat = statisticsByPosition[position]?.digits?.firstOrNull { it.digit == digit }
+        val values = listOf(
+            stat?.occurrences?.toString() ?: "--",
+            stat?.currentOmission?.toString() ?: "--",
+            stat?.averageOmission?.let { String.format(Locale.US, "%.2f", it) } ?: "--",
+            stat?.maxOmission?.toString() ?: "--",
+        )
+        values.forEachIndexed { summaryIndex, value ->
+            val rowIndex = rows.size + FutureRowCount + summaryIndex
+            drawCenteredText(
+                value,
+                (column + 0.5f) * cellWidth,
+                (rowIndex + 0.5f) * rowHeight,
+                statPaint,
             )
         }
     }
+}
 
-    val visiblePoints = state.points.groupBy(TrendPoint::position)
-    TrendPosition.entries.filter(state.visiblePositions::contains).forEachIndexed { positionIndex, position ->
-        val points = visiblePoints[position].orEmpty().sortedBy(TrendPoint::rowIndex)
-        val color = primary
-        val centers = points.map { point ->
-            val displayRow = state.visibleDraws.lastIndex - point.rowIndex
-            val offset = (positionIndex - 1) * 4.dp.toPx()
+private fun DrawScope.drawTrendLinesAndHits(
+    rows: List<TrendTableRow>,
+    selectedPoint: TrendPoint?,
+    cellWidth: Float,
+    rowHeight: Float,
+    primary: Color,
+) {
+    repeat(3) { group ->
+        val centers = rows.mapIndexed { rowIndex, row ->
+            val digit = row.drawNumber[group].digitToInt()
             Offset(
-                x = labelWidth + (point.digit + 0.5f) * cellWidth + offset,
-                y = headerHeight + (displayRow + 0.5f) * rowHeight,
+                x = (group * 10 + digit + 0.5f) * cellWidth,
+                y = (rowIndex + 0.5f) * rowHeight,
             )
         }
         centers.zipWithNext().forEach { (start, end) ->
             drawLine(
-                color = color.copy(alpha = 0.7f),
+                color = primary.copy(alpha = 0.82f),
                 start = start,
                 end = end,
-                strokeWidth = when (position) {
-                    TrendPosition.HUNDREDS -> 1.6.dp.toPx()
-                    TrendPosition.TENS -> 1.2.dp.toPx()
-                    TrendPosition.ONES -> 1.dp.toPx()
-                },
-                pathEffect = when (position) {
-                    TrendPosition.HUNDREDS -> null
-                    TrendPosition.TENS -> PathEffect.dashPathEffect(
-                        floatArrayOf(5.dp.toPx(), 3.dp.toPx()),
-                    )
-                    TrendPosition.ONES -> PathEffect.dashPathEffect(
-                        floatArrayOf(2.dp.toPx(), 3.dp.toPx()),
-                    )
-                },
+                strokeWidth = 1.6.dp.toPx(),
             )
         }
-        centers.forEachIndexed { index, center ->
-            drawMarker(
-                center = center,
-                position = position,
-                digit = points[index].digit,
-                color = color,
-                selected = points[index] == state.selectedPoint,
-            )
+        centers.forEachIndexed { rowIndex, center ->
+            val row = rows[rowIndex]
+            val digit = row.drawNumber[group].digitToInt()
+            val selected = selectedPoint?.issue == row.issue &&
+                selectedPoint.position == TrendPosition.entries[group] &&
+                selectedPoint.digit == digit
+            val radius = 12.dp.toPx()
+            drawCircle(primary, radius, center)
+            if (selected) {
+                drawCircle(
+                    color = primary,
+                    radius = radius + 3.dp.toPx(),
+                    center = center,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()),
+                )
+            }
+            val hitPaint = tablePaint(Color.White, 10.dp.toPx(), monospace = true, bold = true)
+            drawCenteredText(digit.toString(), center.x, center.y, hitPaint)
         }
     }
 }
 
-private fun DrawScope.drawMarker(
-    center: Offset,
-    position: TrendPosition,
-    digit: Int,
+private fun DrawScope.drawHatch(
+    top: Float,
+    width: Float,
+    height: Float,
     color: Color,
-    selected: Boolean,
 ) {
-    val radius = if (selected) 7.dp.toPx() else 5.dp.toPx()
-    when (position) {
-        TrendPosition.HUNDREDS -> drawCircle(
+    val step = 12.dp.toPx()
+    var x = -height
+    while (x < width) {
+        drawLine(
             color = color,
-            radius = radius,
-            center = center,
+            start = Offset(x, top + height),
+            end = Offset(x + height, top),
+            strokeWidth = 2.dp.toPx(),
+            pathEffect = PathEffect.cornerPathEffect(1.dp.toPx()),
         )
-        TrendPosition.TENS -> drawRect(
-            color = color,
-            topLeft = Offset(center.x - radius, center.y - radius),
-            size = Size(radius * 2, radius * 2),
-        )
-        TrendPosition.ONES -> rotate(45f, center) {
-            drawRect(
-                color = color,
-                topLeft = Offset(center.x - radius * 0.8f, center.y - radius * 0.8f),
-                size = Size(radius * 1.6f, radius * 1.6f),
-            )
-        }
+        x += step
     }
-    if (selected) {
-        drawCircle(
-            color = color,
-            radius = radius + 3.dp.toPx(),
-            center = center,
-            style = Stroke(width = 2.dp.toPx()),
-        )
-    }
-    drawContext.canvas.nativeCanvas.drawText(
-        digit.toString(),
-        center.x,
-        center.y + 3.2.dp.toPx(),
-        android.graphics.Paint().apply {
-            isAntiAlias = true
-            textAlign = android.graphics.Paint.Align.CENTER
-            textSize = 9.dp.toPx()
-            this.color = android.graphics.Color.WHITE
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-        },
-    )
 }
 
-private fun Color.toArgbValue(): Int =
-    android.graphics.Color.argb(
-        (alpha * 255).toInt(),
-        (red * 255).toInt(),
-        (green * 255).toInt(),
-        (blue * 255).toInt(),
-    )
+private fun DrawScope.drawCenteredText(
+    text: String,
+    centerX: Float,
+    centerY: Float,
+    paint: android.graphics.Paint,
+) {
+    val baseline = centerY - (paint.ascent() + paint.descent()) / 2f
+    drawContext.canvas.nativeCanvas.drawText(text, centerX, baseline, paint)
+}
+
+private fun tablePaint(
+    color: Color,
+    textSize: Float,
+    monospace: Boolean,
+    bold: Boolean = false,
+): android.graphics.Paint = android.graphics.Paint().apply {
+    isAntiAlias = true
+    textAlign = android.graphics.Paint.Align.CENTER
+    this.textSize = textSize
+    this.color = color.toArgb()
+    typeface = when {
+        monospace && bold -> android.graphics.Typeface.create(
+            android.graphics.Typeface.MONOSPACE,
+            android.graphics.Typeface.BOLD,
+        )
+        monospace -> android.graphics.Typeface.MONOSPACE
+        bold -> android.graphics.Typeface.DEFAULT_BOLD
+        else -> android.graphics.Typeface.DEFAULT
+    }
+}
+
+private fun nextIssues(latestIssue: String?): List<String> {
+    val latest = latestIssue?.toLongOrNull() ?: return List(FutureRowCount) { "--" }
+    return (1..FutureRowCount).map { offset -> (latest + offset).toString() }
+}
