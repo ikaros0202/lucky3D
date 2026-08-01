@@ -37,13 +37,18 @@
 
 当前确认稿映射：
 
-| 页面 | 确认稿 |
-| --- | --- |
-| 首页 | `docs/design-concepts/v1.1-home-original-five/04-soft-light-crystal.png` |
-| 走势 | `docs/design-concepts/v1.1-trend-two-styles/01-trend-flowing-cinnabar.png` |
-| 方案 | `docs/design-concepts/v1.1-scheme-two-styles/01-scheme-flowing-cinnabar.png` |
-| 选号 | 待补齐独立确认稿；补齐前不得声明最终 UI 完成 |
-| 彩报 | 待补齐独立确认稿；补齐前不得声明最终 UI 完成 |
+| 页面 | 静态确认稿 | 交互确认稿 |
+| --- | --- | --- |
+| 首页 | `docs/design-concepts/v1.1-home-original-five/04-soft-light-crystal.png` | — |
+| 走势 | `docs/design-concepts/v1.1-trend-two-styles/01-trend-flowing-cinnabar.png` | `docs/prototypes/lucky3d-trend-approved-interactive.html` |
+| 方案 | `docs/design-concepts/v1.1-scheme-two-styles/01-scheme-flowing-cinnabar.png` | — |
+| 选号 | 待补齐独立确认稿；补齐前不得声明最终 UI 完成 | — |
+| 彩报 | 待补齐独立确认稿；补齐前不得声明最终 UI 完成 | — |
+
+走势图交互确认稿是后续 Compose 实现和设计 QA 的首要交互基准；应直接打开完整独立
+网页，不得使用缺少宿主样式的原始可视化片段。网页中的“柔光晶体”切换仅用于方案
+对比，Android 走势图固定采用“流动朱砂”。真实字段、列顺序、计算口径和数据来源仍按
+本规范、`docs/calculation-rules.md` 与当前任务计划实现。
 
 历史、设置、详情和弹窗若没有独立确认稿，必须复用对应主页面确认稿中已经确认的顶栏、
 容器、按钮、列表、状态和装饰组件，不得另起一套通用 Material 视觉。
