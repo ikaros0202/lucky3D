@@ -1,5 +1,6 @@
 package com.lucky3d.app.feature.trend
 
+import com.google.common.truth.Truth.assertThat
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertCountEquals
@@ -107,6 +108,26 @@ class TrendScreenTest {
         composeRule
             .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图")
             .assertDoesNotExist()
+    }
+
+    @Test
+    fun scaleToolbarExposesFitAndHundredPercentActions() {
+        var requestedScale = 1f
+        composeRule.setContent {
+            Lucky3DTheme {
+                TrendScreen(
+                    state = normalState(),
+                    onSetWindow = {},
+                    onSetScale = { requestedScale = it },
+                    onSelectPoint = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("全览").performScrollTo().performClick()
+        assertThat(requestedScale).isLessThan(1f)
+        composeRule.onNodeWithText("100%").performScrollTo().performClick()
+        assertThat(requestedScale).isEqualTo(1f)
     }
 
     private fun normalState(): TrendUiState {

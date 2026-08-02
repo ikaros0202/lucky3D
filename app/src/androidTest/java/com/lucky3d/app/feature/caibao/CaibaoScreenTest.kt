@@ -1,11 +1,13 @@
 package com.lucky3d.app.feature.caibao
 
+import com.google.common.truth.Truth.assertThat
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.lucky3d.app.core.model.CaibaoDocument
 import com.lucky3d.app.domain.livecontent.LiveContentFailure
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshState
@@ -88,6 +90,32 @@ class CaibaoScreenTest {
         composeRule.onNodeWithContentDescription("2026204期彩报").assertDoesNotExist()
         composeRule.onNodeWithText("静态示意", substring = true).assertDoesNotExist()
         composeRule.onNodeWithText("随应用安装", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun issueSelectorExposesAdjacentPeriodControlsAndValidOptions() {
+        val selected = mutableListOf<String>()
+        composeRule.setContent {
+            Lucky3DTheme {
+                CaibaoScreen(
+                    state = cachedState().copy(
+                        selectedIssue = "2026204",
+                        issueOptions = listOf("2026204", "2026203"),
+                    ),
+                    image = testImage(),
+                    onRefresh = {},
+                    onSelectIssue = selected::add,
+                    onPrevious = { selected += "previous" },
+                    onNext = { selected += "next" },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("上一期").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("切换期号").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("2026203期").assertIsDisplayed().performClick()
+
+        assertThat(selected).containsExactly("previous", "2026203").inOrder()
     }
 
     private fun cachedState(
