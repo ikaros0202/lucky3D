@@ -1,6 +1,7 @@
 package com.lucky3d.app.app.navigation
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
@@ -40,6 +42,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.semantics.contentDescription
@@ -140,82 +145,15 @@ private fun MainShell(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (!(selectedTab == MainTab.PLANS && schemeDetailVisible)) {
-                Surface(
-                    modifier = Modifier.navigationBarsPadding(),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                    tonalElevation = 0.dp,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
-                    ) {
-                        MainTab.entries.forEach { tab ->
-                            val selected = selectedTab == tab
-                            val tabLabel = androidx.compose.ui.res.stringResource(tab.labelRes)
-                            val tabAccessibilityLabel =
-                                androidx.compose.ui.res.stringResource(tab.accessibilityLabelRes)
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .clickable { selectedTabName = tab.name }
-                                    .semantics {
-                                        contentDescription = tabAccessibilityLabel
-                                        this.selected = selected
-                                    }
-                                    .padding(top = 3.dp, bottom = 2.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(
-                                    2.dp,
-                                    Alignment.CenterVertically,
-                                ),
-                            ) {
-                                if (selected && tab == MainTab.HOME) {
-                                    CrystalHomeIcon()
-                                } else {
-                                    Icon(
-                                        imageVector = tab.icon(),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(22.dp),
-                                        tint = if (selected) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                    )
-                                }
-                                Text(
-                                    text = tabLabel,
-                                    fontWeight = if (selected) {
-                                        FontWeight.SemiBold
-                                    } else {
-                                        FontWeight.Medium
-                                    },
-                                    fontSize = 11.sp,
-                                    lineHeight = 12.sp,
-                                    color = if (selected) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .width(18.dp)
-                                        .height(2.dp)
-                                        .background(
-                                            color = if (selected) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.surface
-                                            },
-                                            shape = CircleShape,
-                                        ),
-                                )
-                            }
-                        }
-                    }
+                if (selectedTab == MainTab.HOME) {
+                    ApprovedHomeNavigationBar(
+                        onSelect = { selectedTabName = it.name },
+                    )
+                } else {
+                    StandardNavigationBar(
+                        selectedTab = selectedTab,
+                        onSelect = { selectedTabName = it.name },
+                    )
                 }
             }
         },
@@ -238,6 +176,130 @@ private fun MainShell(
                         onDetailVisibilityChanged = { schemeDetailVisible = it },
                     )
                     MainTab.CAIBAO -> CaibaoRoute()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ApprovedHomeNavigationBar(
+    onSelect: (MainTab) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.navigationBarsPadding(),
+        color = Color.Transparent,
+        tonalElevation = 0.dp,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1080f / 200f),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.home_crystal_navigation_shell),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.FillBounds,
+            )
+            Row(modifier = Modifier.fillMaxSize()) {
+                MainTab.entries.forEach { tab ->
+                    val tabAccessibilityLabel =
+                        androidx.compose.ui.res.stringResource(tab.accessibilityLabelRes)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { onSelect(tab) }
+                            .semantics {
+                                contentDescription = tabAccessibilityLabel
+                                selected = tab == MainTab.HOME
+                            },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StandardNavigationBar(
+    selectedTab: MainTab,
+    onSelect: (MainTab) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.navigationBarsPadding(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        tonalElevation = 0.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+        ) {
+            MainTab.entries.forEach { tab ->
+                val selected = selectedTab == tab
+                val tabLabel = androidx.compose.ui.res.stringResource(tab.labelRes)
+                val tabAccessibilityLabel =
+                    androidx.compose.ui.res.stringResource(tab.accessibilityLabelRes)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable { onSelect(tab) }
+                        .semantics {
+                            contentDescription = tabAccessibilityLabel
+                            this.selected = selected
+                        }
+                        .padding(top = 3.dp, bottom = 2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(
+                        2.dp,
+                        Alignment.CenterVertically,
+                    ),
+                ) {
+                    if (selected && tab == MainTab.HOME) {
+                        CrystalHomeIcon()
+                    } else {
+                        Icon(
+                            imageVector = tab.icon(),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                            tint = if (selected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                    Text(
+                        text = tabLabel,
+                        fontWeight = if (selected) {
+                            FontWeight.SemiBold
+                        } else {
+                            FontWeight.Medium
+                        },
+                        fontSize = 11.sp,
+                        lineHeight = 12.sp,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(18.dp)
+                            .height(2.dp)
+                            .background(
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                },
+                                shape = CircleShape,
+                            ),
+                    )
                 }
             }
         }

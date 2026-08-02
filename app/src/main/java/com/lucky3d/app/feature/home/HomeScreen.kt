@@ -94,6 +94,18 @@ fun HomeScreen(
 ) {
     val visualColors = Lucky3dDesign.colors
     val latest = state.latest
+    if (latest != null && state.insights.attributes != null) {
+        ApprovedCrystalHome(
+            state = state,
+            onRefresh = onRefresh,
+            onRefreshTrial = onRefreshTrial,
+            onOpenIssue = onOpenIssue,
+            onOpenDate = onOpenDate,
+            onOpenSettings = onOpenSettings,
+            modifier = modifier,
+        )
+        return
+    }
     Box(
         modifier = modifier
             .fillMaxSize()

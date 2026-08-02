@@ -39,7 +39,7 @@
 
 | 页面 | 静态确认稿 | 交互确认稿 |
 | --- | --- | --- |
-| 首页 | `docs/design-concepts/v1.1-home-original-five/04-soft-light-crystal.png` | — |
+| 首页 | `docs/design-concepts/v1.1-home-original-five/06-soft-light-crystal-image-code-hybrid-1080x1920.png` | — |
 | 走势 | `docs/design-concepts/v1.1-trend-two-styles/01-trend-flowing-cinnabar.png` | `docs/prototypes/lucky3d-trend-approved-interactive.html` |
 | 方案 | `docs/design-concepts/v1.1-scheme-two-styles/01-scheme-flowing-cinnabar.png` | — |
 | 选号 | 待补齐独立确认稿；补齐前不得声明最终 UI 完成 | — |
@@ -53,6 +53,21 @@
 
 历史、设置、详情和弹窗若没有独立确认稿，必须复用对应主页面确认稿中已经确认的顶栏、
 容器、按钮、列表、状态和装饰组件，不得另起一套通用 Material 视觉。
+
+首页确认稿采用“图片视觉层 + Compose 数据层”的混合实现：晶面背景、开奖台、玻璃框架、
+圆盘外壳、冷热轨道和首页态底部导航底座可使用随 APK 打包的静态图片资产；期号、日期、
+开奖号码、属性值、遗漏值、试机号、同步状态以及所有交互和无障碍语义必须由 Compose 根据
+`UiState` 实时绘制。禁止把带固定业务数字的整页截图作为运行时页面，禁止让装饰图片读取或
+替代 Room 数据。1080×1920 是截图还原基准，其他窗口尺寸按相同锚点和比例适配。
+1080×2400 长屏使用
+`docs/design-concepts/v1.1-home-original-five/08-soft-light-crystal-runtime-content-tall.png`
+作为仅供运行时适配的内容空壳，并继续复用同一底部导航切片；它不替代 06 确认稿，也不得
+改变内容。长屏空壳中的冷态命中文案留空，由 Compose 与实时命中数共同绘制，避免生成图片
+中的固定文案错误。两种比例都必须保持开奖球和位置圆盘为正圆，并使用同一 `UiState` 数据。
+首页晶体空壳是固定浅色画布：即使系统处于深色模式，Compose 数据层也必须继续使用确认稿的
+红、墨、蓝高对比颜色，并让状态栏采用深色图标，不得仅让代码文字切换成浅色。图片内固定
+文案与代码数据必须保持相同光学字号；系统字体放大时，坐标型数据不突破预留空位，完整信息
+仍通过 Compose semantics 提供给 TalkBack。
 
 ### 已确认的页面分配
 

@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
@@ -22,6 +23,25 @@ import org.junit.Test
 class HomeScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun confirmedHomeUsesCrystalArtworkBehindLiveData() {
+        val latest = draw("2026198", "685")
+
+        setHomeContent(
+            state = HomeUiState(
+                latest = latest,
+                insights = buildHomeInsights(listOf(latest)),
+                trialNumber = trial("2026199", "232"),
+            ),
+        )
+
+        composeRule.onNodeWithTag("home_crystal_artwork").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_live_data_layer").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("开奖号 6，8，5").assertIsDisplayed()
+        composeRule.onNodeWithText("2026198期").assertIsDisplayed()
+        composeRule.onNodeWithText("232").assertIsDisplayed()
+    }
 
     @Test
     fun crystalHomeShowsFocusedDrawAnalysisAndTargetedQueries() {
