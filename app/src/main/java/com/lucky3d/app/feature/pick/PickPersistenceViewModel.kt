@@ -77,12 +77,12 @@ class PickPersistenceViewModel @Inject constructor(
         }
         viewModelScope.launch {
             mutableState.update { it.copy(saveStatus = PickSaveStatus.SAVING) }
-            val conditions = if (pick.mode == PickMode.FILTER) {
-                pick.conditions
+            val conditions = when (pick.mode) {
+                PickMode.MANUAL -> emptyList()
+                PickMode.FILTER -> pick.conditions
                     .filter(PickConditionItem::enabled)
                     .map(PickConditionItem::condition)
-            } else {
-                listOf(
+                PickMode.DAN_TUO -> listOf(
                     DanTuoCondition(
                         danDigits = pick.danDigits,
                         tuoDigits = pick.tuoDigits,

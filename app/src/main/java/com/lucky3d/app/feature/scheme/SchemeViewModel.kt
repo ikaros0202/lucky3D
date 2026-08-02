@@ -16,8 +16,12 @@ import kotlinx.coroutines.launch
 
 enum class SchemeSection { SCHEMES, TEMPLATES }
 
+enum class SchemeFilter { ALL, PENDING, REPLAYED }
+
 data class SchemeUiState(
     val section: SchemeSection = SchemeSection.SCHEMES,
+    val query: String = "",
+    val filter: SchemeFilter = SchemeFilter.ALL,
     val schemes: List<SchemeWithReplay> = emptyList(),
     val templates: List<SavedTemplate> = emptyList(),
     val selectedSchemeId: String? = null,
@@ -28,7 +32,23 @@ data class SchemeUiState(
     val isBacktesting: Boolean = false,
     val operationSucceeded: Boolean = false,
     val operationFailed: Boolean = false,
-)
+) {
+    val visibleSchemes: List<SchemeWithReplay>
+        get() {
+            val normalizedQuery = query.trim()
+            return schemes.filter { item ->
+                val matchesFilter = when (filter) {
+                    SchemeFilter.ALL -> true
+                    SchemeFilter.PENDING -> item.replay == null
+                    SchemeFilter.REPLAYED -> item.replay != null
+                }
+                val matchesQuery = normalizedQuery.isEmpty() ||
+                    item.scheme.issue.contains(normalizedQuery, ignoreCase = true) ||
+                    item.scheme.title.contains(normalizedQuery, ignoreCase = true)
+                matchesFilter && matchesQuery
+            }
+        }
+}
 
 @HiltViewModel
 class SchemeViewModel @Inject constructor(
@@ -65,6 +85,14 @@ class SchemeViewModel @Inject constructor(
 
     fun showSection(section: SchemeSection) {
         mutableState.update { it.copy(section = section) }
+    }
+
+    fun setQuery(query: String) {
+        mutableState.update { it.copy(query = query) }
+    }
+
+    fun setFilter(filter: SchemeFilter) {
+        mutableState.update { it.copy(filter = filter) }
     }
 
     fun selectScheme(id: String?) {

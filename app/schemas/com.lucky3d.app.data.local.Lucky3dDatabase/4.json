@@ -1,0 +1,629 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "2450663022fb983a65592b259e81fe24",
+    "entities": [
+      {
+        "tableName": "draws",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`issue` TEXT NOT NULL, `drawDate` TEXT NOT NULL, `hundreds` INTEGER NOT NULL, `tens` INTEGER NOT NULL, `ones` INTEGER NOT NULL, `officialDetailUrl` TEXT NOT NULL, `officialFingerprint` TEXT NOT NULL, PRIMARY KEY(`issue`))",
+        "fields": [
+          {
+            "fieldPath": "issue",
+            "columnName": "issue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "drawDate",
+            "columnName": "drawDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hundreds",
+            "columnName": "hundreds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tens",
+            "columnName": "tens",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ones",
+            "columnName": "ones",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "officialDetailUrl",
+            "columnName": "officialDetailUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "officialFingerprint",
+            "columnName": "officialFingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "issue"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_draws_drawDate",
+            "unique": false,
+            "columnNames": [
+              "drawDate"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_draws_drawDate` ON `${TABLE_NAME}` (`drawDate`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sync_metadata",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `lastAttemptEpochMillis` INTEGER, `lastSuccessEpochMillis` INTEGER, `latestIssue` TEXT, `lastFailureType` TEXT, `correctedIssuesJson` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptEpochMillis",
+            "columnName": "lastAttemptEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSuccessEpochMillis",
+            "columnName": "lastSuccessEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "latestIssue",
+            "columnName": "latestIssue",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastFailureType",
+            "columnName": "lastFailureType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "correctedIssuesJson",
+            "columnName": "correctedIssuesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "templates",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `playType` TEXT NOT NULL, `conditionsJson` TEXT NOT NULL, `conditionsSchemaVersion` INTEGER NOT NULL, `observationWindow` INTEGER NOT NULL, `ruleVersion` INTEGER NOT NULL, `createdAtEpochMillis` INTEGER NOT NULL, `updatedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playType",
+            "columnName": "playType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conditionsJson",
+            "columnName": "conditionsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conditionsSchemaVersion",
+            "columnName": "conditionsSchemaVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observationWindow",
+            "columnName": "observationWindow",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ruleVersion",
+            "columnName": "ruleVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "schemes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `issue` TEXT NOT NULL, `title` TEXT NOT NULL, `observationWindow` INTEGER NOT NULL, `templateId` TEXT, `playType` TEXT NOT NULL, `conditionsJson` TEXT NOT NULL, `conditionsSchemaVersion` INTEGER NOT NULL, `candidateNumbersJson` TEXT NOT NULL, `betCount` INTEGER NOT NULL, `multiplier` INTEGER NOT NULL, `amountYuan` INTEGER NOT NULL, `note` TEXT NOT NULL, `ruleVersion` INTEGER NOT NULL, `isDrawn` INTEGER NOT NULL, `copiedFromSchemeId` TEXT, `createdAtEpochMillis` INTEGER NOT NULL, `updatedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`templateId`) REFERENCES `templates`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "issue",
+            "columnName": "issue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observationWindow",
+            "columnName": "observationWindow",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "templateId",
+            "columnName": "templateId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "playType",
+            "columnName": "playType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conditionsJson",
+            "columnName": "conditionsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conditionsSchemaVersion",
+            "columnName": "conditionsSchemaVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "candidateNumbersJson",
+            "columnName": "candidateNumbersJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "betCount",
+            "columnName": "betCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "multiplier",
+            "columnName": "multiplier",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amountYuan",
+            "columnName": "amountYuan",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ruleVersion",
+            "columnName": "ruleVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDrawn",
+            "columnName": "isDrawn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "copiedFromSchemeId",
+            "columnName": "copiedFromSchemeId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_schemes_issue",
+            "unique": false,
+            "columnNames": [
+              "issue"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_schemes_issue` ON `${TABLE_NAME}` (`issue`)"
+          },
+          {
+            "name": "index_schemes_templateId",
+            "unique": false,
+            "columnNames": [
+              "templateId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_schemes_templateId` ON `${TABLE_NAME}` (`templateId`)"
+          },
+          {
+            "name": "index_schemes_copiedFromSchemeId",
+            "unique": false,
+            "columnNames": [
+              "copiedFromSchemeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_schemes_copiedFromSchemeId` ON `${TABLE_NAME}` (`copiedFromSchemeId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "templates",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "templateId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "replays",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`schemeId` TEXT NOT NULL, `issue` TEXT NOT NULL, `schemeFingerprint` TEXT NOT NULL, `officialFingerprint` TEXT NOT NULL, `winningNumber` TEXT NOT NULL, `covered` INTEGER NOT NULL, `matchedCandidate` TEXT, `ruleVersion` INTEGER NOT NULL, `revision` INTEGER NOT NULL, `calculatedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`schemeId`), FOREIGN KEY(`schemeId`) REFERENCES `schemes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "schemeId",
+            "columnName": "schemeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "issue",
+            "columnName": "issue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schemeFingerprint",
+            "columnName": "schemeFingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "officialFingerprint",
+            "columnName": "officialFingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "winningNumber",
+            "columnName": "winningNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "covered",
+            "columnName": "covered",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchedCandidate",
+            "columnName": "matchedCandidate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ruleVersion",
+            "columnName": "ruleVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "calculatedAtEpochMillis",
+            "columnName": "calculatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "schemeId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_replays_issue",
+            "unique": false,
+            "columnNames": [
+              "issue"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_replays_issue` ON `${TABLE_NAME}` (`issue`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "schemes",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "schemeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "trial_numbers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`issue` TEXT NOT NULL, `number` TEXT NOT NULL, `source` TEXT NOT NULL, `sourcePageUrl` TEXT NOT NULL, `sourceLocalDate` TEXT NOT NULL, `fetchedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`issue`))",
+        "fields": [
+          {
+            "fieldPath": "issue",
+            "columnName": "issue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "number",
+            "columnName": "number",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourcePageUrl",
+            "columnName": "sourcePageUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceLocalDate",
+            "columnName": "sourceLocalDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAtEpochMillis",
+            "columnName": "fetchedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "issue"
+          ]
+        }
+      },
+      {
+        "tableName": "caibao_documents",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`issue` TEXT NOT NULL, `edition` TEXT NOT NULL, `title` TEXT NOT NULL, `sourcePageUrl` TEXT NOT NULL, `imageUrl` TEXT NOT NULL, `localFileName` TEXT NOT NULL, `sha256` TEXT NOT NULL, `mimeType` TEXT NOT NULL, `width` INTEGER NOT NULL, `height` INTEGER NOT NULL, `cachedLocalDate` TEXT NOT NULL, `fetchedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`issue`))",
+        "fields": [
+          {
+            "fieldPath": "issue",
+            "columnName": "issue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "edition",
+            "columnName": "edition",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourcePageUrl",
+            "columnName": "sourcePageUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageUrl",
+            "columnName": "imageUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localFileName",
+            "columnName": "localFileName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sha256",
+            "columnName": "sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mimeType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "width",
+            "columnName": "width",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "height",
+            "columnName": "height",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cachedLocalDate",
+            "columnName": "cachedLocalDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAtEpochMillis",
+            "columnName": "fetchedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "issue"
+          ]
+        }
+      },
+      {
+        "tableName": "live_content_refresh_metadata",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`contentType` TEXT NOT NULL, `attemptLocalDate` TEXT, `autoAttemptCount` INTEGER NOT NULL, `lastAttemptEpochMillis` INTEGER, `lastSuccessLocalDate` TEXT, `lastSuccessEpochMillis` INTEGER, `nextAllowedAutoAttemptEpochMillis` INTEGER, `lastFailureType` TEXT, PRIMARY KEY(`contentType`))",
+        "fields": [
+          {
+            "fieldPath": "contentType",
+            "columnName": "contentType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attemptLocalDate",
+            "columnName": "attemptLocalDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "autoAttemptCount",
+            "columnName": "autoAttemptCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptEpochMillis",
+            "columnName": "lastAttemptEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSuccessLocalDate",
+            "columnName": "lastSuccessLocalDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastSuccessEpochMillis",
+            "columnName": "lastSuccessEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "nextAllowedAutoAttemptEpochMillis",
+            "columnName": "nextAllowedAutoAttemptEpochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastFailureType",
+            "columnName": "lastFailureType",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "contentType"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2450663022fb983a65592b259e81fe24')"
+    ]
+  }
+}

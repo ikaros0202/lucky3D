@@ -10,8 +10,11 @@ import androidx.room3.RoomDatabase
         TemplateEntity::class,
         SchemeEntity::class,
         ReplayEntity::class,
+        TrialNumberEntity::class,
+        CaibaoDocumentEntity::class,
+        LiveContentRefreshMetadataEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class Lucky3dDatabase : RoomDatabase() {
@@ -20,6 +23,8 @@ abstract class Lucky3dDatabase : RoomDatabase() {
     abstract fun syncMetadataDao(): SyncMetadataDao
 
     abstract fun schemeDao(): SchemeDao
+
+    abstract fun liveContentDao(): LiveContentDao
 
     companion object {
         const val DATABASE_NAME = "lucky3d.db"

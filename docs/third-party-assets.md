@@ -1,5 +1,11 @@
 # Third-party assets
 
+## V1.1 实时彩报边界
+
+- V1.1 彩报来源为牛彩网 A11“彩吧彩报第三版”；图片在用户设备下载后保存在应用私有目录，不提交到 Git，也不打包进 APK。
+- 完整图片在公开发布前必须确认来源展示授权；未确认时不得作为公开发行版默认开启能力。
+- V1 的 `caibao_placeholder.jpg` 仅保留为已完成历史实现的来源记录，不是 V1.1 彩报内容。
+
 ## `caibao_placeholder.jpg`
 
 - Purpose: static, read-only placeholder on the V1 “彩报” page.

@@ -1,309 +1,261 @@
 package com.lucky3d.app.feature.trend
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.MyLocation
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.lucky3d.app.R
 import com.lucky3d.app.core.ui.EmptyState
-import com.lucky3d.app.domain.omission.HeatLevel
+import com.lucky3d.app.core.ui.Lucky3dDesign
 
 @Composable
 fun TrendScreen(
     state: TrendUiState,
     onSetWindow: (Int) -> Unit,
-    onTogglePosition: (TrendPosition) -> Unit,
     onSelectPoint: (TrendPoint?) -> Unit,
-    onShowStatistics: (TrendPosition) -> Unit,
-    onScaleChange: (Float) -> Unit,
-    onReturnLatest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var customWindow by rememberSaveable { mutableStateOf("") }
-    val positionLabels = mapOf(
-        TrendPosition.HUNDREDS to stringResource(R.string.trend_position_hundreds),
-        TrendPosition.TENS to stringResource(R.string.trend_position_tens),
-        TrendPosition.ONES to stringResource(R.string.trend_position_ones),
-    )
-    val visibleLabels = TrendPosition.entries
-        .filter(state.visiblePositions::contains)
-        .joinToString("、") { positionLabels.getValue(it) }
-    val chartSummary = stringResource(
-        R.string.trend_chart_a11y,
-        state.visibleDraws.size,
-        visibleLabels,
-        state.points.size,
-    )
+    val displayedPoint = state.selectedPoint
+        ?: state.points
+            .filter { it.position == TrendPosition.HUNDREDS }
+            .maxByOrNull(TrendPoint::rowIndex)
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 20.dp),
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding(),
     ) {
-        item {
-            Text(
-                text = stringResource(R.string.trend_title),
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.semantics { heading() },
-            )
+        item(key = "trend-header") {
+            FlowingCinnabarTrendHeader()
         }
-        item {
-            TrendControls(
-                state = state,
-                customWindow = customWindow,
-                onCustomWindowChange = { customWindow = it.filter(Char::isDigit).take(4) },
-                onSetWindow = onSetWindow,
-                onApplyCustom = {
-                    customWindow.toIntOrNull()?.takeIf { it in 1..3334 }?.let(onSetWindow)
-                },
-                onTogglePosition = onTogglePosition,
-            )
+        item(key = "trend-hint") {
+            TrendGestureHint()
         }
         if (state.visibleDraws.isEmpty()) {
-            item {
+            item(key = "trend-empty") {
                 EmptyState(
                     title = stringResource(R.string.trend_no_data_title),
                     detail = stringResource(R.string.trend_no_data_detail),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(420.dp),
                 )
             }
         } else {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                stringResource(R.string.trend_chart_title),
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                            Text(
-                                stringResource(R.string.trend_chart_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Button(onClick = onReturnLatest) {
-                            Icon(Icons.Outlined.MyLocation, contentDescription = null)
-                            Text(
-                                stringResource(R.string.trend_return_latest),
-                                modifier = Modifier.padding(start = 6.dp),
-                            )
-                        }
-                    }
-                    Text(
-                        stringResource(R.string.trend_scale, state.scale),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    Card(
-                        border = BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outlineVariant,
-                        ),
-                    ) {
-                        TrendChart(
-                            state = state,
-                            accessibilitySummary = chartSummary,
-                            issueHeader = stringResource(R.string.trend_issue_header),
-                            onSelectPoint = onSelectPoint,
-                            onScaleChange = onScaleChange,
-                            modifier = Modifier.padding(8.dp),
-                        )
-                    }
-                }
-            }
-            state.selectedPoint?.let { point ->
-                item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ) {
-                        Text(
-                            text = stringResource(
-                                R.string.trend_point_detail,
-                                point.issue,
-                                positionLabel(point.position),
-                                point.digit,
-                                point.omission,
-                            ),
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-            }
-            item {
-                Text(
-                    stringResource(R.string.trend_statistics),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.semantics { heading() },
+            item(key = "trend-table") {
+                TrendChart(
+                    state = state,
+                    accessibilitySummary = stringResource(R.string.trend_long_table_a11y),
+                    onSetWindow = onSetWindow,
+                    onSelectPoint = onSelectPoint,
                 )
             }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TrendPosition.entries.filter(state.visiblePositions::contains).forEach { position ->
-                        FilterChip(
-                            selected = state.statisticsPosition == position,
-                            onClick = { onShowStatistics(position) },
-                            label = { Text(positionLabel(position)) },
-                        )
-                    }
-                }
+            item(key = "trend-detail") {
+                TrendPointSummary(
+                    point = displayedPoint,
+                    drawNumber = displayedPoint?.issue?.let { issue ->
+                        state.visibleDraws.firstOrNull { it.issue == issue }?.number?.value
+                    },
+                )
             }
-            val selectedStatistics = state.statistics
-                .firstOrNull { it.position == state.statisticsPosition }
-            selectedStatistics?.let { statistics ->
-                if (!statistics.sampleComplete) {
-                    item {
-                        Text(
-                            stringResource(
-                                R.string.trend_sample_incomplete,
-                                statistics.actualWindowSize,
-                                statistics.requestedWindowSize,
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
-                items(
-                    statistics.digits.sortedWith(
-                        compareByDescending<TrendDigitStatistics> { it.currentOmission }
-                            .thenBy { it.digit },
-                    ),
-                    key = TrendDigitStatistics::digit,
-                ) { row ->
-                    TrendStatisticsRow(
-                        row = row,
-                        maximumOccurrences = statistics.digits.maxOfOrNull { it.occurrences }
-                            ?.coerceAtLeast(1)
-                            ?: 1,
-                    )
-                }
-            }
+        }
+        item(key = "trend-bottom-space") {
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-private fun TrendControls(
-    state: TrendUiState,
-    customWindow: String,
-    onCustomWindowChange: (String) -> Unit,
-    onSetWindow: (Int) -> Unit,
-    onApplyCustom: () -> Unit,
-    onTogglePosition: (TrendPosition) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            listOf(10, 30, 50, 100).forEach { count ->
-                FilterChip(
-                    selected = state.window == count,
-                    onClick = { onSetWindow(count) },
-                    label = { Text(stringResource(R.string.trend_window, count)) },
+private fun FlowingCinnabarTrendHeader() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(68.dp),
+    ) {
+        CinnabarFlowBackdrop(modifier = Modifier.fillMaxSize())
+        Text(
+            text = stringResource(R.string.home_title),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 16.dp),
+            color = androidx.compose.ui.graphics.Color.White,
+            fontSize = 14.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+        )
+        Text(
+            text = stringResource(R.string.trend_title),
+            modifier = Modifier.align(Alignment.Center),
+            color = androidx.compose.ui.graphics.Color.White,
+            fontSize = 20.sp,
+            lineHeight = 24.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = stringResource(R.string.trend_local_data),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp),
+            color = androidx.compose.ui.graphics.Color.White,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun CinnabarFlowBackdrop(modifier: Modifier = Modifier) {
+    val primary = MaterialTheme.colorScheme.primary
+    val deep = Lucky3dDesign.colors.primaryDeep
+    Canvas(
+        modifier = modifier.background(
+            Brush.horizontalGradient(listOf(primary, deep, primary)),
+        ),
+    ) {
+        repeat(7) { index ->
+            val wave = Path().apply {
+                moveTo(size.width * 0.22f, size.height * (0.72f + index * 0.02f))
+                cubicTo(
+                    size.width * 0.45f,
+                    size.height * (0.48f + index * 0.018f),
+                    size.width * 0.73f,
+                    size.height * (0.92f - index * 0.025f),
+                    size.width * 1.10f,
+                    size.height * (0.57f + index * 0.015f),
                 )
             }
+            drawPath(
+                path = wave,
+                color = androidx.compose.ui.graphics.Color.White.copy(
+                    alpha = 0.20f - index * 0.022f,
+                ),
+                style = Stroke(width = 1.dp.toPx()),
+            )
         }
+        drawLine(
+            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.12f),
+            start = Offset(size.width * 0.22f, size.height - 3.dp.toPx()),
+            end = Offset(size.width * 1.05f, size.height * 0.64f),
+            strokeWidth = 1.dp.toPx(),
+        )
+    }
+}
+
+@Composable
+private fun TrendGestureHint() {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(38.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OutlinedTextField(
-                value = customWindow,
-                onValueChange = onCustomWindowChange,
-                label = { Text(stringResource(R.string.trend_custom_window)) },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
+            Icon(
+                imageVector = Icons.Outlined.SwapHoriz,
+                contentDescription = null,
+                modifier = Modifier.width(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = onApplyCustom) {
-                Text(stringResource(R.string.trend_apply))
-            }
-        }
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            TrendPosition.entries.forEach { position ->
-                FilterChip(
-                    selected = position in state.visiblePositions,
-                    onClick = { onTogglePosition(position) },
-                    label = { Text(positionLabel(position)) },
-                )
-            }
+            Text(
+                text = stringResource(R.string.trend_long_scroll_hint),
+                modifier = Modifier.padding(start = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+                lineHeight = 14.sp,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
 
 @Composable
-private fun TrendStatisticsRow(
-    row: TrendDigitStatistics,
-    maximumOccurrences: Int,
+private fun TrendPointSummary(
+    point: TrendPoint?,
+    drawNumber: String?,
 ) {
+    val description = point?.let {
+        stringResource(
+            R.string.trend_point_summary_a11y,
+            it.issue,
+            positionLabel(it.position),
+            it.digit,
+            it.omission,
+        )
+    } ?: stringResource(R.string.trend_point_summary_empty)
+    val visibleText = point?.let {
+        stringResource(
+            R.string.trend_selected_detail,
+            it.issue,
+            drawNumber ?: "---",
+            positionLabel(it.position),
+            it.digit,
+            it.omission,
+        )
+    } ?: stringResource(R.string.trend_point_summary_empty)
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .clearAndSetSemantics { contentDescription = description },
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.52f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(
-                    R.string.trend_digit_row,
-                    row.digit,
-                    row.currentOmission,
-                    row.averageOmission?.toString() ?: "--",
-                    row.maxOmission?.toString() ?: "--",
-                    row.occurrences,
-                    heatLabel(row.heatLevel),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
+                text = visibleText,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
             )
-            LinearProgressIndicator(
-                progress = { row.occurrences.toFloat() / maximumOccurrences },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            HorizontalDivider()
         }
     }
 }
@@ -313,11 +265,4 @@ private fun positionLabel(position: TrendPosition): String = when (position) {
     TrendPosition.HUNDREDS -> stringResource(R.string.trend_position_hundreds)
     TrendPosition.TENS -> stringResource(R.string.trend_position_tens)
     TrendPosition.ONES -> stringResource(R.string.trend_position_ones)
-}
-
-@Composable
-private fun heatLabel(level: HeatLevel): String = when (level) {
-    HeatLevel.COLD -> stringResource(R.string.trend_heat_cold)
-    HeatLevel.WARM -> stringResource(R.string.trend_heat_warm)
-    HeatLevel.HOT -> stringResource(R.string.trend_heat_hot)
 }

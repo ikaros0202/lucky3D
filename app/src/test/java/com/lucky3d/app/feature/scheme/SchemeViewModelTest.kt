@@ -5,6 +5,7 @@ import com.lucky3d.app.MainDispatcherRule
 import com.lucky3d.app.data.repository.SaveSchemeRequest
 import com.lucky3d.app.data.repository.SaveTemplateRequest
 import com.lucky3d.app.data.repository.SavedScheme
+import com.lucky3d.app.data.repository.SavedReplay
 import com.lucky3d.app.data.repository.SavedTemplate
 import com.lucky3d.app.data.repository.SchemeRepository
 import com.lucky3d.app.data.repository.SchemeWithReplay
@@ -31,7 +32,7 @@ class SchemeViewModelTest {
         val viewModel = SchemeViewModel(fake)
         advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.schemes).hasSize(1)
+        assertThat(viewModel.uiState.value.schemes).hasSize(2)
         assertThat(viewModel.uiState.value.templates).hasSize(1)
 
         viewModel.selectTemplate("template-1")
@@ -42,6 +43,29 @@ class SchemeViewModelTest {
         assertThat(fake.backtestCalls).containsExactly("template-1:2026001:2026002")
         assertThat(viewModel.uiState.value.backtest?.eligibleCount).isEqualTo(1)
         assertThat(viewModel.uiState.value.backtest?.averageBetCount).isEqualTo(1.0)
+    }
+
+    @Test
+    fun `query and status filters expose only matching scheme rows`() = runTest {
+        val viewModel = SchemeViewModel(FakeSchemeRepository())
+        advanceUntilIdle()
+
+        viewModel.setFilter(SchemeFilter.PENDING)
+        assertThat(viewModel.uiState.value.visibleSchemes.map { it.scheme.id })
+            .containsExactly("scheme-1")
+
+        viewModel.setFilter(SchemeFilter.REPLAYED)
+        assertThat(viewModel.uiState.value.visibleSchemes.map { it.scheme.id })
+            .containsExactly("scheme-2")
+
+        viewModel.setFilter(SchemeFilter.ALL)
+        viewModel.setQuery("和值")
+        assertThat(viewModel.uiState.value.visibleSchemes.map { it.scheme.id })
+            .containsExactly("scheme-2")
+
+        viewModel.setQuery("2026004")
+        assertThat(viewModel.uiState.value.visibleSchemes.map { it.scheme.id })
+            .containsExactly("scheme-1")
     }
 
     private class FakeSchemeRepository : SchemeRepository {
@@ -56,8 +80,8 @@ class SchemeViewModelTest {
         )
         private val scheme = SavedScheme(
             id = "scheme-1",
-            issue = "2026002",
-            title = "测试方案",
+            issue = "2026004",
+            title = "周三定位方案",
             observationWindow = 1,
             templateId = template.id,
             playType = PlayType.STRAIGHT,
@@ -73,7 +97,27 @@ class SchemeViewModelTest {
             createdAtEpochMillis = 1,
             updatedAtEpochMillis = 1,
         )
-        override val schemes = MutableStateFlow(listOf(SchemeWithReplay(scheme, null)))
+        private val replayedScheme = scheme.copy(
+            id = "scheme-2",
+            issue = "2026003",
+            title = "和值筛选方案",
+            isDrawn = true,
+        )
+        private val replay = SavedReplay(
+            schemeId = replayedScheme.id,
+            issue = replayedScheme.issue,
+            winningNumber = DrawNumber.parse("685"),
+            covered = true,
+            matchedCandidate = DrawNumber.parse("685"),
+            revision = 1,
+            calculatedAtEpochMillis = 2,
+        )
+        override val schemes = MutableStateFlow(
+            listOf(
+                SchemeWithReplay(scheme, null),
+                SchemeWithReplay(replayedScheme, replay),
+            ),
+        )
         override val templates = MutableStateFlow(listOf(template))
         val backtestCalls = mutableListOf<String>()
 

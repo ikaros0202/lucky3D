@@ -3,6 +3,9 @@
 > 日期：2026-07-28<br>
 > 结论：Tasks 11—16 与 Checkpoint D 通过<br>
 > 设备范围：仅 Android 模拟器，不代表真机验收
+>
+> 本文是 V1 历史验收快照。Task 13 所述旧走势图交互已由 V1.1 Task 24 和
+> `docs/prototypes/lucky3d-trend-approved-interactive.html` 取代，不作为当前 UI 验收口径。
 
 ## 1. 功能切片
 

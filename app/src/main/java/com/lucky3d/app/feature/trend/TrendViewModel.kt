@@ -90,11 +90,17 @@ internal fun buildTrendState(
 ): TrendUiState {
     val visible = allDraws.takeLast(window)
     val positionOrder = TrendPosition.entries.filter(visiblePositions::contains)
-    val points = positionOrder.flatMap { position ->
+    val omissionsByPosition = TrendPosition.entries.associateWith { position ->
         val fullValues = allDraws.map { it.digitAt(position) }
-        val omissionsByDigit = (0..9).associateWith { digit ->
-            OmissionCalculator.calculateVisibleWindow(fullValues, digit, visible.size).omissionByDraw
+        (0..9).associateWith { digit ->
+            OmissionCalculator.calculateVisibleWindow(
+                values = fullValues,
+                target = digit,
+                visibleWindowSize = visible.size,
+            ).omissionByDraw
         }
+    }
+    val points = positionOrder.flatMap { position ->
         visible.mapIndexed { rowIndex, draw ->
             val digit = draw.digitAt(position)
             TrendPoint(
@@ -102,9 +108,20 @@ internal fun buildTrendState(
                 rowIndex = rowIndex,
                 position = position,
                 digit = digit,
-                omission = omissionsByDigit.getValue(digit)[rowIndex],
+                omission = omissionsByPosition.getValue(position).getValue(digit)[rowIndex],
             )
         }
+    }
+    val tableRows = visible.mapIndexed { rowIndex, draw ->
+        TrendTableRow(
+            issue = draw.issue,
+            drawNumber = draw.number.value,
+            omissions = TrendPosition.entries.flatMap { position ->
+                (0..9).map { digit ->
+                    omissionsByPosition.getValue(position).getValue(digit)[rowIndex]
+                }
+            },
+        )
     }
     val numbers = allDraws.map(DrawRecord::number)
     val statistics = positionOrder.map { position ->
@@ -132,6 +149,7 @@ internal fun buildTrendState(
         window = window,
         visibleDraws = visible,
         visiblePositions = visiblePositions,
+        tableRows = tableRows,
         points = points,
         statistics = statistics,
         selectedPoint = selectedPoint,

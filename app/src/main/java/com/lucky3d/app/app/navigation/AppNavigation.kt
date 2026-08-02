@@ -1,11 +1,24 @@
 package com.lucky3d.app.app.navigation
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
@@ -14,11 +27,10 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,10 +42,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
@@ -41,7 +60,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.lucky3d.app.R
-import com.lucky3d.app.feature.caibao.CaibaoScreen
+import com.lucky3d.app.feature.caibao.CaibaoRoute
 import com.lucky3d.app.feature.home.HistoryScreen
 import com.lucky3d.app.feature.home.HistoryViewModel
 import com.lucky3d.app.feature.home.HomeScreen
@@ -62,7 +81,10 @@ import kotlinx.serialization.Serializable
 private data object RootDestination : NavKey
 
 @Serializable
-private data object HistoryDestination : NavKey
+private data class HistoryDestination(
+    val issue: String? = null,
+    val date: String? = null,
+) : NavKey
 
 @Serializable
 private data object SettingsDestination : NavKey
@@ -76,12 +98,16 @@ fun AppNavigation() {
         entryProvider = entryProvider {
             entry<RootDestination> {
                 MainShell(
-                    onOpenHistory = { backStack.add(HistoryDestination) },
+                    onOpenHistory = { issue, date ->
+                        backStack.add(HistoryDestination(issue = issue, date = date))
+                    },
                     onOpenSettings = { backStack.add(SettingsDestination) },
                 )
             }
-            entry<HistoryDestination> {
+            entry<HistoryDestination> { destination ->
                 HistoryRoute(
+                    issue = destination.issue,
+                    date = destination.date,
                     onBack = { backStack.removeLastOrNull() },
                 )
             }
@@ -96,11 +122,12 @@ fun AppNavigation() {
 
 @Composable
 private fun MainShell(
-    onOpenHistory: () -> Unit,
+    onOpenHistory: (issue: String?, date: String?) -> Unit,
     onOpenSettings: () -> Unit,
     reminderViewModel: ReminderViewModel = hiltViewModel(),
 ) {
     var selectedTabName by rememberSaveable { mutableStateOf(MainTab.HOME.name) }
+    var schemeDetailVisible by rememberSaveable { mutableStateOf(false) }
     val selectedTab = MainTab.valueOf(selectedTabName)
     val stateHolder = rememberSaveableStateHolder()
     val reminderState by reminderViewModel.uiState.collectAsStateWithLifecycle()
@@ -117,25 +144,15 @@ private fun MainShell(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            NavigationBar {
-                MainTab.entries.forEach { tab ->
-                    val tabLabel = androidx.compose.ui.res.stringResource(tab.labelRes)
-                    val tabAccessibilityLabel =
-                        androidx.compose.ui.res.stringResource(tab.accessibilityLabelRes)
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTabName = tab.name },
-                        icon = {
-                            Icon(
-                                imageVector = tab.icon(),
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(tabLabel) },
-                        alwaysShowLabel = true,
-                        modifier = Modifier.semantics {
-                            contentDescription = tabAccessibilityLabel
-                        },
+            if (!(selectedTab == MainTab.PLANS && schemeDetailVisible)) {
+                if (selectedTab == MainTab.HOME) {
+                    ApprovedHomeNavigationBar(
+                        onSelect = { selectedTabName = it.name },
+                    )
+                } else {
+                    StandardNavigationBar(
+                        selectedTab = selectedTab,
+                        onSelect = { selectedTabName = it.name },
                     )
                 }
             }
@@ -150,17 +167,15 @@ private fun MainShell(
                 when (selectedTab) {
                     MainTab.HOME -> HomeRoute(
                         onOpenHistory = onOpenHistory,
-                        onOpenTrend = { selectedTabName = MainTab.TREND.name },
-                        onOpenPick = { selectedTabName = MainTab.PICK.name },
-                        onOpenSchemes = { selectedTabName = MainTab.PLANS.name },
                         onOpenSettings = onOpenSettings,
                     )
                     MainTab.TREND -> TrendRoute()
                     MainTab.PICK -> PickRoute()
                     MainTab.PLANS -> SchemeRoute(
                         onStartPick = { selectedTabName = MainTab.PICK.name },
+                        onDetailVisibilityChanged = { schemeDetailVisible = it },
                     )
-                    MainTab.CAIBAO -> CaibaoScreen()
+                    MainTab.CAIBAO -> CaibaoRoute()
                 }
             }
         }
@@ -168,32 +183,187 @@ private fun MainShell(
 }
 
 @Composable
+private fun ApprovedHomeNavigationBar(
+    onSelect: (MainTab) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.navigationBarsPadding(),
+        color = Color.Transparent,
+        tonalElevation = 0.dp,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1080f / 200f),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.home_crystal_navigation_shell),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.FillBounds,
+            )
+            Row(modifier = Modifier.fillMaxSize()) {
+                MainTab.entries.forEach { tab ->
+                    val tabAccessibilityLabel =
+                        androidx.compose.ui.res.stringResource(tab.accessibilityLabelRes)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { onSelect(tab) }
+                            .semantics {
+                                contentDescription = tabAccessibilityLabel
+                                selected = tab == MainTab.HOME
+                            },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StandardNavigationBar(
+    selectedTab: MainTab,
+    onSelect: (MainTab) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.navigationBarsPadding(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        tonalElevation = 0.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+        ) {
+            MainTab.entries.forEach { tab ->
+                val selected = selectedTab == tab
+                val tabLabel = androidx.compose.ui.res.stringResource(tab.labelRes)
+                val tabAccessibilityLabel =
+                    androidx.compose.ui.res.stringResource(tab.accessibilityLabelRes)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable { onSelect(tab) }
+                        .semantics {
+                            contentDescription = tabAccessibilityLabel
+                            this.selected = selected
+                        }
+                        .padding(top = 3.dp, bottom = 2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(
+                        2.dp,
+                        Alignment.CenterVertically,
+                    ),
+                ) {
+                    if (selected && tab == MainTab.HOME) {
+                        CrystalHomeIcon()
+                    } else {
+                        Icon(
+                            imageVector = tab.icon(),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                            tint = if (selected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                    Text(
+                        text = tabLabel,
+                        fontWeight = if (selected) {
+                            FontWeight.SemiBold
+                        } else {
+                            FontWeight.Medium
+                        },
+                        fontSize = 11.sp,
+                        lineHeight = 12.sp,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(18.dp)
+                            .height(2.dp)
+                            .background(
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                },
+                                shape = CircleShape,
+                            ),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CrystalHomeIcon() {
+    val primary = MaterialTheme.colorScheme.primary
+    val highlight = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.55f)
+    Canvas(modifier = Modifier.size(24.dp)) {
+        val gem = Path().apply {
+            moveTo(size.width * 0.50f, 0f)
+            lineTo(size.width * 0.92f, size.height * 0.30f)
+            lineTo(size.width * 0.78f, size.height * 0.92f)
+            lineTo(size.width * 0.22f, size.height * 0.92f)
+            lineTo(size.width * 0.08f, size.height * 0.30f)
+            close()
+        }
+        val facet = Path().apply {
+            moveTo(size.width * 0.50f, 0f)
+            lineTo(size.width * 0.50f, size.height * 0.92f)
+            lineTo(size.width * 0.08f, size.height * 0.30f)
+            close()
+        }
+        drawPath(gem, primary)
+        drawPath(facet, highlight)
+    }
+}
+
+@Composable
 private fun HomeRoute(
-    onOpenHistory: () -> Unit,
-    onOpenTrend: () -> Unit,
-    onOpenPick: () -> Unit,
-    onOpenSchemes: () -> Unit,
+    onOpenHistory: (issue: String?, date: String?) -> Unit,
     onOpenSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel) {
+        viewModel.onHomeVisible()
+    }
     HomeScreen(
         state = state,
         onRefresh = viewModel::refresh,
-        onOpenHistory = onOpenHistory,
-        onOpenTrend = onOpenTrend,
-        onOpenPick = onOpenPick,
-        onOpenSchemes = onOpenSchemes,
+        onRefreshTrial = viewModel::refreshTrial,
+        onOpenIssue = { issue -> onOpenHistory(issue, null) },
+        onOpenDate = { date -> onOpenHistory(null, date) },
         onOpenSettings = onOpenSettings,
     )
 }
 
 @Composable
 private fun HistoryRoute(
+    issue: String?,
+    date: String?,
     onBack: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(issue, date) {
+        when {
+            issue != null -> viewModel.searchIssue(issue)
+            date != null -> viewModel.searchDateRange(date, date)
+        }
+    }
     HistoryScreen(
         state = state,
         onBack = onBack,
@@ -215,18 +385,17 @@ private fun TrendRoute(
     var defaultsApplied by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(settings.defaultObservationWindow, defaultsApplied) {
         if (!defaultsApplied) {
-            viewModel.setWindow(settings.defaultObservationWindow)
+            val approvedTrendWindow = settings.defaultObservationWindow
+                .takeIf { it == 10 || it == 30 }
+                ?: 30
+            viewModel.setWindow(approvedTrendWindow)
             defaultsApplied = true
         }
     }
     TrendScreen(
         state = state,
         onSetWindow = viewModel::setWindow,
-        onTogglePosition = viewModel::togglePosition,
         onSelectPoint = viewModel::selectPoint,
-        onShowStatistics = viewModel::showStatistics,
-        onScaleChange = viewModel::setScale,
-        onReturnLatest = viewModel::selectLatest,
     )
 }
 
@@ -257,6 +426,10 @@ private fun PickRoute(
         onSetObservationWindow = viewModel::setObservationWindow,
         onSetPlayType = viewModel::setPlayType,
         onSetMode = viewModel::setMode,
+        onSelectManualPosition = viewModel::selectManualPosition,
+        onSelectManualDigit = viewModel::selectManualDigit,
+        onRemoveManualBet = viewModel::removeManualBet,
+        onClearManual = viewModel::clearManual,
         onAddCondition = { viewModel.addCondition(it) },
         onEditCondition = viewModel::editCondition,
         onSetConditionEnabled = viewModel::setConditionEnabled,
@@ -277,9 +450,13 @@ private fun PickRoute(
 @Composable
 private fun SchemeRoute(
     onStartPick: () -> Unit,
+    onDetailVisibilityChanged: (Boolean) -> Unit,
     viewModel: SchemeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.selectedSchemeId) {
+        onDetailVisibilityChanged(state.selectedSchemeId != null)
+    }
     SchemeScreen(
         state = state,
         onShowSection = viewModel::showSection,
@@ -291,6 +468,8 @@ private fun SchemeRoute(
         onUpdateNote = viewModel::updateNote,
         onDismissStatus = viewModel::dismissOperationStatus,
         onStartPick = onStartPick,
+        onSetQuery = viewModel::setQuery,
+        onSetFilter = viewModel::setFilter,
     )
 }
 
