@@ -355,6 +355,26 @@ class DefaultLiveContentRepositoryTest {
     }
 
     @Test
+    fun `caibao selected issue rejects a descriptor that returns another issue`() = runTest {
+        val store = FakeLiveContentStore()
+        val remote = object : CaibaoDataSource {
+            override suspend fun fetchLatestDescriptor() =
+                CaibaoDescriptorResult.Success(descriptor("2026201"))
+
+            override suspend fun fetchDescriptor(issue: String) =
+                CaibaoDescriptorResult.Success(descriptor("2026201"))
+
+            override suspend fun fetchImage(imageUrl: String) =
+                CaibaoImageResult.Success(JPEG_BYTES, "image/jpeg")
+        }
+        val repository = repository(store, caibaoRemote = remote, scope = backgroundScope)
+
+        assertThat(repository.refreshCaibaoIssue("2026200"))
+            .isEqualTo(LiveContentRefreshResult.Failed(LiveContentFailure.INVALID_ISSUE))
+        assertThat(store.caibaoDocuments).isEmpty()
+    }
+
+    @Test
     fun `new caibao commits validated file before Room and stores fixed descriptor fields`() = runTest {
         val events = mutableListOf<String>()
         val store = FakeLiveContentStore(commitEvents = events, fileRoot = root)

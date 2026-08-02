@@ -85,6 +85,8 @@ fun CaibaoRoute(
         image = image,
         onRefresh = viewModel::refresh,
         onSelectIssue = viewModel::selectIssue,
+        onPrevious = viewModel::selectPrevious,
+        onNext = viewModel::selectNext,
         modifier = modifier,
     )
 }
@@ -95,6 +97,8 @@ fun CaibaoScreen(
     image: ImageBitmap?,
     onRefresh: () -> Unit,
     onSelectIssue: (String) -> Unit = {},
+    onPrevious: () -> Unit = {},
+    onNext: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -104,8 +108,11 @@ fun CaibaoScreen(
     ) {
         CaibaoHeader(
             document = state.document,
+            selectedIssue = state.selectedIssue,
             issueOptions = state.issueOptions,
             onSelectIssue = onSelectIssue,
+            onPrevious = onPrevious,
+            onNext = onNext,
             onRefresh = onRefresh,
         )
 
@@ -140,8 +147,11 @@ fun CaibaoScreen(
 @Composable
 private fun CaibaoHeader(
     document: CaibaoDocument?,
+    selectedIssue: String?,
     issueOptions: List<String>,
     onSelectIssue: (String) -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
     onRefresh: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -173,13 +183,19 @@ private fun CaibaoHeader(
                 Text(
                     text = document?.let {
                         stringResource(R.string.caibao_issue_edition, it.issue, it.edition)
-                    } ?: "暂无缓存期号",
+                    } ?: selectedIssue?.let { "${it}期 · 正在加载" } ?: "暂无缓存期号",
                     color = Color.White.copy(alpha = 0.82f),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 if (issueOptions.isNotEmpty()) {
+                    TextButton(onClick = onPrevious, enabled = issueOptions.indexOf(selectedIssue) < issueOptions.lastIndex) {
+                        Text("上一期", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                    }
                     TextButton(onClick = { expanded = true }) {
                         Text("切换期号", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                    }
+                    TextButton(onClick = onNext, enabled = issueOptions.indexOf(selectedIssue) > 0) {
+                        Text("下一期", color = Color.White, style = MaterialTheme.typography.labelSmall)
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         issueOptions.forEach { issue ->
@@ -397,7 +413,7 @@ private fun imageSampleSize(width: Int, height: Int): Int {
 }
 
 private const val MIN_SCALE = 1f
-private const val MAX_SCALE = 4f
+private const val MAX_SCALE = 5f
 private const val MAX_DECODE_DIMENSION = 2_048
 
 private sealed interface CaibaoDecodeState {

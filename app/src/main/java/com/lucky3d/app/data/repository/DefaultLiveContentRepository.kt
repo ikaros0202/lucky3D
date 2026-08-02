@@ -425,6 +425,15 @@ class DefaultLiveContentRepository internal constructor(
         if (descriptorFailure != null) {
             return failCaibao(previous, trigger, now.toEpochMilli(), descriptorFailure, true)
         }
+        if (requestedIssue != null && descriptor.issue != requestedIssue) {
+            return failCaibao(
+                previous,
+                trigger,
+                now.toEpochMilli(),
+                LiveContentFailure.INVALID_ISSUE,
+                true,
+            )
+        }
         if (requestedIssue == null && latest != null && descriptor.issue < latest.issue) {
             return failCaibao(
                 previous,
@@ -442,6 +451,12 @@ class DefaultLiveContentRepository internal constructor(
         )
         if (latest?.issue == descriptor.issue) {
             return try {
+                val cleanupFailure = cleanCaibaoCacheInternal()
+                if (cleanupFailure != null) {
+                    recordCleanupFailure(cleanupFailure)
+                    return LiveContentRefreshResult.Failed(cleanupFailure)
+                }
+                clearCleanupFailureAfterSuccessfulCleanup()
                 store.recordMetadata(successMetadata)
                 caibaoRuntimeState.value = null
                 LiveContentRefreshResult.Success

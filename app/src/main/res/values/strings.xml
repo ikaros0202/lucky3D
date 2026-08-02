@@ -160,7 +160,7 @@
     <string name="trend_chart_viewport_a11y">走势网格，最新10行可见</string>
     <string name="trend_long_scroll_hint">纵向连续浏览期次 · 横向滑动查看三个位置</string>
     <string name="trend_long_table_a11y">纵向长页、横向可滑动的百位十位个位遗漏走势图</string>
-    <string name="trend_locked_column_a11y">固定显示期号和开奖号，共%1$d期，后方预留两期待开奖</string>
+    <string name="trend_locked_column_a11y">固定显示期号，共%1$d期，后方预留两期待开奖</string>
     <string name="trend_period_selector_a11y">显示期数，当前%1$d期</string>
     <string name="trend_calendar">日期</string>
     <string name="trend_return_latest">回到最新</string>

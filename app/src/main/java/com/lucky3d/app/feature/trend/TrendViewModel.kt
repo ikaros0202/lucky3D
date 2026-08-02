@@ -96,7 +96,7 @@ class TrendViewModel @Inject constructor(
     }
 
     fun setScale(value: Float) {
-        scale.value = value.coerceIn(0.5f, 2.5f)
+        scale.value = value.coerceIn(0.1f, 2.5f)
     }
 }
 

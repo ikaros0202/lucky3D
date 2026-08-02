@@ -3,6 +3,7 @@ package com.lucky3d.app.feature.caibao
 import com.google.common.truth.Truth.assertThat
 import com.lucky3d.app.MainDispatcherRule
 import com.lucky3d.app.core.model.CaibaoDocument
+import com.lucky3d.app.core.model.DrawRecord
 import com.lucky3d.app.data.repository.CaibaoImageReadResult
 import com.lucky3d.app.data.repository.LiveContentRepository
 import com.lucky3d.app.domain.livecontent.LiveContentFailure
@@ -22,6 +23,20 @@ import org.junit.Test
 class CaibaoViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
+
+    @Test
+    fun `issue options use valid local draw issues in thirty day window`() {
+        val today = LocalDate.of(2026, 8, 3)
+        val draws = listOf(
+            draw("2026198", "2026-08-03"),
+            draw("2026197", "2026-08-01"),
+            draw("2026196", "2026-07-04"),
+        )
+
+        assertThat(buildCaibaoIssueOptions(draws, emptyList(), today))
+            .containsExactly("2026198", "2026197")
+            .inOrder()
+    }
 
     @Test
     fun `first visible event triggers exactly one automatic caibao refresh`() = runTest {
@@ -204,6 +219,14 @@ class CaibaoViewModelTest {
         height = 1280,
         cachedLocalDate = LocalDate.parse("2026-07-31"),
         fetchedAtEpochMillis = 1L,
+    )
+
+    private fun draw(issue: String, date: String) = DrawRecord(
+        issue = issue,
+        drawDate = date,
+        number = com.lucky3d.app.domain.attributes.DrawNumber.parse("123"),
+        officialDetailUrl = "https://example.com/$issue",
+        officialFingerprint = issue,
     )
 
     private companion object {
