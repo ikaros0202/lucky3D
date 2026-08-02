@@ -14,6 +14,9 @@ interface LiveContentDao {
     @Query("SELECT * FROM trial_numbers ORDER BY sourceLocalDate DESC, fetchedAtEpochMillis DESC")
     fun observeAllTrials(): Flow<List<TrialNumberEntity>>
 
+    @Query("SELECT * FROM trial_numbers ORDER BY sourceLocalDate DESC, fetchedAtEpochMillis DESC")
+    suspend fun allTrials(): List<TrialNumberEntity>
+
     @Query("SELECT * FROM caibao_documents ORDER BY cachedLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
     fun observeLatestCaibao(): Flow<CaibaoDocumentEntity?>
 

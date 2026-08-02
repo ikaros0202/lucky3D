@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.lucky3d.app.core.model.DrawRecord
 import com.lucky3d.app.domain.attributes.DrawNumber
 import com.lucky3d.app.domain.omission.HeatLevel
@@ -32,7 +33,7 @@ class TrendScreenTest {
         }
 
         composeRule.onNodeWithText("Lucky3D").assertIsDisplayed()
-        composeRule.onAllNodesWithText("走势").assertCountEquals(2)
+        composeRule.onAllNodesWithText("走势").assertCountEquals(1)
         composeRule.onNodeWithText("本地数据").assertIsDisplayed()
         composeRule
             .onNodeWithContentDescription("显示期数，当前30期")
@@ -51,6 +52,9 @@ class TrendScreenTest {
         composeRule
             .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图")
             .assertIsDisplayed()
+        composeRule.onNodeWithText("全览").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("100%").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("最大遗漏").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithContentDescription("2026199期待开奖").assertExists()
         composeRule.onNodeWithText("出现次数").assertExists()
         composeRule.onNodeWithText("当前遗漏").assertExists()
@@ -58,7 +62,8 @@ class TrendScreenTest {
         composeRule.onNodeWithText("最大遗漏").assertExists()
         composeRule
             .onNodeWithContentDescription("当前点位：2026198期，百位数字6，遗漏0")
-            .assertIsDisplayed()
+            .performScrollTo()
+            .assertExists()
         composeRule.onNodeWithText("回到最新").assertDoesNotExist()
         composeRule.onNodeWithText("数据来源").assertDoesNotExist()
         composeRule.onNodeWithText("内部窗口策略").assertDoesNotExist()
@@ -76,9 +81,11 @@ class TrendScreenTest {
             }
         }
 
+        composeRule.onNodeWithText("最大遗漏").performScrollTo().assertIsDisplayed()
         composeRule
             .onNodeWithContentDescription("当前点位：2026198期，百位数字8，遗漏9")
-            .assertIsDisplayed()
+            .performScrollTo()
+            .assertExists()
     }
 
     @Test

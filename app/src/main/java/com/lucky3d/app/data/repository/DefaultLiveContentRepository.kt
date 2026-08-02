@@ -60,6 +60,7 @@ internal interface LiveContentStore {
     suspend fun metadata(contentType: LiveContentType): LiveContentRefreshMetadata?
     suspend fun latestCaibao(): CaibaoDocument?
     suspend fun allCaibao(): List<CaibaoDocument>
+    suspend fun allTrials(): List<TrialNumber> = emptyList()
     suspend fun latestOfficialIssue(): String?
     suspend fun commitTrial(trial: TrialNumber, metadata: LiveContentRefreshMetadata)
     suspend fun commitTrials(trials: List<TrialNumber>, metadata: LiveContentRefreshMetadata) {
@@ -126,8 +127,14 @@ class DefaultLiveContentRepository internal constructor(
     override suspend fun refreshTrial(trigger: LiveRefreshTrigger): LiveContentRefreshResult =
         sharedRefresh(trialInFlight) { performTrialRefresh(trigger) }
 
-    override suspend fun refreshTrialHistory(trigger: LiveRefreshTrigger): LiveContentRefreshResult =
-        sharedRefresh(trialInFlight) { performTrialHistoryRefresh(trigger) }
+    override suspend fun refreshTrialHistory(
+        trigger: LiveRefreshTrigger,
+        requiredWindow: Int,
+        requiredIssues: Set<String>,
+    ): LiveContentRefreshResult =
+        sharedRefresh(trialInFlight) {
+            performTrialHistoryRefresh(trigger, requiredWindow, requiredIssues)
+        }
 
     override suspend fun refreshCaibao(trigger: LiveRefreshTrigger): LiveContentRefreshResult =
         sharedRefresh(caibaoInFlight) {
@@ -311,7 +318,10 @@ class DefaultLiveContentRepository internal constructor(
 
     private suspend fun performTrialHistoryRefresh(
         trigger: LiveRefreshTrigger,
+        requiredWindow: Int,
+        requiredIssues: Set<String>,
     ): LiveContentRefreshResult {
+        require(requiredWindow in 1..100) { "Trial history window must be between 1 and 100" }
         val now = clock.instant()
         val previous = try {
             store.metadata(LiveContentType.TRIAL_NUMBER)
@@ -321,7 +331,27 @@ class DefaultLiveContentRepository internal constructor(
             return LiveContentRefreshResult.Failed(LiveContentFailure.DATABASE)
         }
         trialRuntimeState.value = LiveContentRefreshState.Refreshing
-        val records = mutableListOf<TrialRemoteRecord>()
+        val cachedTrials = try {
+            store.allTrials()
+        } catch (exception: Exception) {
+            exception.rethrowCancellation()
+            return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.DATABASE, false)
+        }
+        val cachedIssues = cachedTrials.asSequence().map(TrialNumber::issue).toSet()
+        val cacheComplete = if (requiredIssues.isEmpty()) {
+            cachedTrials.size >= requiredWindow
+        } else {
+            cachedIssues.containsAll(requiredIssues)
+        }
+        if (cacheComplete) {
+            trialRuntimeState.value = null
+            return LiveContentRefreshResult.Success
+        }
+        val unique = linkedMapOf<String, TrialRemoteRecord>()
+        val fetchedIssues = mutableSetOf<String>()
+        cachedTrials.forEach { cached ->
+            unique[cached.issue] = TrialRemoteRecord(cached.issue, cached.number)
+        }
         for (page in 1..5) {
             val result = try {
                 trialDataSource.fetchHistoryPage(page)
@@ -334,17 +364,28 @@ class DefaultLiveContentRepository internal constructor(
                 is TrialRemoteHistoryResult.Failure -> return failTrial(
                     previous, trigger, now.toEpochMilli(), mapHtmlFailure(result.failure), true,
                 )
-                is TrialRemoteHistoryResult.Success -> records += result.records
+                is TrialRemoteHistoryResult.Success -> {
+                    result.records.forEach { record ->
+                        if (!ISSUE_PATTERN.matches(record.issue) || !NUMBER_PATTERN.matches(record.number)) {
+                            return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.INVALID_HTML, true)
+                        }
+                        if (!fetchedIssues.add(record.issue)) {
+                            return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.INVALID_HTML, true)
+                        }
+                        val prior = unique[record.issue]
+                        if (prior != null && prior != record) {
+                            return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.INVALID_HTML, true)
+                        }
+                        unique[record.issue] = record
+                    }
+                }
             }
-        }
-        val unique = linkedMapOf<String, TrialRemoteRecord>()
-        records.forEach { record ->
-            if (!ISSUE_PATTERN.matches(record.issue) || !NUMBER_PATTERN.matches(record.number)) {
-                return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.INVALID_HTML, true)
+            val complete = if (requiredIssues.isEmpty()) {
+                unique.size >= requiredWindow
+            } else {
+                unique.keys.containsAll(requiredIssues)
             }
-            if (unique.put(record.issue, record) != null) {
-                return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.INVALID_HTML, true)
-            }
+            if (complete) break
         }
         if (unique.isEmpty()) {
             return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.INVALID_HTML, true)
@@ -849,6 +890,9 @@ private class RoomLiveContentStore(
 
     override suspend fun latestCaibao(): CaibaoDocument? =
         liveContentDao.latestCaibao()?.toDomain()
+
+    override suspend fun allTrials(): List<TrialNumber> =
+        liveContentDao.allTrials().map(TrialNumberEntity::toDomain)
 
     override suspend fun allCaibao(): List<CaibaoDocument> =
         liveContentDao.allCaibao().map(CaibaoDocumentEntity::toDomain)

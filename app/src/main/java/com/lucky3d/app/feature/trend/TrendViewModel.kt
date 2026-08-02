@@ -21,13 +21,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class TrendViewModel @Inject constructor(
-    repository: DrawRepository,
-    liveContentRepository: LiveContentRepository,
+    private val repository: DrawRepository,
+    private val liveContentRepository: LiveContentRepository,
 ) : ViewModel() {
     constructor(repository: DrawRepository) : this(repository, EmptyLiveContentRepository)
     private val window = MutableStateFlow(30)
@@ -62,7 +63,16 @@ class TrendViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            liveContentRepository.refreshTrialHistory(LiveRefreshTrigger.AUTO_FOREGROUND)
+            val requiredIssues = repository.allDrawsAscending
+                .first()
+                .takeLast(window.value)
+                .map { it.issue }
+                .toSet()
+            liveContentRepository.refreshTrialHistory(
+                LiveRefreshTrigger.AUTO_FOREGROUND,
+                requiredWindow = window.value,
+                requiredIssues = requiredIssues,
+            )
         }
     }
 
@@ -70,6 +80,18 @@ class TrendViewModel @Inject constructor(
         require(value in 1..3334) { "Trend window must be between 1 and 3334" }
         window.value = value
         selectedPoint.value = null
+        viewModelScope.launch {
+            val requiredIssues = repository.allDrawsAscending
+                .first()
+                .takeLast(value)
+                .map { it.issue }
+                .toSet()
+            liveContentRepository.refreshTrialHistory(
+                LiveRefreshTrigger.AUTO_FOREGROUND,
+                requiredWindow = value,
+                requiredIssues = requiredIssues,
+            )
+        }
     }
 
     fun togglePosition(position: TrendPosition) {

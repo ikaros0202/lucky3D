@@ -17,6 +17,7 @@ import com.lucky3d.app.data.remote.CaibaoRemoteDescriptor
 import com.lucky3d.app.data.remote.LiveContentRemoteFailure
 import com.lucky3d.app.data.remote.TrialDataSource
 import com.lucky3d.app.data.remote.TrialRemoteRecord
+import com.lucky3d.app.data.remote.TrialRemoteHistoryResult
 import com.lucky3d.app.data.remote.TrialRemoteResult
 import com.lucky3d.app.domain.livecontent.LiveContentFailure
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshMetadata
@@ -76,6 +77,37 @@ class DefaultLiveContentRepositoryTest {
         assertThat(repository.caibaoDocument.first()).isEqualTo(caibao)
         assertThat(repository.trialRefreshState.first())
             .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.NETWORK))
+    }
+
+    @Test
+    fun `trial history does not fetch pages when cached window already covers request`() = runTest {
+        val store = FakeLiveContentStore().apply { trial.value = trial("2026201", "007") }
+        val remote = FakeTrialDataSource(
+            TrialRemoteResult.Success(TrialRemoteRecord("2026202", "123")),
+        )
+        val repository = repository(store, trialRemote = remote, scope = backgroundScope)
+
+        assertThat(repository.refreshTrialHistory(LiveRefreshTrigger.MANUAL, requiredWindow = 1))
+            .isEqualTo(LiveContentRefreshResult.Success)
+        assertThat(remote.calls).isEqualTo(0)
+        assertThat(store.trial.value?.issue).isEqualTo("2026201")
+    }
+
+    @Test
+    fun `trial history stops after pages cover requested window`() = runTest {
+        val remote = FakeTrialHistoryDataSource(
+            mapOf(
+                1 to listOf(TrialRemoteRecord("2026202", "123")),
+                2 to listOf(TrialRemoteRecord("2026201", "007")),
+                3 to listOf(TrialRemoteRecord("2026200", "456")),
+            ),
+        )
+        val store = FakeLiveContentStore()
+        val repository = repository(store, trialRemote = remote, scope = backgroundScope)
+
+        assertThat(repository.refreshTrialHistory(LiveRefreshTrigger.MANUAL, requiredWindow = 2))
+            .isEqualTo(LiveContentRefreshResult.Success)
+        assertThat(remote.pagesRequested).containsExactly(1, 2).inOrder()
     }
 
     @Test
@@ -503,7 +535,7 @@ class DefaultLiveContentRepositoryTest {
     }
 
     @Test
-    fun `cleanup keeps three Beijing dates and removes day four temporary and orphan files`() = runTest {
+    fun `cleanup keeps thirty Beijing dates and removes older temporary and orphan files`() = runTest {
         val store = FakeLiveContentStore()
         listOf(
             caibao("2026201", "2026201-A11-000000000001.jpg", LocalDate.of(2026, 7, 31)),
@@ -789,6 +821,8 @@ class DefaultLiveContentRepositoryTest {
 
         override suspend fun latestCaibao(): CaibaoDocument? = caibao.value
 
+        override suspend fun allTrials(): List<TrialNumber> = trial.value?.let(::listOf).orEmpty()
+
         override suspend fun allCaibao(): List<CaibaoDocument> =
             caibaoDocuments.values.toList()
 
@@ -847,6 +881,40 @@ class DefaultLiveContentRepositoryTest {
             calls += 1
             return result
         }
+    }
+
+    private class FakeTrialHistoryDataSource(
+        private val pages: Map<Int, List<TrialRemoteRecord>>,
+    ) : TrialDataSource {
+        val pagesRequested = mutableListOf<Int>()
+
+        override suspend fun fetchLatest(): TrialRemoteResult =
+            TrialRemoteResult.Success(pages.getValue(1).first())
+
+        override suspend fun fetchHistoryPage(page: Int): TrialRemoteHistoryResult {
+            pagesRequested += page
+            return TrialRemoteHistoryResult.Success(page, pages.getValue(page))
+        }
+    }
+
+    @Test
+    fun `cleanup keeps the thirtieth Beijing date and removes the preceding date`() = runTest {
+        val boundary = caibao("2026197", "boundary.jpg", LocalDate.of(2026, 7, 2))
+        val expired = caibao("2026196", "expired.jpg", LocalDate.of(2026, 7, 1))
+        val store = FakeLiveContentStore().apply {
+            caibaoDocuments[boundary.issue] = boundary
+            caibaoDocuments[expired.issue] = expired
+            updateCaibaoFlow()
+        }
+        File(root, boundary.localFileName).writeText("boundary")
+        File(root, expired.localFileName).writeText("expired")
+        val repository = repository(store, scope = backgroundScope)
+
+        repository.cleanCaibaoCache()
+
+        assertThat(store.caibaoDocuments.keys).containsExactly(boundary.issue)
+        assertThat(File(root, boundary.localFileName).exists()).isTrue()
+        assertThat(File(root, expired.localFileName).exists()).isFalse()
     }
 
     private class BlockingTrialDataSource(

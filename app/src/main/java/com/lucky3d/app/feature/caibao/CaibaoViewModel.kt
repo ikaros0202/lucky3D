@@ -68,7 +68,10 @@ class CaibaoViewModel @Inject constructor(
     fun onVisible() {
         if (visibleRefreshScheduled) return
         visibleRefreshScheduled = true
-        viewModelScope.launch { repository.refreshCaibao(LiveRefreshTrigger.CAIBAO_VISIBLE) }
+        viewModelScope.launch {
+            repository.cleanCaibaoCache()
+            repository.refreshCaibao(LiveRefreshTrigger.CAIBAO_VISIBLE)
+        }
     }
 
     fun refresh() {

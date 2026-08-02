@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,10 +29,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,19 +59,31 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lucky3d.app.R
+import com.lucky3d.app.core.model.TrialNumber
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlinx.coroutines.launch
 
 private val TrendCellWidth = 34.dp
 private val TrendPrefixWidth = 48.dp
 private val TrendRowHeight = 32.dp
 private val TrendGroupHeight = 44.dp
+private val TrendScaleToolbarHeight = 48.dp
 private const val TrendDigitCount = 30
 private val TrendAttributeWidth = 62.dp
 private val TrendAttributeLabels = listOf("和值", "和尾", "跨度", "奇偶比", "大小比", "012路个数比")
 private const val FutureRowCount = 2
 private const val SummaryRowCount = 4
+
+internal fun calculateTrendFitScale(
+    availableWidthPx: Float,
+    logicalTableWidthPx: Float,
+): Float {
+    require(availableWidthPx > 0f) { "Available trend width must be positive" }
+    require(logicalTableWidthPx > 0f) { "Logical trend width must be positive" }
+    return minOf(1f, availableWidthPx / logicalTableWidthPx)
+}
 
 @Composable
 fun TrendChart(
@@ -81,9 +97,10 @@ fun TrendChart(
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val horizontalScrollState = rememberScrollState()
+    val transformScope = rememberCoroutineScope()
     val bodyRowCount = state.tableRows.size + FutureRowCount + SummaryRowCount
     val bodyHeight = TrendRowHeight * bodyRowCount
-    val tableHeight = TrendGroupHeight + TrendRowHeight + bodyHeight
+    val tableHeight = TrendGroupHeight + TrendRowHeight + bodyHeight + TrendScaleToolbarHeight
     val positionLabels = listOf(
         stringResource(R.string.trend_position_hundreds),
         stringResource(R.string.trend_position_tens),
@@ -103,16 +120,17 @@ fun TrendChart(
         modifier = modifier
             .fillMaxWidth()
             .height(tableHeight)
-            .semantics {
-                contentDescription = buildTrendAccessibilitySummary(accessibilitySummary, state)
-            },
+            .semantics { contentDescription = accessibilitySummary },
     ) {
         val lockedWidth = if (maxWidth < 390.dp) 72.dp else 80.dp
         val availableWidth = (maxWidth - lockedWidth).coerceAtLeast(1.dp)
         val logicalWidth = TrendPrefixWidth * 2 +
             TrendCellWidth * TrendDigitCount +
             TrendAttributeWidth * TrendAttributeLabels.size
-        val fitScale = minOf(1f, availableWidth / logicalWidth)
+        val fitScale = calculateTrendFitScale(
+            availableWidthPx = with(density) { availableWidth.toPx() },
+            logicalTableWidthPx = with(density) { logicalWidth.toPx() },
+        )
         val appliedScale = state.scale.coerceIn(fitScale, 2.5f)
         val cellWidth = TrendCellWidth * appliedScale
         val prefixWidth = TrendPrefixWidth * appliedScale
@@ -120,14 +138,18 @@ fun TrendChart(
         val totalContentWidth = prefixWidth * 2 +
             cellWidth * TrendDigitCount +
             attributeWidth * TrendAttributeLabels.size
+        val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+            onSetScale(state.scale * zoomChange)
+            if (panChange.x != 0f) {
+                horizontalScrollState.dispatchRawDelta(-panChange.x)
+            }
+        }
         Row(modifier = Modifier.fillMaxSize()) {
             LockedTrendColumn(
                 state = state,
                 futureIssues = futureIssues,
                 summaryLabels = summaryLabels,
                 onSetWindow = onSetWindow,
-                onSetScale = onSetScale,
-                fitScale = fitScale,
                 lockedWidth = lockedWidth,
                 modifier = Modifier
                     .width(lockedWidth)
@@ -137,7 +159,8 @@ fun TrendChart(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .horizontalScroll(horizontalScrollState),
+                    .horizontalScroll(horizontalScrollState)
+                    .transformable(transformState),
             ) {
                 TrendGroupHeader(
                     labels = positionLabels,
@@ -158,6 +181,12 @@ fun TrendChart(
                     modifier = Modifier
                         .width(totalContentWidth)
                         .height(bodyHeight)
+                        .semantics {
+                            contentDescription = buildTrendAccessibilitySummary(
+                                accessibilitySummary,
+                                state,
+                            )
+                        }
                         .pointerInput(state.tableRows) {
                             detectTapGestures { tap ->
                                 val rowHeightPx = with(density) { TrendRowHeight.toPx() }
@@ -211,8 +240,22 @@ fun TrendChart(
                         surfaceVariant = colors.surfaceVariant,
                     )
                 }
+                Box(modifier = Modifier.height(TrendScaleToolbarHeight))
             }
         }
+        TrendScaleToolbar(
+            state = state,
+            onSetScale = onSetScale,
+            onShowAll = {
+                onSetScale(fitScale)
+                transformScope.launch { horizontalScrollState.scrollTo(0) }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(start = lockedWidth)
+                .height(TrendScaleToolbarHeight),
+        )
         Box(
             modifier = Modifier
                 .offset(x = lockedWidth)
@@ -237,8 +280,6 @@ private fun LockedTrendColumn(
     futureIssues: List<String>,
     summaryLabels: List<String>,
     onSetWindow: (Int) -> Unit,
-    onSetScale: (Float) -> Unit,
-    fitScale: Float,
     lockedWidth: Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -278,49 +319,6 @@ private fun LockedTrendColumn(
                 .fillMaxWidth()
                 .height(48.dp),
         )
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(48.dp)
-                .background(colors.surfaceVariant.copy(alpha = 0.92f)),
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "全览",
-                modifier = Modifier
-                    .clickable { onSetScale(fitScale) }
-                    .semantics { contentDescription = "走势图全览" }
-                    .padding(horizontal = 8.dp, vertical = 12.dp),
-                fontSize = 10.sp,
-            )
-            Text(
-                text = "100%",
-                modifier = Modifier
-                    .clickable { onSetScale(1f) }
-                    .semantics { contentDescription = "走势图百分之百" }
-                    .padding(horizontal = 8.dp, vertical = 12.dp),
-                fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace,
-            )
-            Text(
-                text = "缩小",
-                modifier = Modifier
-                    .clickable { onSetScale(state.scale - 0.25f) }
-                    .semantics { contentDescription = "走势图缩小" }
-                    .padding(horizontal = 8.dp, vertical = 12.dp),
-                fontSize = 10.sp,
-            )
-            Text(
-                text = "放大",
-                modifier = Modifier
-                    .clickable { onSetScale(state.scale + 0.25f) }
-                    .semantics { contentDescription = "走势图放大" }
-                    .padding(horizontal = 8.dp, vertical = 12.dp),
-                fontSize = 10.sp,
-            )
-        }
         Row(
             modifier = Modifier
                 .offset(y = TrendGroupHeight)
@@ -378,6 +376,47 @@ private fun LockedTrendColumn(
                     contentDescription = lockedColumnDescription
                 },
         )
+    }
+}
+
+@Composable
+private fun TrendScaleToolbar(
+    state: TrendUiState,
+    onSetScale: (Float) -> Unit,
+    onShowAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(
+            onClick = onShowAll,
+            modifier = Modifier.weight(1f).height(TrendScaleToolbarHeight),
+        ) {
+            Text("全览", modifier = Modifier.semantics { contentDescription = "走势图全览" })
+        }
+        TextButton(
+            onClick = { onSetScale(1f) },
+            modifier = Modifier.weight(1f).height(TrendScaleToolbarHeight),
+        ) {
+            Text("100%", modifier = Modifier.semantics { contentDescription = "走势图百分之百" }, fontFamily = FontFamily.Monospace)
+        }
+        TextButton(
+            onClick = { onSetScale(state.scale - 0.25f) },
+            modifier = Modifier.weight(1f).height(TrendScaleToolbarHeight),
+        ) {
+            Text("缩小", modifier = Modifier.semantics { contentDescription = "走势图缩小" })
+        }
+        TextButton(
+            onClick = { onSetScale(state.scale + 0.25f) },
+            modifier = Modifier.weight(1f).height(TrendScaleToolbarHeight),
+        ) {
+            Text("放大", modifier = Modifier.semantics { contentDescription = "走势图放大" })
+        }
     }
 }
 
@@ -783,6 +822,15 @@ private fun DrawScope.drawTrendBody(
                     statPaint,
                 )
             }
+    }
+    val futureTrials = state.trialNumbers.associateBy(TrialNumber::issue)
+    nextIssues(rows.lastOrNull()?.issue).forEachIndexed { index, issue ->
+        drawCenteredText(
+            futureTrials[issue]?.number ?: "—",
+            prefixWidth / 2f,
+            (rows.size + index + 0.5f) * rowHeight,
+            statPaint,
+        )
     }
     drawTrendLinesAndHits(rows, state.selectedPoint, digitStart, cellWidth, rowHeight, primary)
     val statisticsByPosition = state.statistics.associateBy(TrendPositionStatistics::position)

@@ -25,7 +25,11 @@ interface LiveContentRepository {
     val caibaoRefreshState: Flow<LiveContentRefreshState>
 
     suspend fun refreshTrial(trigger: LiveRefreshTrigger): LiveContentRefreshResult
-    suspend fun refreshTrialHistory(trigger: LiveRefreshTrigger): LiveContentRefreshResult =
+    suspend fun refreshTrialHistory(
+        trigger: LiveRefreshTrigger,
+        requiredWindow: Int = 100,
+        requiredIssues: Set<String> = emptySet(),
+    ): LiveContentRefreshResult =
         refreshTrial(trigger)
     suspend fun refreshCaibao(trigger: LiveRefreshTrigger): LiveContentRefreshResult
     suspend fun refreshCaibaoIssue(issue: String): LiveContentRefreshResult =

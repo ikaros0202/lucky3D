@@ -23,6 +23,12 @@ class TrendViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
+    fun `fit scale is bounded by one and uses complete logical width`() {
+        assertThat(calculateTrendFitScale(360f, 1_488f)).isWithin(0.0001f).of(360f / 1_488f)
+        assertThat(calculateTrendFitScale(2_000f, 1_488f)).isEqualTo(1f)
+    }
+
+    @Test
     fun `default thirty-period matrix maps issue position and digit exactly`() = runTest {
         val records = records(120)
         val viewModel = TrendViewModel(FakeTrendRepository(records))
