@@ -26,6 +26,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,6 +84,7 @@ fun CaibaoRoute(
         state = state,
         image = image,
         onRefresh = viewModel::refresh,
+        onSelectIssue = viewModel::selectIssue,
         modifier = modifier,
     )
 }
@@ -91,6 +94,7 @@ fun CaibaoScreen(
     state: CaibaoUiState,
     image: ImageBitmap?,
     onRefresh: () -> Unit,
+    onSelectIssue: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -100,6 +104,8 @@ fun CaibaoScreen(
     ) {
         CaibaoHeader(
             document = state.document,
+            issueOptions = state.issueOptions,
+            onSelectIssue = onSelectIssue,
             onRefresh = onRefresh,
         )
 
@@ -134,8 +140,11 @@ fun CaibaoScreen(
 @Composable
 private fun CaibaoHeader(
     document: CaibaoDocument?,
+    issueOptions: List<String>,
+    onSelectIssue: (String) -> Unit,
     onRefresh: () -> Unit,
 ) {
+    var expanded by remember { mutableStateOf(false) }
     val deep = Lucky3dDesign.colors.primaryDeep
     Row(
         modifier = Modifier
@@ -160,16 +169,30 @@ private fun CaibaoHeader(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
-            document?.let {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = stringResource(
-                        R.string.caibao_issue_edition,
-                        it.issue,
-                        it.edition,
-                    ),
+                    text = document?.let {
+                        stringResource(R.string.caibao_issue_edition, it.issue, it.edition)
+                    } ?: "暂无缓存期号",
                     color = Color.White.copy(alpha = 0.82f),
                     style = MaterialTheme.typography.bodySmall,
                 )
+                if (issueOptions.isNotEmpty()) {
+                    TextButton(onClick = { expanded = true }) {
+                        Text("切换期号", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        issueOptions.forEach { issue ->
+                            DropdownMenuItem(
+                                text = { Text("${issue}期") },
+                                onClick = {
+                                    expanded = false
+                                    onSelectIssue(issue)
+                                },
+                            )
+                        }
+                    }
+                }
             }
         }
         IconButton(onClick = onRefresh) {

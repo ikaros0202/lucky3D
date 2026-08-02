@@ -23,28 +23,39 @@ class CjcpTrialDataSource(
         .followSslRedirects(false)
         .build()
 
-    override suspend fun fetchLatest(): TrialRemoteResult = withContext(ioDispatcher) {
-        val request = Request.Builder().url(endpoint).header("Accept", "text/html").build()
+    override suspend fun fetchLatest(): TrialRemoteResult = when (val result = fetchHistoryPage(1)) {
+        is TrialRemoteHistoryResult.Success -> result.records.firstOrNull()
+            ?.let(TrialRemoteResult::Success)
+            ?: TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidPayload)
+        is TrialRemoteHistoryResult.Failure -> TrialRemoteResult.Failure(result.failure)
+    }
+
+    override suspend fun fetchHistoryPage(page: Int): TrialRemoteHistoryResult = withContext(ioDispatcher) {
+        require(page in 1..5) { "Trial history page must be between 1 and 5" }
+        val requestUrl = endpoint.newBuilder().apply {
+            if (page > 1) addQueryParameter("page", page.toString())
+        }.build()
+        val request = Request.Builder().url(requestUrl).header("Accept", "text/html").build()
         try {
             noRedirectClient.newCall(request).execute().use { response ->
-                if (response.code in 300..399) return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidSource)
-                if (!response.isSuccessful) return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.Http)
-                if (!response.hasUtf8HtmlCharset()) return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidPayload)
-                if (!samePage(response.request.url, endpoint)) {
-                    return@withContext TrialRemoteResult.Failure(LiveContentRemoteFailure.InvalidSource)
+                if (response.code in 300..399) return@withContext TrialRemoteHistoryResult.Failure(page, LiveContentRemoteFailure.InvalidSource)
+                if (!response.isSuccessful) return@withContext TrialRemoteHistoryResult.Failure(page, LiveContentRemoteFailure.Http)
+                if (!response.hasUtf8HtmlCharset()) return@withContext TrialRemoteHistoryResult.Failure(page, LiveContentRemoteFailure.InvalidPayload)
+                if (!samePage(response.request.url, request.url)) {
+                    return@withContext TrialRemoteHistoryResult.Failure(page, LiveContentRemoteFailure.InvalidSource)
                 }
                 when (val body = response.body.readUtf8Bounded(MAX_HTML_BYTES)) {
-                    is BoundedRead.TooLarge -> TrialRemoteResult.Failure(LiveContentRemoteFailure.TooLarge)
-                    is BoundedRead.Value -> when (val parsed = parser.parse(body.value)) {
-                        is RemoteParseResult.Success -> TrialRemoteResult.Success(parsed.value)
-                        is RemoteParseResult.Failure -> TrialRemoteResult.Failure(parsed.failure)
+                    is BoundedRead.TooLarge -> TrialRemoteHistoryResult.Failure(page, LiveContentRemoteFailure.TooLarge)
+                    is BoundedRead.Value -> when (val parsed = parser.parseAll(body.value)) {
+                        is RemoteParseResult.Success -> TrialRemoteHistoryResult.Success(page, parsed.value)
+                        is RemoteParseResult.Failure -> TrialRemoteHistoryResult.Failure(page, parsed.failure)
                     }
                 }
             }
         } catch (exception: CancellationException) {
             throw exception
         } catch (_: Exception) {
-            TrialRemoteResult.Failure(LiveContentRemoteFailure.Network)
+            TrialRemoteHistoryResult.Failure(page, LiveContentRemoteFailure.Network)
         }
     }
 

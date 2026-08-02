@@ -4,6 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lucky3d.app.core.model.DrawRecord
 import com.lucky3d.app.data.repository.DrawRepository
+import com.lucky3d.app.data.repository.LiveContentRepository
+import com.lucky3d.app.data.repository.CaibaoImageReadResult
+import com.lucky3d.app.core.model.CaibaoDocument
+import com.lucky3d.app.core.model.TrialNumber
+import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
+import com.lucky3d.app.domain.livecontent.LiveContentRefreshState
+import com.lucky3d.app.domain.livecontent.LiveRefreshTrigger
+import kotlinx.coroutines.flow.flowOf
 import com.lucky3d.app.domain.omission.DigitPosition
 import com.lucky3d.app.domain.omission.OmissionCalculator
 import com.lucky3d.app.domain.omission.TrendStatistics
@@ -14,11 +22,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class TrendViewModel @Inject constructor(
     repository: DrawRepository,
+    liveContentRepository: LiveContentRepository,
 ) : ViewModel() {
+    constructor(repository: DrawRepository) : this(repository, EmptyLiveContentRepository)
     private val window = MutableStateFlow(30)
     private val visiblePositions = MutableStateFlow(TrendPosition.entries.toSet())
     private val selectedPoint = MutableStateFlow<TrendPoint?>(null)
@@ -26,12 +37,14 @@ class TrendViewModel @Inject constructor(
     private val scale = MutableStateFlow(1f)
 
     val uiState: StateFlow<TrendUiState> = combine(
-        repository.allDrawsAscending,
+        combine(repository.allDrawsAscending, liveContentRepository.trialNumbers, ::Pair),
         window,
         visiblePositions,
         selectedPoint,
         combine(statisticsPosition, scale, ::Pair),
-    ) { draws, activeWindow, positions, selection, display ->
+    ) { drawAndTrials, activeWindow, positions, selection, display ->
+        val draws = drawAndTrials.first
+        val trials = drawAndTrials.second
         buildTrendState(
             allDraws = draws,
             window = activeWindow,
@@ -39,12 +52,19 @@ class TrendViewModel @Inject constructor(
             selectedPoint = selection,
             statisticsPosition = display.first,
             scale = display.second,
+            trialNumbers = trials,
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = TrendUiState(),
     )
+
+    init {
+        viewModelScope.launch {
+            liveContentRepository.refreshTrialHistory(LiveRefreshTrigger.AUTO_FOREGROUND)
+        }
+    }
 
     fun setWindow(value: Int) {
         require(value in 1..3334) { "Trend window must be between 1 and 3334" }
@@ -76,7 +96,7 @@ class TrendViewModel @Inject constructor(
     }
 
     fun setScale(value: Float) {
-        scale.value = value.coerceIn(1f, 2.5f)
+        scale.value = value.coerceIn(0.5f, 2.5f)
     }
 }
 
@@ -87,6 +107,7 @@ internal fun buildTrendState(
     selectedPoint: TrendPoint? = null,
     statisticsPosition: TrendPosition = TrendPosition.HUNDREDS,
     scale: Float = 1f,
+    trialNumbers: List<TrialNumber> = emptyList(),
 ): TrendUiState {
     val visible = allDraws.takeLast(window)
     val positionOrder = TrendPosition.entries.filter(visiblePositions::contains)
@@ -113,6 +134,8 @@ internal fun buildTrendState(
         }
     }
     val tableRows = visible.mapIndexed { rowIndex, draw ->
+        val attributes = com.lucky3d.app.domain.attributes.DrawAttributes.calculate(draw.number)
+        val trial = trialNumbers.firstOrNull { it.issue == draw.issue }
         TrendTableRow(
             issue = draw.issue,
             drawNumber = draw.number.value,
@@ -121,6 +144,13 @@ internal fun buildTrendState(
                     omissionsByPosition.getValue(position).getValue(digit)[rowIndex]
                 }
             },
+            trialNumber = trial?.number,
+            sum = attributes.sum.toString(),
+            sumTail = attributes.sumTail.toString(),
+            span = attributes.span.toString(),
+            oddEvenRatio = "${attributes.oddCount}:${attributes.evenCount}",
+            bigSmallRatio = "${attributes.bigCount}:${attributes.smallCount}",
+            routeRatio = attributes.routeCountPattern,
         )
     }
     val numbers = allDraws.map(DrawRecord::number)
@@ -155,7 +185,22 @@ internal fun buildTrendState(
         selectedPoint = selectedPoint,
         statisticsPosition = statisticsPosition,
         scale = scale,
+        trialNumbers = trialNumbers,
     )
+}
+
+private object EmptyLiveContentRepository : LiveContentRepository {
+    override val trialNumber = flowOf<TrialNumber?>(null)
+    override val trialRefreshState = flowOf<LiveContentRefreshState>(LiveContentRefreshState.Idle)
+    override val caibaoDocument = flowOf<CaibaoDocument?>(null)
+    override val caibaoRefreshState = flowOf<LiveContentRefreshState>(LiveContentRefreshState.Idle)
+    override suspend fun refreshTrial(trigger: LiveRefreshTrigger) =
+        LiveContentRefreshResult.Skipped(com.lucky3d.app.domain.livecontent.SkipReason.TRIGGER_NOT_APPLICABLE)
+    override suspend fun refreshCaibao(trigger: LiveRefreshTrigger) =
+        LiveContentRefreshResult.Skipped(com.lucky3d.app.domain.livecontent.SkipReason.TRIGGER_NOT_APPLICABLE)
+    override suspend fun readCaibaoImage(document: CaibaoDocument) = CaibaoImageReadResult.Unavailable(com.lucky3d.app.domain.livecontent.LiveContentFailure.FILE_IO)
+    override suspend fun invalidateCaibaoImage(document: CaibaoDocument) = Unit
+    override suspend fun cleanCaibaoCache() = Unit
 }
 
 private fun DrawRecord.digitAt(position: TrendPosition): Int = when (position) {

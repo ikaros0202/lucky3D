@@ -5,6 +5,9 @@ import com.lucky3d.app.domain.livecontent.LiveContentRefreshState
 
 data class CaibaoUiState(
     val document: CaibaoDocument? = null,
+    val documents: List<CaibaoDocument> = emptyList(),
+    val issueOptions: List<String> = emptyList(),
+    val selectedIssue: String? = null,
     val imageBytes: ByteArray? = null,
     val refreshState: LiveContentRefreshState = LiveContentRefreshState.Idle,
 ) {

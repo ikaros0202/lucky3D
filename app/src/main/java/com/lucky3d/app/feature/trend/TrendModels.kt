@@ -2,6 +2,7 @@ package com.lucky3d.app.feature.trend
 
 import androidx.compose.runtime.Immutable
 import com.lucky3d.app.core.model.DrawRecord
+import com.lucky3d.app.core.model.TrialNumber
 import com.lucky3d.app.domain.omission.HeatLevel
 
 enum class TrendPosition {
@@ -24,6 +25,13 @@ data class TrendTableRow(
     val issue: String,
     val drawNumber: String,
     val omissions: List<Int>,
+    val trialNumber: String? = null,
+    val sum: String = "--",
+    val sumTail: String = "--",
+    val span: String = "--",
+    val oddEvenRatio: String = "--",
+    val bigSmallRatio: String = "--",
+    val routeRatio: String = "--",
 )
 
 @Immutable
@@ -56,4 +64,5 @@ data class TrendUiState(
     val selectedPoint: TrendPoint? = null,
     val statisticsPosition: TrendPosition = TrendPosition.HUNDREDS,
     val scale: Float = 1f,
+    val trialNumbers: List<TrialNumber> = emptyList(),
 )

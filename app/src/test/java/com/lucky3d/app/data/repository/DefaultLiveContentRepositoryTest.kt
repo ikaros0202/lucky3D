@@ -1,4 +1,4 @@
-package com.lucky3d.app.data.repository
+﻿package com.lucky3d.app.data.repository
 
 import com.google.common.truth.Truth.assertThat
 import com.lucky3d.app.core.model.CaibaoDocument
@@ -161,15 +161,15 @@ class DefaultLiveContentRepositoryTest {
     }
 
     @Test
-    fun `caibao flow hides a cache older than the three Beijing date window`() = runTest {
-        val expired = caibao("2026198", "expired.jpg", LocalDate.of(2026, 7, 28))
+    fun `caibao flow keeps a cache within the thirty Beijing date window`() = runTest {
+        val expired = caibao("2026198", "expired.jpg", LocalDate.of(2026, 7, 10))
         val store = FakeLiveContentStore().apply {
             caibaoDocuments[expired.issue] = expired
             updateCaibaoFlow()
         }
         val repository = repository(store = store, scope = backgroundScope)
 
-        assertThat(repository.caibaoDocument.first()).isNull()
+        assertThat(repository.caibaoDocument.first()).isEqualTo(expired)
     }
 
     @Test
@@ -489,7 +489,7 @@ class DefaultLiveContentRepositoryTest {
             caibao("2026201", "2026201-A11-000000000001.jpg", LocalDate.of(2026, 7, 31)),
             caibao("2026200", "2026200-A11-000000000002.jpg", LocalDate.of(2026, 7, 30)),
             caibao("2026199", "2026199-A11-000000000003.jpg", LocalDate.of(2026, 7, 29)),
-            caibao("2026198", "2026198-A11-000000000004.jpg", LocalDate.of(2026, 7, 28)),
+            caibao("2026198", "2026198-A11-000000000004.jpg", LocalDate.of(2026, 6, 30)),
         ).forEach {
             store.caibaoDocuments[it.issue] = it
             File(root, it.localFileName).writeText(it.issue)
@@ -517,7 +517,7 @@ class DefaultLiveContentRepositoryTest {
             val cached = caibao(
                 "2026198",
                 "2026198-A11-000000000004.jpg",
-                LocalDate.of(2026, 7, 28),
+                LocalDate.of(2026, 6, 30),
             )
             val undeletable = File(root, cached.localFileName).apply {
                 mkdir()
@@ -546,7 +546,7 @@ class DefaultLiveContentRepositoryTest {
             val cached = caibao(
                 "2026198",
                 "2026198-A11-000000000004.jpg",
-                LocalDate.of(2026, 7, 28),
+                LocalDate.of(2026, 6, 30),
             )
             val undeletable = File(root, cached.localFileName).apply {
                 mkdir()
@@ -607,7 +607,7 @@ class DefaultLiveContentRepositoryTest {
         val cached = caibao(
             "2026198",
             "2026198-A11-000000000004.jpg",
-            LocalDate.of(2026, 7, 28),
+            LocalDate.of(2026, 6, 30),
         )
         val undeletable = File(root, cached.localFileName).apply {
             mkdir()
@@ -684,7 +684,7 @@ class DefaultLiveContentRepositoryTest {
         val cached = caibao(
             "2026198",
             "2026198-A11-000000000004.jpg",
-            LocalDate.of(2026, 7, 28),
+            LocalDate.of(2026, 6, 30),
         )
         val cachedFile = File(root, cached.localFileName).apply { writeText("cached") }
         val store = FakeLiveContentStore().apply {

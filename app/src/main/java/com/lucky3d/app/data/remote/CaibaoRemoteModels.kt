@@ -17,6 +17,8 @@ fun interface CaibaoHtmlParser {
 interface CaibaoDataSource {
     suspend fun fetchLatestDescriptor(): CaibaoDescriptorResult
 
+    suspend fun fetchDescriptor(issue: String): CaibaoDescriptorResult = fetchLatestDescriptor()
+
     suspend fun fetchImage(imageUrl: String): CaibaoImageResult
 }
 
@@ -49,6 +51,7 @@ internal object CaibaoRemoteRules {
             uri.rawQuery == null &&
             uri.rawFragment == null &&
             ISSUE_PATTERN.matches(expectedIssue) &&
-            uri.rawPath == "/ftp/app/$expectedIssue/A11.jpg"
+            uri.rawPath == "/ftp/app/$expectedIssue/A11.jpg" ||
+            uri.rawPath == "/ftp/yuwang/$expectedIssue/A11.jpg"
     }
 }

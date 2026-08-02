@@ -12,6 +12,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -22,13 +23,26 @@ class CaibaoViewModel @Inject constructor(
     private val repository: LiveContentRepository,
 ) : ViewModel() {
     private var visibleRefreshScheduled = false
+    private val selectedIssue = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<CaibaoUiState> = combine(
-        repository.caibaoDocument.mapLatest(::loadContent),
+        combine(repository.caibaoDocuments, selectedIssue) { documents, issue ->
+            documents to (issue ?: documents.firstOrNull()?.issue)
+        }.mapLatest { (documents, issue) ->
+            val document = documents.firstOrNull { it.issue == issue } ?: documents.firstOrNull()
+            loadContent(document).copy(
+                documents = documents,
+                selectedIssue = document?.issue,
+                issueOptions = issueOptions(documents.firstOrNull()?.issue),
+            )
+        },
         repository.caibaoRefreshState,
     ) { content, refreshState ->
         CaibaoUiState(
             document = content.document,
+            documents = content.documents,
+            selectedIssue = content.selectedIssue,
+            issueOptions = content.issueOptions,
             imageBytes = content.imageBytes,
             refreshState = refreshState,
         )
@@ -52,6 +66,15 @@ class CaibaoViewModel @Inject constructor(
         }
     }
 
+    fun selectIssue(issue: String) {
+        selectedIssue.value = issue
+        if (uiState.value.documents.none { it.issue == issue }) {
+            viewModelScope.launch {
+                repository.refreshCaibaoIssue(issue)
+            }
+        }
+    }
+
     fun onImageDecodeFailed(document: CaibaoDocument) {
         viewModelScope.launch {
             repository.invalidateCaibaoImage(document)
@@ -69,5 +92,13 @@ class CaibaoViewModel @Inject constructor(
     private data class CaibaoContent(
         val document: CaibaoDocument? = null,
         val imageBytes: ByteArray? = null,
+        val documents: List<CaibaoDocument> = emptyList(),
+        val selectedIssue: String? = null,
+        val issueOptions: List<String> = emptyList(),
     )
+
+    private fun issueOptions(latestIssue: String?): List<String> {
+        val latest = latestIssue?.toLongOrNull() ?: return emptyList()
+        return (0 until 30).map { offset -> (latest - offset).toString() }
+    }
 }

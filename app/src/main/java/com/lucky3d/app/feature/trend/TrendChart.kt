@@ -63,6 +63,8 @@ private val TrendCellWidth = 34.dp
 private val TrendRowHeight = 32.dp
 private val TrendGroupHeight = 44.dp
 private const val TrendDigitCount = 30
+private val TrendAttributeWidth = 62.dp
+private val TrendAttributeLabels = listOf("和值", "和尾", "跨度", "奇偶比", "大小比", "012路个数比")
 private const val FutureRowCount = 2
 private const val SummaryRowCount = 4
 
@@ -71,17 +73,18 @@ fun TrendChart(
     state: TrendUiState,
     accessibilitySummary: String,
     onSetWindow: (Int) -> Unit,
+    onSetScale: (Float) -> Unit = {},
     onSelectPoint: (TrendPoint?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val horizontalScrollState = rememberScrollState()
-    val cellWidth = TrendCellWidth
+    val cellWidth = TrendCellWidth * state.scale
     val bodyRowCount = state.tableRows.size + FutureRowCount + SummaryRowCount
     val bodyHeight = TrendRowHeight * bodyRowCount
     val tableHeight = TrendGroupHeight + TrendRowHeight + bodyHeight
-    val totalContentWidth = cellWidth * TrendDigitCount
+    val totalContentWidth = cellWidth * TrendDigitCount + TrendAttributeWidth * TrendAttributeLabels.size
     val positionLabels = listOf(
         stringResource(R.string.trend_position_hundreds),
         stringResource(R.string.trend_position_tens),
@@ -110,6 +113,7 @@ fun TrendChart(
                 futureIssues = futureIssues,
                 summaryLabels = summaryLabels,
                 onSetWindow = onSetWindow,
+                onSetScale = onSetScale,
                 lockedWidth = lockedWidth,
                 modifier = Modifier
                     .width(lockedWidth)
@@ -123,11 +127,13 @@ fun TrendChart(
             ) {
                 TrendGroupHeader(
                     labels = positionLabels,
+                    attributeLabels = TrendAttributeLabels,
                     cellWidth = cellWidth,
                     modifier = Modifier.width(totalContentWidth),
                 )
                 TrendDigitHeader(
                     cellWidth = cellWidth,
+                    attributeLabels = TrendAttributeLabels,
                     modifier = Modifier.width(totalContentWidth),
                 )
                 Canvas(
@@ -209,6 +215,7 @@ private fun LockedTrendColumn(
     futureIssues: List<String>,
     summaryLabels: List<String>,
     onSetWindow: (Int) -> Unit,
+    onSetScale: (Float) -> Unit,
     lockedWidth: Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -250,6 +257,37 @@ private fun LockedTrendColumn(
         )
         Row(
             modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(32.dp)
+                .background(colors.surfaceVariant.copy(alpha = 0.92f)),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "缩小",
+                modifier = Modifier
+                    .clickable { onSetScale(state.scale - 0.25f) }
+                    .semantics { contentDescription = "走势图缩小" }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                fontSize = 10.sp,
+            )
+            Text(
+                text = "${(state.scale * 100).toInt()}%",
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text = "放大",
+                modifier = Modifier
+                    .clickable { onSetScale(state.scale + 0.25f) }
+                    .semantics { contentDescription = "走势图放大" }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                fontSize = 10.sp,
+            )
+        }
+        Row(
+            modifier = Modifier
                 .offset(y = TrendGroupHeight)
                 .fillMaxWidth()
                 .height(TrendRowHeight)
@@ -257,12 +295,8 @@ private fun LockedTrendColumn(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TableHeaderText(
-                text = stringResource(R.string.trend_issue_header),
-                modifier = Modifier.weight(0.61f),
-            )
-            TableHeaderText(
-                text = stringResource(R.string.trend_draw_number_header),
-                modifier = Modifier.weight(0.39f),
+                text = "期号 / 试机号",
+                modifier = Modifier.weight(1f),
             )
         }
         futureIssues.forEachIndexed { index, issue ->
@@ -320,7 +354,7 @@ private fun TrendPeriodSelector(
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val fixedWindows = listOf(10, 30)
+    val fixedWindows = listOf(10, 30, 60, 100)
     val selectedText = stringResource(R.string.trend_window, selectedWindow)
     val selectorDescription = stringResource(
         R.string.trend_period_selector_a11y,
@@ -412,6 +446,7 @@ private fun TableHeaderText(
 @Composable
 private fun TrendGroupHeader(
     labels: List<String>,
+    attributeLabels: List<String>,
     cellWidth: Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -443,6 +478,7 @@ private fun TrendGroupHeader(
 @Composable
 private fun TrendDigitHeader(
     cellWidth: Dp,
+    attributeLabels: List<String>,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -465,6 +501,33 @@ private fun TrendDigitHeader(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .width(TrendAttributeWidth * attributeLabels.size)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("属性列", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        }
+        attributeLabels.forEach { label ->
+            Box(
+                modifier = Modifier
+                    .width(TrendAttributeWidth)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 9.sp,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -511,9 +574,7 @@ private fun DrawScope.drawLockedColumn(
             size = androidx.compose.ui.geometry.Size(lockedWidth, rowHeight),
         )
     }
-    val issueWidth = lockedWidth * 0.61f
     val summaryStart = bodyStart + (rows.size + FutureRowCount) * rowHeight
-    drawLine(gridColor, Offset(issueWidth, groupHeight), Offset(issueWidth, summaryStart), 1.dp.toPx())
     val totalRows = 1 + rows.size + FutureRowCount + SummaryRowCount
     repeat(totalRows + 1) { index ->
         val y = groupHeight + index * rowHeight
@@ -525,16 +586,16 @@ private fun DrawScope.drawLockedColumn(
         )
     }
     val issuePaint = tablePaint(textColor, 10.dp.toPx(), monospace = true)
-    val numberPaint = tablePaint(textColor, 11.dp.toPx(), monospace = true, bold = true)
+    val trialPaint = tablePaint(textColor, 9.dp.toPx(), monospace = true, bold = true)
     val mutedPaint = tablePaint(mutedTextColor, 10.dp.toPx(), monospace = true)
     rows.forEachIndexed { index, row ->
         val centerY = bodyStart + (index + 0.5f) * rowHeight
-        drawCenteredText(row.issue, issueWidth / 2f, centerY, issuePaint)
-        drawCenteredText(row.drawNumber, issueWidth + (lockedWidth - issueWidth) / 2f, centerY, numberPaint)
+        drawCenteredText(row.issue, lockedWidth / 2f, centerY - 5.dp.toPx(), issuePaint)
+        drawCenteredText(row.trialNumber ?: "--", lockedWidth / 2f, centerY + 7.dp.toPx(), trialPaint)
     }
     futureIssues.forEachIndexed { index, issue ->
         val centerY = bodyStart + (rows.size + index + 0.5f) * rowHeight
-        drawCenteredText(issue, issueWidth / 2f, centerY, mutedPaint)
+        drawCenteredText(issue, lockedWidth / 2f, centerY, mutedPaint)
     }
 }
 
@@ -591,6 +652,16 @@ private fun DrawScope.drawTrendBody(
             strokeWidth = if (column % 10 == 0) 1.5.dp.toPx() else 0.7.dp.toPx(),
         )
     }
+    val attributeStart = TrendDigitCount * cellWidth
+    repeat(TrendAttributeLabels.size + 1) { column ->
+        val x = attributeStart + column * TrendAttributeWidth.toPx()
+        drawLine(
+            color = gridColor,
+            start = Offset(x, 0f),
+            end = Offset(x, size.height),
+            strokeWidth = 0.8.dp.toPx(),
+        )
+    }
     repeat(bodyRows + 1) { row ->
         val y = row * rowHeight
         drawLine(
@@ -615,6 +686,15 @@ private fun DrawScope.drawTrendBody(
                 )
             }
         }
+        listOf(row.sum, row.sumTail, row.span, row.oddEvenRatio, row.bigSmallRatio, row.routeRatio)
+            .forEachIndexed { attributeIndex, value ->
+                drawCenteredText(
+                    value,
+                    attributeStart + (attributeIndex + 0.5f) * TrendAttributeWidth.toPx(),
+                    (rowIndex + 0.5f) * rowHeight,
+                    statPaint,
+                )
+            }
     }
     drawTrendLinesAndHits(rows, state.selectedPoint, cellWidth, rowHeight, primary)
     val statisticsByPosition = state.statistics.associateBy(TrendPositionStatistics::position)

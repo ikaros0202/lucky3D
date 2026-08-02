@@ -25,14 +25,29 @@ class Cz89CaibaoDataSource(
         .build()
 
     override suspend fun fetchLatestDescriptor(): CaibaoDescriptorResult = withContext(ioDispatcher) {
-        val request = Request.Builder().url(endpoint).header("Accept", "text/html").build()
-        try {
+        fetchDescriptorAt(endpoint)
+    }
+
+    override suspend fun fetchDescriptor(issue: String): CaibaoDescriptorResult = withContext(ioDispatcher) {
+        if (!issue.matches(Regex("20\\d{5}"))) {
+            return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidPayload)
+        }
+        val issueEndpoint = endpoint.newBuilder()
+            .encodedPath("/tuku/A11-$issue.htm")
+            .query(null)
+            .build()
+        fetchDescriptorAt(issueEndpoint)
+    }
+
+    private fun fetchDescriptorAt(page: HttpUrl): CaibaoDescriptorResult {
+        val request = Request.Builder().url(page).header("Accept", "text/html").build()
+        return try {
             noRedirectClient.newCall(request).execute().use { response ->
-                if (response.code in 300..399) return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidSource)
-                if (!response.isSuccessful) return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.Http)
-                if (!response.hasUtf8HtmlCharset()) return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidPayload)
-                if (!samePage(response.request.url, endpoint)) {
-                    return@withContext CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidSource)
+                if (response.code in 300..399) return CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidSource)
+                if (!response.isSuccessful) return CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.Http)
+                if (!response.hasUtf8HtmlCharset()) return CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidPayload)
+                if (!samePage(response.request.url, page)) {
+                    return CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.InvalidSource)
                 }
                 when (val body = response.body.readUtf8Bounded(MAX_HTML_BYTES)) {
                     is BoundedRead.TooLarge -> CaibaoDescriptorResult.Failure(LiveContentRemoteFailure.TooLarge)
@@ -87,7 +102,7 @@ class Cz89CaibaoDataSource(
         const val DEFAULT_ENDPOINT = CaibaoRemoteRules.SOURCE_PAGE_URL
         const val MAX_HTML_BYTES = Cz89CaibaoHtmlParser.MAX_HTML_BYTES
         const val MAX_IMAGE_BYTES = 8 * 1024 * 1024
-        private val IMAGE_ISSUE = Regex("/ftp/app/(20\\d{5})/A11\\.jpg$")
+        private val IMAGE_ISSUE = Regex("/ftp/(?:app|yuwang)/(20\\d{5})/A11\\.jpg$")
         private val ACCEPTED_IMAGE_TYPES = setOf("image/jpeg", "image/png")
     }
 }

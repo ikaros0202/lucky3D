@@ -386,7 +386,7 @@ private fun TrendRoute(
     LaunchedEffect(settings.defaultObservationWindow, defaultsApplied) {
         if (!defaultsApplied) {
             val approvedTrendWindow = settings.defaultObservationWindow
-                .takeIf { it == 10 || it == 30 }
+                .takeIf { it == 10 || it == 30 || it == 60 || it == 100 }
                 ?: 30
             viewModel.setWindow(approvedTrendWindow)
             defaultsApplied = true
@@ -395,6 +395,7 @@ private fun TrendRoute(
     TrendScreen(
         state = state,
         onSetWindow = viewModel::setWindow,
+        onSetScale = viewModel::setScale,
         onSelectPoint = viewModel::selectPoint,
     )
 }

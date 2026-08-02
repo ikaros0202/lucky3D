@@ -11,8 +11,14 @@ interface LiveContentDao {
     @Query("SELECT * FROM trial_numbers ORDER BY sourceLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
     fun observeLatestTrial(): Flow<TrialNumberEntity?>
 
+    @Query("SELECT * FROM trial_numbers ORDER BY sourceLocalDate DESC, fetchedAtEpochMillis DESC")
+    fun observeAllTrials(): Flow<List<TrialNumberEntity>>
+
     @Query("SELECT * FROM caibao_documents ORDER BY cachedLocalDate DESC, fetchedAtEpochMillis DESC LIMIT 1")
     fun observeLatestCaibao(): Flow<CaibaoDocumentEntity?>
+
+    @Query("SELECT * FROM caibao_documents ORDER BY cachedLocalDate DESC, fetchedAtEpochMillis DESC")
+    fun observeAllCaibao(): Flow<List<CaibaoDocumentEntity>>
 
     @Query("SELECT * FROM live_content_refresh_metadata WHERE contentType = :contentType LIMIT 1")
     fun observeRefreshMetadata(contentType: String): Flow<LiveContentRefreshMetadataEntity?>
@@ -52,8 +58,16 @@ interface LiveContentDao {
         trial: TrialNumberEntity,
         metadata: LiveContentRefreshMetadataEntity,
     ) {
-        deleteTrials()
         upsertTrial(trial)
+        upsertRefreshMetadata(metadata)
+    }
+
+    @Transaction
+    suspend fun upsertTrialsAndMetadata(
+        trials: List<TrialNumberEntity>,
+        metadata: LiveContentRefreshMetadataEntity,
+    ) {
+        trials.forEach { upsertTrial(it) }
         upsertRefreshMetadata(metadata)
     }
 

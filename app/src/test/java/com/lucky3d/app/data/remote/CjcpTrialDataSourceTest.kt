@@ -35,6 +35,20 @@ class CjcpTrialDataSourceTest {
     }
 
     @Test
+    fun `history page uses a bounded page query`() = runTest {
+        server.enqueue(MockResponse().setBody(fixture).setHeader("Content-Type", "text/html; charset=UTF-8"))
+        val source = CjcpTrialDataSource(OkHttpClient(), server.url("/trial"))
+
+        assertThat(source.fetchHistoryPage(3)).isEqualTo(
+            TrialRemoteHistoryResult.Success(
+                page = 3,
+                records = listOf(TrialRemoteRecord("2026201", "007")),
+            ),
+        )
+        assertThat(server.takeRequest().path).isEqualTo("/trial?page=3")
+    }
+
+    @Test
     fun `http empty oversized and redirected pages are typed failures`() = runTest {
         val source = CjcpTrialDataSource(OkHttpClient(), server.url("/trial"))
         server.enqueue(MockResponse().setResponseCode(503))

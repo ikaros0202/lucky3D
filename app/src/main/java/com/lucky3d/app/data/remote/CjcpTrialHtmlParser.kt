@@ -2,6 +2,14 @@ package com.lucky3d.app.data.remote
 
 class CjcpTrialHtmlParser : TrialHtmlParser {
     override fun parse(html: String): RemoteParseResult<TrialRemoteRecord> {
+        return when (val result = parseAll(html)) {
+            is RemoteParseResult.Success -> result.value.firstOrNull()?.let { RemoteParseResult.Success(it) }
+                ?: invalidPayload()
+            is RemoteParseResult.Failure -> result
+        }
+    }
+
+    override fun parseAll(html: String): RemoteParseResult<List<TrialRemoteRecord>> {
         if (html.toByteArray(Charsets.UTF_8).size > MAX_HTML_BYTES) return tooLarge()
         if (html.isBlank()) return invalidPayload()
         val document = html.replace(COMMENT, "").replace(SCRIPT, "").replace(HIDDEN_BLOCK, "")
@@ -13,16 +21,23 @@ class CjcpTrialHtmlParser : TrialHtmlParser {
         if (issueColumns.size != 1 || trialColumns.size != 1) return invalidPayload()
         val issueColumn = issueColumns.single()
         val trialColumn = trialColumns.single()
+        val records = mutableListOf<TrialRemoteRecord>()
+        val issues = mutableSetOf<String>()
         ROW.findAll(table).forEach { row ->
             val cells = CELL.findAll(row.groupValues[1]).map { normalize(it.groupValues[1]) }.toList()
-            if (cells.size <= maxOf(issueColumn, trialColumn)) return@forEach
-            val issue = cells[issueColumn].takeIf { ISSUE_CELL.matches(it) }?.removeSuffix("期")
-            val number = cells[trialColumn].replace(WHITESPACE, "")
-            if (issue != null && NUMBER.matches(number)) {
-                return RemoteParseResult.Success(TrialRemoteRecord(issue, number))
-            }
+            if (cells.isEmpty()) return@forEach
+            if (cells.size <= maxOf(issueColumn, trialColumn)) return invalidPayload()
+            val rawIssue = cells[issueColumn]
+            val rawNumber = cells[trialColumn]
+            if (rawIssue.isBlank() && rawNumber.isBlank()) return@forEach
+            val issue = rawIssue.takeIf { ISSUE_CELL.matches(it) }?.removeSuffix("期")
+                ?: return invalidPayload()
+            if (rawNumber.isBlank()) return@forEach
+            val number = rawNumber.replace(WHITESPACE, "")
+            if (!NUMBER.matches(number) || !issues.add(issue)) return invalidPayload()
+            records += TrialRemoteRecord(issue, number)
         }
-        return invalidPayload()
+        return records.takeIf { it.isNotEmpty() }?.let { RemoteParseResult.Success(it) } ?: invalidPayload()
     }
 
     private fun hasPositiveSimulationNotice(document: String): Boolean =

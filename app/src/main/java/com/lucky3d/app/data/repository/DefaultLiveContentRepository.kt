@@ -18,6 +18,8 @@ import com.lucky3d.app.data.remote.CaibaoRemoteDescriptor
 import com.lucky3d.app.data.remote.LiveContentRemoteFailure
 import com.lucky3d.app.data.remote.TrialDataSource
 import com.lucky3d.app.data.remote.TrialRemoteResult
+import com.lucky3d.app.data.remote.TrialRemoteHistoryResult
+import com.lucky3d.app.data.remote.TrialRemoteRecord
 import com.lucky3d.app.domain.livecontent.LiveContentFailure
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshMetadata
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
@@ -49,13 +51,20 @@ import kotlinx.coroutines.sync.withLock
 
 internal interface LiveContentStore {
     fun observeTrial(): Flow<TrialNumber?>
+    fun observeTrials(): Flow<List<TrialNumber>> =
+        observeTrial().map { it?.let(::listOf).orEmpty() }
     fun observeCaibao(): Flow<CaibaoDocument?>
+    fun observeCaibaos(): Flow<List<CaibaoDocument>> =
+        observeCaibao().map { it?.let(::listOf).orEmpty() }
     fun observeMetadata(contentType: LiveContentType): Flow<LiveContentRefreshMetadata?>
     suspend fun metadata(contentType: LiveContentType): LiveContentRefreshMetadata?
     suspend fun latestCaibao(): CaibaoDocument?
     suspend fun allCaibao(): List<CaibaoDocument>
     suspend fun latestOfficialIssue(): String?
     suspend fun commitTrial(trial: TrialNumber, metadata: LiveContentRefreshMetadata)
+    suspend fun commitTrials(trials: List<TrialNumber>, metadata: LiveContentRefreshMetadata) {
+        trials.forEach { commitTrial(it, metadata) }
+    }
     suspend fun commitCaibao(document: CaibaoDocument, metadata: LiveContentRefreshMetadata)
     suspend fun recordMetadata(metadata: LiveContentRefreshMetadata)
     suspend fun deleteCaibao(issue: String)
@@ -94,10 +103,16 @@ class DefaultLiveContentRepository internal constructor(
     private val caibaoOperationMutex = Mutex()
 
     override val trialNumber: Flow<TrialNumber?> = store.observeTrial()
+    override val trialNumbers: Flow<List<TrialNumber>> = store.observeTrials()
     override val caibaoDocument: Flow<CaibaoDocument?> = store.observeCaibao().map { document ->
         document?.takeIf {
-            it.cachedLocalDate >= clock.instant().atZone(BEIJING).toLocalDate().minusDays(2)
+            it.cachedLocalDate >= clock.instant().atZone(BEIJING).toLocalDate()
+                .minusDays(CAIBAO_CACHE_DAYS - 1)
         }
+    }
+    override val caibaoDocuments: Flow<List<CaibaoDocument>> = store.observeCaibaos().map { documents ->
+        val cutoff = clock.instant().atZone(BEIJING).toLocalDate().minusDays(CAIBAO_CACHE_DAYS - 1)
+        documents.filter { it.cachedLocalDate >= cutoff }
     }
     override val trialRefreshState: Flow<LiveContentRefreshState> =
         refreshState(store.observeMetadata(LiveContentType.TRIAL_NUMBER), trialRuntimeState)
@@ -111,9 +126,19 @@ class DefaultLiveContentRepository internal constructor(
     override suspend fun refreshTrial(trigger: LiveRefreshTrigger): LiveContentRefreshResult =
         sharedRefresh(trialInFlight) { performTrialRefresh(trigger) }
 
+    override suspend fun refreshTrialHistory(trigger: LiveRefreshTrigger): LiveContentRefreshResult =
+        sharedRefresh(trialInFlight) { performTrialHistoryRefresh(trigger) }
+
     override suspend fun refreshCaibao(trigger: LiveRefreshTrigger): LiveContentRefreshResult =
         sharedRefresh(caibaoInFlight) {
-            caibaoOperationMutex.withLock { performCaibaoRefresh(trigger) }
+            caibaoOperationMutex.withLock { performCaibaoRefresh(trigger, requestedIssue = null) }
+        }
+
+    override suspend fun refreshCaibaoIssue(issue: String): LiveContentRefreshResult =
+        sharedRefresh(caibaoInFlight) {
+            caibaoOperationMutex.withLock {
+                performCaibaoRefresh(LiveRefreshTrigger.MANUAL, requestedIssue = issue)
+            }
         }
 
     override suspend fun readCaibaoImage(document: CaibaoDocument): CaibaoImageReadResult =
@@ -284,8 +309,70 @@ class DefaultLiveContentRepository internal constructor(
         }
     }
 
+    private suspend fun performTrialHistoryRefresh(
+        trigger: LiveRefreshTrigger,
+    ): LiveContentRefreshResult {
+        val now = clock.instant()
+        val previous = try {
+            store.metadata(LiveContentType.TRIAL_NUMBER)
+        } catch (exception: Exception) {
+            exception.rethrowCancellation()
+            trialRuntimeState.value = LiveContentRefreshState.Failed(LiveContentFailure.DATABASE)
+            return LiveContentRefreshResult.Failed(LiveContentFailure.DATABASE)
+        }
+        trialRuntimeState.value = LiveContentRefreshState.Refreshing
+        val records = mutableListOf<TrialRemoteRecord>()
+        for (page in 1..5) {
+            val result = try {
+                trialDataSource.fetchHistoryPage(page)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Exception) {
+                TrialRemoteHistoryResult.Failure(page, LiveContentRemoteFailure.Network)
+            }
+            when (result) {
+                is TrialRemoteHistoryResult.Failure -> return failTrial(
+                    previous, trigger, now.toEpochMilli(), mapHtmlFailure(result.failure), true,
+                )
+                is TrialRemoteHistoryResult.Success -> records += result.records
+            }
+        }
+        val unique = linkedMapOf<String, TrialRemoteRecord>()
+        records.forEach { record ->
+            if (!ISSUE_PATTERN.matches(record.issue) || !NUMBER_PATTERN.matches(record.number)) {
+                return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.INVALID_HTML, true)
+            }
+            if (unique.put(record.issue, record) != null) {
+                return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.INVALID_HTML, true)
+            }
+        }
+        if (unique.isEmpty()) {
+            return failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.INVALID_HTML, true)
+        }
+        val metadata = successMetadata(LiveContentType.TRIAL_NUMBER, previous, trigger, now.toEpochMilli())
+        val trials = unique.values.map { record ->
+            TrialNumber(
+                issue = record.issue,
+                number = record.number,
+                source = TrialSource.CJCP_SIMULATED,
+                sourcePageUrl = TRIAL_SOURCE_PAGE,
+                sourceLocalDate = now.atZone(BEIJING).toLocalDate(),
+                fetchedAtEpochMillis = now.toEpochMilli(),
+            )
+        }
+        return try {
+            store.commitTrials(trials, metadata)
+            trialRuntimeState.value = null
+            LiveContentRefreshResult.Success
+        } catch (exception: Exception) {
+            exception.rethrowCancellation()
+            failTrial(previous, trigger, now.toEpochMilli(), LiveContentFailure.DATABASE, true)
+        }
+    }
+
     private suspend fun performCaibaoRefresh(
         trigger: LiveRefreshTrigger,
+        requestedIssue: String?,
     ): LiveContentRefreshResult {
         val now = clock.instant()
         val previous = try {
@@ -312,7 +399,11 @@ class DefaultLiveContentRepository internal constructor(
             return failCaibao(previous, trigger, now.toEpochMilli(), LiveContentFailure.DATABASE, false)
         }
         val descriptorResult = try {
-            caibaoDataSource.fetchLatestDescriptor()
+            if (requestedIssue == null) {
+                caibaoDataSource.fetchLatestDescriptor()
+            } else {
+                caibaoDataSource.fetchDescriptor(requestedIssue)
+            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (_: Exception) {
@@ -334,7 +425,7 @@ class DefaultLiveContentRepository internal constructor(
         if (descriptorFailure != null) {
             return failCaibao(previous, trigger, now.toEpochMilli(), descriptorFailure, true)
         }
-        if (latest != null && descriptor.issue < latest.issue) {
+        if (requestedIssue == null && latest != null && descriptor.issue < latest.issue) {
             return failCaibao(
                 previous,
                 trigger,
@@ -522,7 +613,8 @@ class DefaultLiveContentRepository internal constructor(
             exception.rethrowCancellation()
             return LiveContentFailure.FILE_IO
         }
-        val cutoff = clock.instant().atZone(BEIJING).toLocalDate().minusDays(2)
+        val cutoff = clock.instant().atZone(BEIJING).toLocalDate()
+            .minusDays(CAIBAO_CACHE_DAYS - 1)
         var failure: LiveContentFailure? = null
         documents.filter { it.cachedLocalDate < cutoff }.forEach { document ->
             val stagedDeletion = try {
@@ -690,7 +782,8 @@ class DefaultLiveContentRepository internal constructor(
             imageUri.userInfo != null ||
             imageUri.rawQuery != null ||
             imageUri.rawFragment != null ||
-            imageUri.rawPath != "/ftp/app/${descriptor.issue}/A11.jpg"
+            imageUri.rawPath != "/ftp/app/${descriptor.issue}/A11.jpg" &&
+            imageUri.rawPath != "/ftp/yuwang/${descriptor.issue}/A11.jpg"
         ) {
             return LiveContentFailure.UNAPPROVED_IMAGE_HOST
         }
@@ -708,6 +801,7 @@ class DefaultLiveContentRepository internal constructor(
         const val CAIBAO_SOURCE_PAGE = "https://m.cz89.com/tuku/A11.htm"
         const val CAIBAO_IMAGE_HOST = "tuku.cz89.com"
         const val CAIBAO_EDITION = "A11"
+        const val CAIBAO_CACHE_DAYS = 30L
         const val CAIBAO_TITLE = "彩吧彩报第三版"
         const val TRIAL_COOLDOWN_MILLIS = 30 * 60 * 1000L
         const val CAIBAO_COOLDOWN_MILLIS = 2 * 60 * 60 * 1000L
@@ -723,8 +817,14 @@ private class RoomLiveContentStore(
     override fun observeTrial(): Flow<TrialNumber?> =
         liveContentDao.observeLatestTrial().map { it?.toDomain() }
 
+    override fun observeTrials(): Flow<List<TrialNumber>> =
+        liveContentDao.observeAllTrials().map { rows -> rows.map(TrialNumberEntity::toDomain) }
+
     override fun observeCaibao(): Flow<CaibaoDocument?> =
         liveContentDao.observeLatestCaibao().map { it?.toDomain() }
+
+    override fun observeCaibaos(): Flow<List<CaibaoDocument>> =
+        liveContentDao.observeAllCaibao().map { rows -> rows.map(CaibaoDocumentEntity::toDomain) }
 
     override fun observeMetadata(contentType: LiveContentType): Flow<LiveContentRefreshMetadata?> =
         liveContentDao.observeRefreshMetadata(contentType.name).map { it?.toDomain() }
@@ -745,6 +845,16 @@ private class RoomLiveContentStore(
         metadata: LiveContentRefreshMetadata,
     ) {
         liveContentDao.upsertTrialAndMetadata(trial.toEntity(), metadata.toEntity())
+    }
+
+    override suspend fun commitTrials(
+        trials: List<TrialNumber>,
+        metadata: LiveContentRefreshMetadata,
+    ) {
+        liveContentDao.upsertTrialsAndMetadata(
+            trials = trials.map(TrialNumber::toEntity),
+            metadata = metadata.toEntity(),
+        )
     }
 
     override suspend fun commitCaibao(

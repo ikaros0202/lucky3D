@@ -30,7 +30,7 @@ class LiveContentDaoTest {
     }
 
     @Test
-    fun newestTrialReplacesPreviousTrialAndPreservesLeadingZerosAndLocalDate() = runTest {
+    fun trialHistoryPreservesPreviousRowsAndLatestStillUsesNewestRecord() = runTest {
         dao.upsertTrialAndMetadata(
             trial(issue = "2026201", number = "007", date = "2026-07-20"),
             metadata(contentType = "TRIAL_NUMBER", successDate = "2026-07-20"),
@@ -45,7 +45,10 @@ class LiveContentDaoTest {
         )
         assertThat(dao.observeLatestTrial().first()?.sourceLocalDate).isEqualTo("2026-07-21")
         assertThat(dao.refreshMetadata("TRIAL_NUMBER")?.lastSuccessLocalDate).isEqualTo("2026-07-21")
-        assertThat(trialRowCount()).isEqualTo(1L)
+        assertThat(dao.observeAllTrials().first().map { it.issue })
+            .containsExactly("2026202", "2026201")
+            .inOrder()
+        assertThat(trialRowCount()).isEqualTo(2L)
     }
 
     @Test

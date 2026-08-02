@@ -15,6 +15,40 @@ class CjcpTrialHtmlParserTest {
     }
 
     @Test
+    fun `history parser returns every non-empty row in issue order`() {
+        val history = fixture.replace(
+            "<tr><td>2026201期</td><td>123</td><td><span>&nbsp;0</span><b>07</b></td></tr>",
+            """
+            <tr><td>2026201期</td><td>123</td><td><span>&nbsp;0</span><b>07</b></td></tr>
+            <tr><td>2026200期</td><td>456</td><td>918</td></tr>
+            """.trimIndent(),
+        )
+
+        assertThat(parser.parseAll(history)).isEqualTo(
+            RemoteParseResult.Success(
+                listOf(
+                    TrialRemoteRecord(issue = "2026201", number = "007"),
+                    TrialRemoteRecord(issue = "2026200", number = "918"),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `history parser rejects duplicate valid issue instead of choosing one`() {
+        val duplicate = fixture.replace(
+            "<tr><td>2026201期</td><td>123</td><td><span>&nbsp;0</span><b>07</b></td></tr>",
+            """
+            <tr><td>2026201期</td><td>123</td><td>007</td></tr>
+            <tr><td>2026201期</td><td>456</td><td>918</td></tr>
+            """.trimIndent(),
+        )
+
+        assertThat(parser.parseAll(duplicate))
+            .isEqualTo(RemoteParseResult.Failure(LiveContentRemoteFailure.InvalidPayload))
+    }
+
+    @Test
     fun `tags whitespace and entities do not change the first record`() {
         val html = fixture.replace("<b>07</b>", "\n <em>&#48;7</em> ")
 

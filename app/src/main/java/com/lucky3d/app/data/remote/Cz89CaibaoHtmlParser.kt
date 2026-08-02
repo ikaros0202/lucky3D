@@ -49,6 +49,6 @@ class Cz89CaibaoHtmlParser : CaibaoHtmlParser {
         private val IMAGE_SRC = Regex("(?is)<img\\b[^>]*?\\bsrc\\s*=\\s*(['\"])(.*?)\\1")
         private val TAG = Regex("(?is)<[^>]+>")
         private val WHITESPACE = Regex("\\s+")
-        private val IMAGE_ISSUE = Regex("^https://tuku\\.cz89\\.com/ftp/app/(20\\d{5})/A11\\.jpg$")
+        private val IMAGE_ISSUE = Regex("^https://tuku\\.cz89\\.com/ftp/(?:app|yuwang)/(20\\d{5})/A11\\.jpg$")
     }
 }

@@ -73,7 +73,7 @@ fun SettingsScreen(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                listOf(10, 30, 50, 100).forEach { window ->
+                listOf(10, 30, 60, 100).forEach { window ->
                     FilterChip(
                         selected = state.defaultObservationWindow == window,
                         onClick = { onSetDefaultObservationWindow(window) },

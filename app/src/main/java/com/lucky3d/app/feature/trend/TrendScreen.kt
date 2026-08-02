@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SwapHoriz
@@ -44,6 +45,7 @@ import com.lucky3d.app.core.ui.Lucky3dDesign
 fun TrendScreen(
     state: TrendUiState,
     onSetWindow: (Int) -> Unit,
+    onSetScale: (Float) -> Unit = {},
     onSelectPoint: (TrendPoint?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -75,11 +77,28 @@ fun TrendScreen(
                 )
             }
         } else {
+            item(key = "trend-column-order") {
+                Text(
+                    text = "试机号　开奖号　百位　十位　个位　和值　和尾　跨度　奇偶比　大小比　012路个数比",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                        .clearAndSetSemantics {
+                            contentDescription = "走势图表头顺序：试机号、开奖号、百位、十位、个位、和值、和尾、跨度、奇偶比、大小比、012路个数比"
+                        },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                )
+            }
             item(key = "trend-table") {
                 TrendChart(
                     state = state,
                     accessibilitySummary = stringResource(R.string.trend_long_table_a11y),
                     onSetWindow = onSetWindow,
+                    onSetScale = onSetScale,
                     onSelectPoint = onSelectPoint,
                 )
             }
