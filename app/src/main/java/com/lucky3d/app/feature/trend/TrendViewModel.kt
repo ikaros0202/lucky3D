@@ -132,15 +132,35 @@ internal fun buildTrendState(
     trialNumbers: List<TrialNumber> = emptyList(),
 ): TrendUiState {
     val visible = allDraws.takeLast(window)
+    val sums = allDraws.map { draw ->
+        com.lucky3d.app.domain.attributes.DrawAttributes.calculate(draw.number).sum
+    }
+    val sumOmissions = if (visible.isEmpty()) {
+        emptyMap()
+    } else {
+        (0..27).associateWith { sum ->
+            OmissionCalculator.calculateVisibleWindow(
+                values = sums,
+                target = sum,
+                visibleWindowSize = visible.size,
+                allowedRange = 0..27,
+            ).omissionByDraw
+        }
+    }
+    val visibleSums = sums.takeLast(visible.size)
     val positionOrder = TrendPosition.entries.filter(visiblePositions::contains)
     val omissionsByPosition = TrendPosition.entries.associateWith { position ->
         val fullValues = allDraws.map { it.digitAt(position) }
-        (0..9).associateWith { digit ->
-            OmissionCalculator.calculateVisibleWindow(
-                values = fullValues,
-                target = digit,
-                visibleWindowSize = visible.size,
-            ).omissionByDraw
+        if (visible.isEmpty()) {
+            (0..9).associateWith { emptyList() }
+        } else {
+            (0..9).associateWith { digit ->
+                OmissionCalculator.calculateVisibleWindow(
+                    values = fullValues,
+                    target = digit,
+                    visibleWindowSize = visible.size,
+                ).omissionByDraw
+            }
         }
     }
     val points = positionOrder.flatMap { position ->
@@ -166,8 +186,11 @@ internal fun buildTrendState(
                     omissionsByPosition.getValue(position).getValue(digit)[rowIndex]
                 }
             },
+            sumOmissions = (0..27).map { sum ->
+                sumOmissions.getValue(sum)[rowIndex]
+            },
             trialNumber = trial?.number,
-            sum = attributes.sum.toString(),
+            sum = visibleSums[rowIndex],
             sumTail = attributes.sumTail.toString(),
             span = attributes.span.toString(),
             oddEvenRatio = "${attributes.oddCount}:${attributes.evenCount}",
@@ -197,6 +220,16 @@ internal fun buildTrendState(
             },
         )
     }
+    val sumStatistics = (0..27).map { sum ->
+        val omission = OmissionCalculator.calculate(sums, sum, 0..27)
+        TrendSumStatistics(
+            sum = sum,
+            currentOmission = omission.currentOmission,
+            averageOmission = omission.averageOmission,
+            maxOmission = omission.maxOmission,
+            occurrences = visibleSums.count { it == sum },
+        )
+    }
     return TrendUiState(
         window = window,
         visibleDraws = visible,
@@ -204,6 +237,7 @@ internal fun buildTrendState(
         tableRows = tableRows,
         points = points,
         statistics = statistics,
+        sumStatistics = sumStatistics,
         selectedPoint = selectedPoint,
         statisticsPosition = statisticsPosition,
         scale = scale,

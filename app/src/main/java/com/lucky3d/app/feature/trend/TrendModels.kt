@@ -25,8 +25,9 @@ data class TrendTableRow(
     val issue: String,
     val drawNumber: String,
     val omissions: List<Int>,
+    val sumOmissions: List<Int> = emptyList(),
     val trialNumber: String? = null,
-    val sum: String = "--",
+    val sum: Int = 0,
     val sumTail: String = "--",
     val span: String = "--",
     val oddEvenRatio: String = "--",
@@ -42,6 +43,15 @@ data class TrendDigitStatistics(
     val maxOmission: Int?,
     val occurrences: Int,
     val heatLevel: HeatLevel,
+)
+
+@Immutable
+data class TrendSumStatistics(
+    val sum: Int,
+    val currentOmission: Int,
+    val averageOmission: Double?,
+    val maxOmission: Int?,
+    val occurrences: Int,
 )
 
 @Immutable
@@ -61,6 +71,7 @@ data class TrendUiState(
     val tableRows: List<TrendTableRow> = emptyList(),
     val points: List<TrendPoint> = emptyList(),
     val statistics: List<TrendPositionStatistics> = emptyList(),
+    val sumStatistics: List<TrendSumStatistics> = emptyList(),
     val selectedPoint: TrendPoint? = null,
     val statisticsPosition: TrendPosition = TrendPosition.HUNDREDS,
     val scale: Float = 1f,

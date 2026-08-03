@@ -954,7 +954,7 @@ private fun DrawScope.drawTrendBody(
             (rowIndex + 0.5f) * rowHeight,
             statPaint,
         )
-        listOf(row.sum, row.sumTail, row.span, row.oddEvenRatio, row.bigSmallRatio, row.routeRatio)
+        listOf(row.sum.toString(), row.sumTail, row.span, row.oddEvenRatio, row.bigSmallRatio, row.routeRatio)
             .forEachIndexed { attributeIndex, value ->
                 drawCenteredText(
                     value,

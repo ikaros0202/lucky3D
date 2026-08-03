@@ -331,6 +331,55 @@ class TrendViewModelTest {
     }
 
     @Test
+    fun `trend table exposes actual sum and twenty eight inherited omission cells`() = runTest {
+        val records = listOf(
+            record("2026001", "000"),
+            record("2026002", "009"),
+            record("2026003", "999"),
+            record("2026004", "000"),
+        )
+
+        val state = buildTrendState(
+            allDraws = records,
+            window = 2,
+            visiblePositions = TrendPosition.entries.toSet(),
+        )
+
+        assertThat(state.tableRows.map(TrendTableRow::sum)).containsExactly(27, 0).inOrder()
+        assertThat(state.tableRows).hasSize(2)
+        assertThat(state.tableRows.all { it.sumOmissions.size == 28 }).isTrue()
+        assertThat(state.tableRows.first().sumOmissions).hasSize(28)
+        assertThat(state.tableRows.first().sumOmissions[27]).isEqualTo(0)
+        assertThat(state.tableRows.last().sumOmissions[0]).isEqualTo(0)
+        assertThat(state.tableRows.first().sumOmissions[1]).isEqualTo(3)
+    }
+
+    @Test
+    fun `sum occurrences use visible window while omissions use full history`() {
+        val records = listOf(
+            record("2026001", "000"),
+            record("2026002", "111"),
+            record("2026003", "000"),
+            record("2026004", "111"),
+        )
+
+        val state = buildTrendState(
+            allDraws = records,
+            window = 2,
+            visiblePositions = TrendPosition.entries.toSet(),
+        )
+        val zero = state.sumStatistics.single { it.sum == 0 }
+        val three = state.sumStatistics.single { it.sum == 3 }
+
+        assertThat(zero.occurrences).isEqualTo(1)
+        assertThat(zero.currentOmission).isEqualTo(1)
+        assertThat(zero.averageOmission).isEqualTo(1.0)
+        assertThat(zero.maxOmission).isEqualTo(1)
+        assertThat(three.occurrences).isEqualTo(1)
+        assertThat(three.currentOmission).isEqualTo(0)
+    }
+
+    @Test
     fun `hiding a position removes its points without changing selected window`() = runTest {
         val viewModel = TrendViewModel(FakeTrendRepository(records(120)))
         advanceUntilIdle()
@@ -364,4 +413,12 @@ class TrendViewModelTest {
             officialFingerprint = "fingerprint-$issue",
         )
     }
+
+    private fun record(issue: String, value: String) = DrawRecord(
+        issue = issue,
+        drawDate = "2026-01-01",
+        number = DrawNumber.parse(value),
+        officialDetailUrl = "https://www.cwl.gov.cn/c/$issue.shtml",
+        officialFingerprint = "fingerprint-$issue",
+    )
 }
