@@ -1,7 +1,9 @@
-# Lucky3D V0.1.0 Release 检查清单
+# Lucky3D V0.1.0 历史 Release 检查清单
 
 > 日期：2026-07-28<br>
 > 结论：本地验收 Release 可安装；正式分发前需使用长期保管的生产发布密钥重新签名
+
+当前 V1.2.0 阶段发布记录见 [releases/v1.2.0.md](releases/v1.2.0.md)。本文件只保留 V0.1.0 当时的验收事实，不用于描述当前版本。
 
 ## 构建与测试
 
@@ -36,7 +38,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 文件 | `artifacts/lucky3d-v0.1.0-release.apk` |
+| 文件 | `artifacts/lucky3d-v0.1.0-release.apk`（本地构建产物，不进入 Git） |
 | 包名 | `com.lucky3d.app` |
 | `versionCode` | `1` |
 | `versionName` | `0.1.0` |

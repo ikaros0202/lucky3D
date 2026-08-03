@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.lucky3d.app.core.model.CaibaoDocument
 import com.lucky3d.app.domain.livecontent.LiveContentFailure
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshState
@@ -33,7 +34,8 @@ class CaibaoScreenTest {
         }
 
         composeRule.onNodeWithText("彩报").assertIsDisplayed()
-        composeRule.onNodeWithText("2026204期 · A11第三版").assertIsDisplayed()
+        composeRule.onNodeWithText("2026204期").assertIsDisplayed()
+        composeRule.onNodeWithText("A11第三版").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("2026204期彩报").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("更新彩报").assertIsDisplayed()
         composeRule.onNodeWithText("理性购彩，量力而行").assertIsDisplayed()
@@ -93,14 +95,22 @@ class CaibaoScreenTest {
     }
 
     @Test
-    fun issueSelectorExposesAdjacentPeriodControlsAndValidOptions() {
+    fun currentIssueMenuScrollsToOlderPeriods() {
         val selected = mutableListOf<String>()
         composeRule.setContent {
             Lucky3DTheme {
                 CaibaoScreen(
                     state = cachedState().copy(
                         selectedIssue = "2026204",
-                        issueOptions = listOf("2026204", "2026203"),
+                        issueOptions = listOf(
+                            "2026198",
+                            "2026204",
+                            "2026201",
+                            "2026203",
+                            "2026199",
+                            "2026202",
+                            "2026200",
+                        ),
                     ),
                     image = testImage(),
                     onRefresh = {},
@@ -112,10 +122,11 @@ class CaibaoScreenTest {
         }
 
         composeRule.onNodeWithText("上一期").assertIsDisplayed().performClick()
-        composeRule.onNodeWithText("切换期号").assertIsDisplayed().performClick()
-        composeRule.onNodeWithText("2026203期").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("切换期号").assertDoesNotExist()
+        composeRule.onNodeWithText("2026204期").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("2026198期").performScrollTo().assertIsDisplayed().performClick()
 
-        assertThat(selected).containsExactly("previous", "2026203").inOrder()
+        assertThat(selected).containsExactly("previous", "2026198").inOrder()
     }
 
     private fun cachedState(

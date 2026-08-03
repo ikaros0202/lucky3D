@@ -13,6 +13,12 @@
     <string name="nav_caibao_a11y">彩报</string>
     <string name="caibao_title">彩报</string>
     <string name="caibao_issue_edition">%1$s期 · %2$s第三版</string>
+    <string name="caibao_issue">%1$s期</string>
+    <string name="caibao_edition">%1$s第三版</string>
+    <string name="caibao_issue_button_a11y">选择彩报期号，当前%1$s期</string>
+    <string name="caibao_previous_issue">上一期</string>
+    <string name="caibao_next_issue">下一期</string>
+    <string name="caibao_no_cached_issue">暂无缓存期号</string>
     <string name="caibao_refresh">更新彩报</string>
     <string name="caibao_retry">重试</string>
     <string name="caibao_loading">正在获取彩报</string>
@@ -166,9 +172,6 @@
     <string name="trend_return_latest">回到最新</string>
     <string name="trend_scale">缩放 %1$.1fx</string>
     <string name="trend_point_detail">%1$s期　%2$s数字%3$d　遗漏%4$d</string>
-    <string name="trend_point_summary_a11y">当前点位：%1$s期，%2$s数字%3$d，遗漏%4$d</string>
-    <string name="trend_point_summary_empty">点击图中点位查看详情</string>
-    <string name="trend_selected_detail">%1$s期 · 开奖号%2$s · %3$s%4$d · 本期遗漏%5$d</string>
     <string name="trend_omission_value">遗漏 %1$d</string>
     <string name="trend_statistics">遗漏与冷热统计</string>
     <string name="trend_statistics_summary">遗漏与冷热统计 · %1$s · %2$d期</string>

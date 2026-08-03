@@ -9,13 +9,16 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.geometry.Offset
 import com.lucky3d.app.core.model.DrawRecord
 import com.lucky3d.app.domain.attributes.DrawNumber
 import com.lucky3d.app.domain.omission.HeatLevel
 import com.lucky3d.app.ui.theme.Lucky3DTheme
 import org.junit.Rule
 import org.junit.Test
+import kotlin.math.abs
 
 class TrendScreenTest {
     @get:Rule
@@ -45,33 +48,34 @@ class TrendScreenTest {
         composeRule.onNodeWithText("60期").assertIsDisplayed()
         composeRule.onNodeWithText("100期").assertIsDisplayed()
         composeRule.onNodeWithText("自定义").assertDoesNotExist()
-        composeRule.onNodeWithText("期号").assertIsDisplayed()
-        composeRule.onNodeWithText("开奖号").assertIsDisplayed()
-        composeRule.onNodeWithText("百位").assertIsDisplayed()
-        composeRule.onNodeWithText("十位").assertExists()
-        composeRule.onNodeWithText("个位").assertExists()
         composeRule
-            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图")
+            .onNodeWithContentDescription("表头：期号、试机号、开奖号、百位、十位、个位", substring = true)
             .assertIsDisplayed()
-        composeRule.onNodeWithText("全览").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("100%").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("最大遗漏").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("2026199期待开奖").assertExists()
-        composeRule.onNodeWithText("出现次数").assertExists()
-        composeRule.onNodeWithText("当前遗漏").assertExists()
-        composeRule.onNodeWithText("平均遗漏").assertExists()
-        composeRule.onNodeWithText("最大遗漏").assertExists()
+        composeRule
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("纵向连续浏览期次", substring = true).assertDoesNotExist()
+        composeRule.onNodeWithText("试机号　开奖号　百位", substring = true).assertDoesNotExist()
+        composeRule.onNodeWithText("全览").assertDoesNotExist()
+        composeRule.onNodeWithText("100%").assertDoesNotExist()
+        composeRule.onNodeWithText("缩小").assertDoesNotExist()
+        composeRule.onNodeWithText("放大").assertDoesNotExist()
+        composeRule
+            .onNodeWithContentDescription("2026199期待开奖", substring = true)
+            .assertExists()
+        composeRule
+            .onNodeWithContentDescription("表尾统计：出现次数、当前遗漏、平均遗漏、最大遗漏", substring = true)
+            .assertExists()
         composeRule
             .onNodeWithContentDescription("当前点位：2026198期，百位数字6，遗漏0")
-            .performScrollTo()
-            .assertExists()
+            .assertDoesNotExist()
         composeRule.onNodeWithText("回到最新").assertDoesNotExist()
         composeRule.onNodeWithText("数据来源").assertDoesNotExist()
         composeRule.onNodeWithText("内部窗口策略").assertDoesNotExist()
     }
 
     @Test
-    fun latestHundredsPointIsShownBeforeTheUserSelectsAnotherPoint() {
+    fun trendDoesNotShowAPointSummaryBelowTheChart() {
         composeRule.setContent {
             Lucky3DTheme {
                 TrendScreen(
@@ -82,11 +86,10 @@ class TrendScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("最大遗漏").performScrollTo().assertIsDisplayed()
         composeRule
             .onNodeWithContentDescription("当前点位：2026198期，百位数字8，遗漏9")
-            .performScrollTo()
-            .assertExists()
+            .assertDoesNotExist()
+        composeRule.onNodeWithText("2026198期 · 开奖号", substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -106,38 +109,151 @@ class TrendScreenTest {
         composeRule.onNodeWithText("没有可用于走势图的数据").assertIsDisplayed()
         composeRule.onNodeWithText("请返回首页确认内置数据是否可读取。").assertIsDisplayed()
         composeRule
-            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图")
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
             .assertDoesNotExist()
     }
 
     @Test
-    fun scaleToolbarExposesFitAndHundredPercentActions() {
-        var requestedScale = 1f
+    fun swipingUpOnTheRightTableScrollsTheWholePageVertically() {
         composeRule.setContent {
             Lucky3DTheme {
                 TrendScreen(
                     state = normalState(),
                     onSetWindow = {},
-                    onSetScale = { requestedScale = it },
                     onSelectPoint = {},
                 )
             }
         }
 
-        composeRule.onNodeWithText("全览").performScrollTo().performClick()
-        assertThat(requestedScale).isLessThan(1f)
-        composeRule.onNodeWithText("100%").performScrollTo().performClick()
-        assertThat(requestedScale).isEqualTo(1f)
+        composeRule
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .performTouchInput { swipeUp(durationMillis = 500) }
+        composeRule
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .assertIsDisplayed()
     }
 
-    private fun normalState(): TrendUiState {
-        val draws = (189..198).map { suffix ->
+    @Test
+    fun twoPointersRequestWholeTableZoomWithoutAVisibleZoomButton() {
+        val requestedScales = mutableListOf<Float>()
+        composeRule.setContent {
+            Lucky3DTheme {
+                TrendScreen(
+                    state = normalState(drawCount = 100),
+                    onSetWindow = {},
+                    onSetScale = { requestedScales += it },
+                    onSelectPoint = {},
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .performTouchInput {
+                val gestureY = height * 0.25f
+                down(0, Offset(width * 0.20f, gestureY))
+                down(1, Offset(width * 0.80f, gestureY))
+                moveTo(0, Offset(width * 0.38f, gestureY), delayMillis = 50)
+                moveTo(1, Offset(width * 0.62f, gestureY), delayMillis = 50)
+                up(0)
+                up(1)
+            }
+
+        composeRule.runOnIdle {
+            assertThat(requestedScales).isNotEmpty()
+            assertThat(requestedScales.min()).isLessThan(1f)
+        }
+    }
+
+    @Test
+    fun periodSelectorKeepsItsTextStableAtLargeScale() {
+        composeRule.setContent {
+            Lucky3DTheme {
+                TrendScreen(
+                    state = normalState().copy(scale = 2f),
+                    onSetWindow = {},
+                    onSelectPoint = {},
+                )
+            }
+        }
+
+        composeRule.onAllNodesWithText("走势").assertCountEquals(1)
+        composeRule
+            .onNodeWithContentDescription("显示期数，当前30期")
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("30期").assertIsDisplayed()
+    }
+
+    @Test
+    fun periodSelectorIsAlignedBesideTheTrendTitleInTheHeader() {
+        composeRule.setContent {
+            Lucky3DTheme {
+                TrendScreen(
+                    state = normalState(),
+                    onSetWindow = {},
+                    onSelectPoint = {},
+                )
+            }
+        }
+
+        val titleBounds = composeRule
+            .onNodeWithText("走势")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val selectorBounds = composeRule
+            .onNodeWithContentDescription("显示期数，当前30期")
+            .fetchSemanticsNode()
+            .boundsInRoot
+
+        assertThat(abs(titleBounds.center.y - selectorBounds.center.y)).isLessThan(2f)
+        assertThat(selectorBounds.left).isGreaterThan(titleBounds.right)
+    }
+
+    @Test
+    fun continuousPinchAccumulatesEveryTransformFrameWithoutExternalStateRoundTrips() {
+        val requestedScales = mutableListOf<Float>()
+        composeRule.setContent {
+            Lucky3DTheme {
+                TrendScreen(
+                    state = normalState(),
+                    onSetWindow = {},
+                    onSetScale = { requestedScales += it },
+                    onSelectPoint = {},
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .performTouchInput {
+                val gestureY = height * 0.30f
+                down(0, Offset(width * 0.20f, gestureY))
+                down(1, Offset(width * 0.80f, gestureY))
+                moveTo(0, Offset(width * 0.15f, gestureY), delayMillis = 20)
+                moveTo(1, Offset(width * 0.85f, gestureY), delayMillis = 20)
+                moveTo(0, Offset(width * 0.10f, gestureY), delayMillis = 20)
+                moveTo(1, Offset(width * 0.90f, gestureY), delayMillis = 20)
+                moveTo(0, Offset(width * 0.05f, gestureY), delayMillis = 20)
+                moveTo(1, Offset(width * 0.95f, gestureY), delayMillis = 20)
+                up(0)
+                up(1)
+            }
+
+        composeRule.runOnIdle {
+            assertThat(requestedScales).isNotEmpty()
+            assertThat(requestedScales.last()).isGreaterThan(1.4f)
+        }
+    }
+
+    private fun normalState(drawCount: Int = 10): TrendUiState {
+        val draws = ((199 - drawCount)..198).map { suffix ->
+            val issue = "2026${suffix.toString().padStart(3, '0')}"
             DrawRecord(
-                issue = "2026$suffix",
-                drawDate = "2026-07-${(suffix - 171).toString().padStart(2, '0')}",
+                issue = issue,
+                drawDate = "2026-07-${(Math.floorMod(suffix - 172, 28) + 1).toString().padStart(2, '0')}",
                 number = DrawNumber.of(suffix % 10, (suffix + 2) % 10, (suffix + 5) % 10),
-                officialDetailUrl = "https://www.cwl.gov.cn/c/2026$suffix.shtml",
-                officialFingerprint = "fingerprint-2026$suffix",
+                officialDetailUrl = "https://www.cwl.gov.cn/c/$issue.shtml",
+                officialFingerprint = "fingerprint-$issue",
             )
         }
         val points = draws.flatMapIndexed { rowIndex, draw ->
@@ -147,7 +263,7 @@ class TrendScreenTest {
                 TrendPoint(draw.issue, rowIndex, TrendPosition.ONES, draw.number.ones, rowIndex + 2),
             )
         }
-        val selected = TrendPoint("2026198", 9, TrendPosition.HUNDREDS, 6, 0)
+        val selected = TrendPoint("2026198", draws.lastIndex, TrendPosition.HUNDREDS, 6, 0)
         return TrendUiState(
             visibleDraws = draws,
             tableRows = draws.mapIndexed { rowIndex, draw ->

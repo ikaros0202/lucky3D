@@ -43,9 +43,7 @@
 
 本地验收 APK：
 
-```text
-D:\codexproject\lucky3D\artifacts\lucky3d-v0.1.0-release.apk
-```
+`artifacts/lucky3d-v0.1.0-release.apk`（本地构建产物，不进入 Git）
 
 - 包名：`com.lucky3d.app`
 - 版本：`versionCode 1` / `versionName 0.1.0`

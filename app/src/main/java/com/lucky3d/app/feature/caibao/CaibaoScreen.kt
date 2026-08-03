@@ -10,15 +10,25 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,9 +60,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lucky3d.app.R
@@ -156,22 +169,26 @@ private fun CaibaoHeader(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val deep = Lucky3dDesign.colors.primaryDeep
-    Row(
+    val displayedIssue = selectedIssue ?: document?.issue
+    val visibleIssueOptions = remember(issueOptions, displayedIssue) {
+        compactCaibaoIssueOptions(issueOptions, displayedIssue)
+    }
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(70.dp)
             .background(
                 Brush.horizontalGradient(
                     listOf(deep, MaterialTheme.colorScheme.primary),
                 ),
             )
-            .padding(horizontal = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
     ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = stringResource(R.string.caibao_title),
@@ -179,28 +196,65 @@ private fun CaibaoHeader(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = document?.let {
-                        stringResource(R.string.caibao_issue_edition, it.issue, it.edition)
-                    } ?: selectedIssue?.let { "${it}期 · 正在加载" } ?: "暂无缓存期号",
-                    color = Color.White.copy(alpha = 0.82f),
-                    style = MaterialTheme.typography.bodySmall,
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = stringResource(R.string.caibao_refresh),
+                    tint = Color.White,
                 )
-                if (issueOptions.isNotEmpty()) {
-                    TextButton(onClick = onPrevious, enabled = issueOptions.indexOf(selectedIssue) < issueOptions.lastIndex) {
-                        Text("上一期", color = Color.White, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (displayedIssue != null) {
+                Box {
+                    val issueButtonDescription = stringResource(
+                        R.string.caibao_issue_button_a11y,
+                        displayedIssue,
+                    )
+                    Button(
+                        onClick = { expanded = true },
+                        enabled = visibleIssueOptions.isNotEmpty(),
+                        modifier = Modifier
+                            .height(48.dp)
+                            .widthIn(min = 116.dp)
+                            .semantics { contentDescription = issueButtonDescription },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.16f),
+                            contentColor = Color.White,
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = ButtonDefaults.ContentPadding,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.caibao_issue, displayedIssue),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+                        Icon(
+                            imageVector = Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
-                    TextButton(onClick = { expanded = true }) {
-                        Text("切换期号", color = Color.White, style = MaterialTheme.typography.labelSmall)
-                    }
-                    TextButton(onClick = onNext, enabled = issueOptions.indexOf(selectedIssue) > 0) {
-                        Text("下一期", color = Color.White, style = MaterialTheme.typography.labelSmall)
-                    }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        issueOptions.forEach { issue ->
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.heightIn(
+                            max = CAIBAO_ISSUE_MENU_ITEM_HEIGHT * MAX_VISIBLE_ISSUE_OPTIONS,
+                        ),
+                    ) {
+                        visibleIssueOptions.forEach { issue ->
                             DropdownMenuItem(
-                                text = { Text("${issue}期") },
+                                text = { Text(stringResource(R.string.caibao_issue, issue)) },
                                 onClick = {
                                     expanded = false
                                     onSelectIssue(issue)
@@ -209,17 +263,51 @@ private fun CaibaoHeader(
                         }
                     }
                 }
+                Text(
+                    text = stringResource(
+                        R.string.caibao_edition,
+                        document?.edition ?: DEFAULT_CAIBAO_EDITION,
+                    ),
+                    color = Color.White.copy(alpha = 0.82f),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(
+                    onClick = onPrevious,
+                    enabled = issueOptions.indexOf(displayedIssue) < issueOptions.lastIndex,
+                ) {
+                    Text(
+                        text = stringResource(R.string.caibao_previous_issue),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+                TextButton(
+                    onClick = onNext,
+                    enabled = issueOptions.indexOf(displayedIssue) > 0,
+                ) {
+                    Text(
+                        text = stringResource(R.string.caibao_next_issue),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.caibao_no_cached_issue),
+                    color = Color.White.copy(alpha = 0.82f),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
-        }
-        IconButton(onClick = onRefresh) {
-            Icon(
-                imageVector = Icons.Outlined.Refresh,
-                contentDescription = stringResource(R.string.caibao_refresh),
-                tint = Color.White,
-            )
         }
     }
 }
+
+internal fun compactCaibaoIssueOptions(
+    issueOptions: List<String>,
+    @Suppress("UNUSED_PARAMETER") selectedIssue: String? = null,
+): List<String> = issueOptions.distinct().sortedDescending()
 
 @Composable
 private fun CaibaoReader(
@@ -415,6 +503,9 @@ private fun imageSampleSize(width: Int, height: Int): Int {
 private const val MIN_SCALE = 1f
 private const val MAX_SCALE = 5f
 private const val MAX_DECODE_DIMENSION = 2_048
+private const val MAX_VISIBLE_ISSUE_OPTIONS = 6
+private val CAIBAO_ISSUE_MENU_ITEM_HEIGHT = 48.dp
+private const val DEFAULT_CAIBAO_EDITION = "A11"
 
 private sealed interface CaibaoDecodeState {
     data object Empty : CaibaoDecodeState
