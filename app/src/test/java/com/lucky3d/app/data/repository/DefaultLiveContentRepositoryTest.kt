@@ -86,7 +86,9 @@ class DefaultLiveContentRepositoryTest {
     fun `trial history does not fetch pages when cached window already covers request`() = runTest {
         val store = FakeLiveContentStore().apply { trial.value = trial("2026201", "007") }
         val remote = FakeTrialDataSource(
-            TrialRemoteResult.Success(TrialRemoteRecord("2026202", "123")),
+            TrialRemoteResult.Success(
+                TrialRemoteRecord("2026202", "123", LocalDate.of(2026, 7, 31)),
+            ),
         )
         val repository = repository(store, trialRemote = remote, scope = backgroundScope)
 
@@ -860,7 +862,9 @@ class DefaultLiveContentRepositoryTest {
     private fun TestScope.repository(
         store: FakeLiveContentStore = FakeLiveContentStore(),
         trialRemote: TrialDataSource = FakeTrialDataSource(
-            TrialRemoteResult.Success(TrialRemoteRecord("2026201", "007")),
+            TrialRemoteResult.Success(
+                TrialRemoteRecord("2026201", "007", LocalDate.of(2026, 7, 31)),
+            ),
         ),
         caibaoRemote: CaibaoDataSource = FakeCaibaoDataSource(descriptor("2026201")),
         fileStore: CaibaoFileStore = fileStore(),
@@ -1132,7 +1136,7 @@ class DefaultLiveContentRepositoryTest {
     )
 
     private companion object {
-        val NOW: Instant = Instant.parse("2026-07-31T09:00:00Z")
+        val NOW: Instant = Instant.parse("2026-07-31T11:00:00Z")
         val JPEG_BYTES: ByteArray =
             byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 1, 2, 3)
 

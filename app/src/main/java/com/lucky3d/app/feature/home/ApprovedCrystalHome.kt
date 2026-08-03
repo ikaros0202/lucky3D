@@ -39,7 +39,6 @@ import androidx.core.view.WindowCompat
 import com.lucky3d.app.R
 import com.lucky3d.app.core.ui.Lucky3dDesign
 import com.lucky3d.app.domain.attributes.GroupShape
-import com.lucky3d.app.domain.livecontent.LiveContentRefreshState
 import com.lucky3d.app.domain.omission.DigitPosition
 import com.lucky3d.app.domain.omission.HeatLevel
 
@@ -410,14 +409,7 @@ internal fun ApprovedCrystalHome(
             description = stringResource(R.string.home_trial_refresh),
             onClick = onRefreshTrial,
         ) {}
-        val trialText = when {
-            state.trialNumber != null -> state.trialNumber.number
-            state.trialState == LiveContentRefreshState.Refreshing ->
-                stringResource(R.string.home_trial_loading_short)
-            state.trialState is LiveContentRefreshState.Failed ->
-                stringResource(R.string.home_trial_unavailable)
-            else -> "---"
-        }
+        val trialText = state.trialNumber?.number ?: "---"
         DesignValue(
             text = trialText,
             canvasWidth = canvasWidth,

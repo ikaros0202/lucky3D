@@ -111,8 +111,19 @@ class HomeScreenTest {
         )
 
         composeRule.onNodeWithContentDescription("开奖号 0，0，7").assertIsDisplayed()
-        composeRule.onNodeWithText("暂不可用").assertIsDisplayed()
+        composeRule.onNodeWithText("---").assertIsDisplayed()
         composeRule.onNodeWithText("更新失败，可重试").assertIsDisplayed()
+    }
+
+    @Test
+    fun trialDigitsRemainPlaceholderWhileTodayTrialIsLoading() {
+        setHomeContent(
+            HomeUiState(
+                trialState = LiveContentRefreshState.Refreshing,
+            ),
+        )
+
+        composeRule.onNodeWithText("---").assertIsDisplayed()
     }
 
     @Test

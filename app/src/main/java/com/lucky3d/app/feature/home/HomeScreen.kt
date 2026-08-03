@@ -1047,18 +1047,6 @@ private fun CompactTrialAndStatusPanel(
                     state.trialNumber != null -> {
                         CompactTrialDigits(state.trialNumber.number)
                     }
-                    state.trialState == LiveContentRefreshState.Refreshing -> {
-                        Text(
-                            text = stringResource(R.string.home_trial_loading_short),
-                            fontSize = 11.sp,
-                        )
-                    }
-                    state.trialState is LiveContentRefreshState.Failed -> {
-                        Text(
-                            text = stringResource(R.string.home_trial_unavailable),
-                            fontSize = 11.sp,
-                        )
-                    }
                     else -> {
                         Text(
                             text = "---",

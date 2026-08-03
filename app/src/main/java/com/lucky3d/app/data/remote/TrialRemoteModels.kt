@@ -5,7 +5,7 @@ import java.time.LocalDate
 data class TrialRemoteRecord(
     val issue: String,
     val number: String,
-    val sourceDate: LocalDate = LocalDate.MIN,
+    val sourceDate: LocalDate,
 )
 
 fun interface TrialHtmlParser {
