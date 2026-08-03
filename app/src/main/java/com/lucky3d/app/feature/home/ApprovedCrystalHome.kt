@@ -400,16 +400,12 @@ internal fun ApprovedCrystalHome(
             width = 145f,
             height = 90f,
         )
-        DesignAction(
-            canvasWidth = canvasWidth,
-            x = 35f,
-            y = 1460f,
-            width = 390f,
-            height = 125f,
-            description = stringResource(R.string.home_trial_refresh),
-            onClick = onRefreshTrial,
-        ) {}
-        val trialText = state.trialNumber?.number ?: "---"
+        val trialText = state.trialNumber?.number
+            ?: if (state.trialManualRefreshFailed) {
+                stringResource(R.string.home_trial_failed)
+            } else {
+                "---"
+            }
         DesignValue(
             text = trialText,
             canvasWidth = canvasWidth,
@@ -418,7 +414,7 @@ internal fun ApprovedCrystalHome(
             width = 170f,
             height = 70f,
             fontSize = if (state.trialNumber != null) 21 else 12,
-            color = if (state.trialNumber != null) {
+            color = if (state.trialNumber != null || state.trialManualRefreshFailed) {
                 ApprovedCrystalRed
             } else {
                 ApprovedCrystalInk
@@ -434,7 +430,10 @@ internal fun ApprovedCrystalHome(
             height = 125f,
             description = stringResource(R.string.home_refresh),
             enabled = state.syncState != HomeSyncState.UPDATING,
-            onClick = onRefresh,
+            onClick = {
+                onRefresh()
+                onRefreshTrial()
+            },
         ) {}
         DesignValue(
             text = syncText,

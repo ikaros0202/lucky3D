@@ -334,6 +334,7 @@ private fun HeaderCrystalMark() {
 private fun HomeHeader(
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
+    onRefreshTrial: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     Row(
@@ -359,7 +360,10 @@ private fun HomeHeader(
             )
         }
         IconButton(
-            onClick = onRefresh,
+            onClick = {
+                onRefresh()
+                onRefreshTrial()
+            },
             enabled = !isRefreshing,
             modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
         ) {
@@ -1016,6 +1020,7 @@ private fun CompactTrialAndStatusPanel(
         HomeSyncState.ERROR -> stringResource(R.string.sync_failed)
         HomeSyncState.CORRECTED -> stringResource(R.string.sync_corrected)
     }
+    val refreshDescription = stringResource(R.string.home_refresh)
     CrystalGlassPanel(
         modifier = Modifier
             .fillMaxWidth()
@@ -1032,7 +1037,6 @@ private fun CompactTrialAndStatusPanel(
                 modifier = Modifier
                     .weight(1.4f)
                     .fillMaxHeight()
-                    .clickable(onClick = onRefreshTrial)
                     .padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1046,6 +1050,14 @@ private fun CompactTrialAndStatusPanel(
                 when {
                     state.trialNumber != null -> {
                         CompactTrialDigits(state.trialNumber.number)
+                    }
+                    state.trialManualRefreshFailed -> {
+                        Text(
+                            text = stringResource(R.string.home_trial_failed),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                     else -> {
                         Text(
@@ -1068,8 +1080,12 @@ private fun CompactTrialAndStatusPanel(
                     .fillMaxHeight()
                     .clickable(
                         enabled = state.syncState != HomeSyncState.UPDATING,
-                        onClick = onRefresh,
-                    ),
+                        onClick = {
+                            onRefresh()
+                            onRefreshTrial()
+                        },
+                    )
+                    .semantics { contentDescription = refreshDescription },
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1086,7 +1102,7 @@ private fun CompactTrialAndStatusPanel(
                 )
                 Icon(
                     imageVector = Icons.Outlined.Refresh,
-                    contentDescription = stringResource(R.string.home_refresh),
+                    contentDescription = null,
                     modifier = Modifier
                         .padding(start = 3.dp)
                         .size(20.dp),

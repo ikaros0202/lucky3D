@@ -31,7 +31,7 @@
     <string name="home_title">Lucky3D</string>
     <string name="home_crystal_subtitle">柔 光 晶 体</string>
     <string name="home_settings">设置</string>
-    <string name="home_refresh">刷新</string>
+    <string name="home_refresh">刷新开奖号和试机号</string>
     <string name="home_latest">最新开奖</string>
     <string name="home_crystal_stage_a11y">柔光晶体开奖台</string>
     <string name="home_issue">%1$s期</string>
@@ -89,6 +89,7 @@
     <string name="home_trial_retry">重试试机号</string>
     <string name="home_trial_loading">正在检查试机号</string>
     <string name="home_trial_loading_short">加载中</string>
+    <string name="home_trial_failed">失败</string>
     <string name="home_attributes">和值 %1$d　跨度 %2$d　%3$s</string>
     <string name="group_leopard">豹子</string>
     <string name="group_3">组三</string>

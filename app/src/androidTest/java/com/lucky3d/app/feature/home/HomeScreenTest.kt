@@ -1,6 +1,7 @@
 package com.lucky3d.app.feature.home
 
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -127,6 +128,63 @@ class HomeScreenTest {
     }
 
     @Test
+    fun visibleRefreshRefreshesDrawAndTrialTogether() {
+        var drawRefreshes = 0
+        var trialRefreshes = 0
+        setHomeContent(
+            state = HomeUiState(),
+            onRefresh = { drawRefreshes++ },
+            onRefreshTrial = { trialRefreshes++ },
+        )
+
+        composeRule
+            .onNodeWithContentDescription("刷新开奖号和试机号")
+            .performClick()
+        composeRule.runOnIdle {
+            assertThat(drawRefreshes).isEqualTo(1)
+            assertThat(trialRefreshes).isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun approvedHomeVisibleRefreshRefreshesDrawAndTrialTogether() {
+        val latest = draw("2026198", "685")
+        var drawRefreshes = 0
+        var trialRefreshes = 0
+        setHomeContent(
+            state = HomeUiState(
+                latest = latest,
+                insights = buildHomeInsights(listOf(latest)),
+            ),
+            onRefresh = { drawRefreshes++ },
+            onRefreshTrial = { trialRefreshes++ },
+        )
+
+        composeRule
+            .onNodeWithContentDescription("刷新开奖号和试机号")
+            .performClick()
+        composeRule.runOnIdle {
+            assertThat(drawRefreshes).isEqualTo(1)
+            assertThat(trialRefreshes).isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun compactTrialDisplayIsNotClickable() {
+        setHomeContent(state = HomeUiState())
+
+        composeRule.onNodeWithText("试机号").assertHasNoClickAction()
+    }
+
+    @Test
+    fun compactTrialShowsFailureOnlyForManualPostReleaseFailure() {
+        setHomeContent(state = HomeUiState(trialManualRefreshFailed = true))
+
+        composeRule.onNodeWithText("失败").assertIsDisplayed()
+        composeRule.onNodeWithText("---").assertDoesNotExist()
+    }
+
+    @Test
     fun cachedTrialRemainsVisibleWhenRefreshFails() {
         setHomeContent(
             HomeUiState(
@@ -175,6 +233,8 @@ class HomeScreenTest {
 
     private fun setHomeContent(
         state: HomeUiState,
+        onRefresh: () -> Unit = {},
+        onRefreshTrial: () -> Unit = {},
         onOpenIssue: (String) -> Unit = {},
         onOpenDate: (String) -> Unit = {},
     ) {
@@ -182,8 +242,8 @@ class HomeScreenTest {
             Lucky3DTheme {
                 HomeScreen(
                     state = state,
-                    onRefresh = {},
-                    onRefreshTrial = {},
+                    onRefresh = onRefresh,
+                    onRefreshTrial = onRefreshTrial,
                     onOpenIssue = onOpenIssue,
                     onOpenDate = onOpenDate,
                     onOpenSettings = {},
