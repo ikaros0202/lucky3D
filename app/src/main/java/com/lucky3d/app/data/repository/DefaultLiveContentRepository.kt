@@ -350,7 +350,11 @@ class DefaultLiveContentRepository internal constructor(
         val unique = linkedMapOf<String, TrialRemoteRecord>()
         val fetchedIssues = mutableSetOf<String>()
         cachedTrials.forEach { cached ->
-            unique[cached.issue] = TrialRemoteRecord(cached.issue, cached.number)
+            unique[cached.issue] = TrialRemoteRecord(
+                issue = cached.issue,
+                number = cached.number,
+                sourceDate = cached.sourceLocalDate,
+            )
         }
         for (page in 1..5) {
             val result = try {

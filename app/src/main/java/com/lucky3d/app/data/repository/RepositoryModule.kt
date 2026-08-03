@@ -5,7 +5,7 @@ import com.lucky3d.app.data.file.CaibaoFileStore
 import com.lucky3d.app.data.remote.OfficialDrawDataSource
 import com.lucky3d.app.data.remote.OfficialFc3dDataSource
 import com.lucky3d.app.data.remote.CaibaoDataSource
-import com.lucky3d.app.data.remote.CjcpTrialDataSource
+import com.lucky3d.app.data.remote.CaibaTrialDataSource
 import com.lucky3d.app.data.remote.Cz89CaibaoDataSource
 import com.lucky3d.app.data.remote.TrialDataSource
 import dagger.Module
@@ -32,7 +32,7 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideTrialDataSource(client: OkHttpClient): TrialDataSource = CjcpTrialDataSource(client)
+    fun provideTrialDataSource(client: OkHttpClient): TrialDataSource = CaibaTrialDataSource(client)
 
     @Provides
     @Singleton

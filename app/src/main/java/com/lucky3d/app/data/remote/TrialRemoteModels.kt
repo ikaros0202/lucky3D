@@ -1,8 +1,11 @@
 package com.lucky3d.app.data.remote
 
+import java.time.LocalDate
+
 data class TrialRemoteRecord(
     val issue: String,
     val number: String,
+    val sourceDate: LocalDate = LocalDate.MIN,
 )
 
 fun interface TrialHtmlParser {
