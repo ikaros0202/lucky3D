@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -134,10 +136,51 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `before 1635 exposes release-window state without inventing a trial`() = runTest {
+    fun `next day hides yesterday cached trial until current issue arrives`() = runTest {
+        val draws = FakeDrawRepository().apply {
+            latest.value = draw("2026204", "978")
+        }
+        val live = FakeLiveContentRepository().apply {
+            trial.value = trial("2026204", "219", LocalDate.parse("2026-08-02"))
+        }
+        val viewModel = homeViewModel(
+            repository = draws,
+            live = live,
+            clock = fixedBeijing("2026-08-03T10:00:00"),
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.trialNumber).isNull()
+
+        live.trial.value = trial("2026205", "007", LocalDate.parse("2026-08-03"))
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.trialNumber?.number).isEqualTo("007")
+    }
+
+    @Test
+    fun `today trial not later than official draw stays hidden`() = runTest {
+        val draws = FakeDrawRepository().apply {
+            latest.value = draw("2026205", "123")
+        }
+        val live = FakeLiveContentRepository().apply {
+            trial.value = trial("2026205", "007", LocalDate.parse("2026-08-03"))
+        }
+        val viewModel = homeViewModel(
+            repository = draws,
+            live = live,
+            clock = fixedBeijing("2026-08-03T19:00:00"),
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.trialNumber).isNull()
+    }
+
+    @Test
+    fun `before 1830 exposes release-window state without inventing a trial`() = runTest {
         val viewModel = homeViewModel(
             repository = FakeDrawRepository(),
-            clock = fixedBeijing("2026-07-31T16:34:00"),
+            clock = fixedBeijing("2026-07-31T18:29:00"),
         )
         advanceUntilIdle()
 
@@ -166,16 +209,73 @@ class HomeViewModelTest {
 
         viewModel.onHomeVisible()
         viewModel.onHomeVisible()
+        try {
+            runCurrent()
+            assertThat(live.trialRefreshTriggers)
+                .containsExactly(LiveRefreshTrigger.HOME_VISIBLE)
+        } finally {
+            viewModel.onHomeHidden()
+        }
+    }
+
+    @Test
+    fun `failed foreground trial check retries after thirty minutes`() = runTest {
+        val clock = MutableClock("2026-08-03T18:30:00")
+        val live = FakeLiveContentRepository().apply {
+            trialRefreshResults.addLast(
+                LiveContentRefreshResult.Failed(LiveContentFailure.INVALID_ISSUE),
+            )
+            trialRefreshResults.addLast(LiveContentRefreshResult.Success)
+        }
+        val viewModel = homeViewModel(FakeDrawRepository(), live, clock)
         advanceUntilIdle()
 
-        assertThat(live.trialRefreshTriggers)
-            .containsExactly(LiveRefreshTrigger.HOME_VISIBLE)
+        viewModel.onHomeVisible()
+        try {
+            runCurrent()
+            assertThat(live.trialRefreshTriggers).hasSize(1)
+
+            clock.advanceSeconds(30 * 60)
+            advanceTimeBy(30 * 60 * 1000L)
+            runCurrent()
+
+            assertThat(live.trialRefreshTriggers).hasSize(2)
+        } finally {
+            viewModel.onHomeHidden()
+        }
+    }
+
+    @Test
+    fun `midnight tick hides previous day trial while app remains open`() = runTest {
+        val clock = MutableClock("2026-08-03T19:00:00")
+        val draws = FakeDrawRepository().apply {
+            latest.value = draw("2026204", "978")
+        }
+        val live = FakeLiveContentRepository().apply {
+            trial.value = trial("2026205", "007", LocalDate.parse("2026-08-03"))
+        }
+        val viewModel = homeViewModel(draws, live, clock)
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.trialNumber?.number).isEqualTo("007")
+
+        viewModel.onHomeVisible()
+        try {
+            runCurrent()
+            clock.advanceSeconds(5 * 60 * 60)
+            advanceTimeBy(5 * 60 * 60 * 1000L)
+            runCurrent()
+
+            assertThat(viewModel.uiState.value.trialNumber).isNull()
+            assertThat(viewModel.uiState.value.isBeforeTrialReleaseWindow).isTrue()
+        } finally {
+            viewModel.onHomeHidden()
+        }
     }
 
     private fun homeViewModel(
         repository: FakeDrawRepository,
         live: FakeLiveContentRepository = FakeLiveContentRepository(),
-        clock: Clock = fixedBeijing("2026-07-31T16:36:00"),
+        clock: Clock = fixedBeijing("2026-07-31T18:31:00"),
     ) = HomeViewModel(repository, live, clock)
 
     private class FakeDrawRepository : DrawRepository {
@@ -220,6 +320,7 @@ class HomeViewModelTest {
         val trial = MutableStateFlow<TrialNumber?>(null)
         val trialState = MutableStateFlow<LiveContentRefreshState>(LiveContentRefreshState.Idle)
         val trialRefreshTriggers = mutableListOf<LiveRefreshTrigger>()
+        val trialRefreshResults = ArrayDeque<LiveContentRefreshResult>()
 
         override val trialNumber: Flow<TrialNumber?> = trial
         override val trialRefreshState: Flow<LiveContentRefreshState> = trialState
@@ -231,7 +332,7 @@ class HomeViewModelTest {
             trigger: LiveRefreshTrigger,
         ): LiveContentRefreshResult {
             trialRefreshTriggers += trigger
-            return LiveContentRefreshResult.Success
+            return trialRefreshResults.removeFirstOrNull() ?: LiveContentRefreshResult.Success
         }
 
         override suspend fun refreshCaibao(
@@ -259,12 +360,16 @@ class HomeViewModelTest {
         officialFingerprint = "fingerprint-$issue",
     )
 
-    private fun trial(issue: String, number: String) = TrialNumber(
+    private fun trial(
+        issue: String,
+        number: String,
+        sourceDate: LocalDate = LocalDate.parse("2026-07-31"),
+    ) = TrialNumber(
         issue = issue,
         number = number,
         source = TrialSource.CJCP_SIMULATED,
         sourcePageUrl = "https://m.cjcp.cn/kjhsjh/3dls/",
-        sourceLocalDate = LocalDate.parse("2026-07-31"),
+        sourceLocalDate = sourceDate,
         fetchedAtEpochMillis = 1L,
     )
 
@@ -273,5 +378,21 @@ class HomeViewModelTest {
             .parse("$localDateTime+08:00[Asia/Shanghai]")
             .toInstant()
         return Clock.fixed(instant, ZoneId.of("Asia/Shanghai"))
+    }
+
+    private class MutableClock(localDateTime: String) : Clock() {
+        private var current = java.time.ZonedDateTime
+            .parse("$localDateTime+08:00[Asia/Shanghai]")
+            .toInstant()
+
+        override fun getZone(): ZoneId = ZoneId.of("Asia/Shanghai")
+
+        override fun withZone(zone: ZoneId): Clock = this
+
+        override fun instant(): Instant = current
+
+        fun advanceSeconds(seconds: Long) {
+            current = current.plusSeconds(seconds)
+        }
     }
 }

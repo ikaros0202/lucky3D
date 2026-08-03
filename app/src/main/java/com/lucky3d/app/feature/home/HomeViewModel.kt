@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lucky3d.app.data.repository.DrawRepository
 import com.lucky3d.app.data.repository.DrawSyncMetadata
 import com.lucky3d.app.data.repository.LiveContentRepository
+import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
 import com.lucky3d.app.domain.livecontent.LiveRefreshTrigger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Clock
@@ -12,7 +13,10 @@ import java.time.Duration
 import java.time.LocalTime
 import java.time.ZoneId
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +32,10 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
     private val isRefreshing = MutableStateFlow(false)
     private val beforeTrialReleaseWindow = MutableStateFlow(isBeforeTrialReleaseWindow())
-    private var homeVisibleRefreshScheduled = false
+    private val currentBeijingDate = MutableStateFlow(
+        clock.instant().atZone(BEIJING).toLocalDate(),
+    )
+    private var homeVisibleRefreshJob: Job? = null
 
     private val drawState = combine(
         repository.latestDraw,
@@ -57,9 +64,14 @@ class HomeViewModel @Inject constructor(
         liveContentRepository.trialNumber,
         liveContentRepository.trialRefreshState,
         beforeTrialReleaseWindow,
-    ) { home, trial, trialState, beforeRelease ->
+        currentBeijingDate,
+    ) { home, trial, trialState, beforeRelease, today ->
+        val currentTrial = trial?.takeIf { candidate ->
+            candidate.sourceLocalDate == today &&
+                home.latest?.issue?.let { candidate.issue > it } != false
+        }
         home.copy(
-            trialNumber = trial,
+            trialNumber = currentTrial,
             trialState = trialState,
             isBeforeTrialReleaseWindow = beforeRelease,
         )
@@ -72,16 +84,13 @@ class HomeViewModel @Inject constructor(
     )
 
     fun onHomeVisible() {
-        if (homeVisibleRefreshScheduled) return
-        homeVisibleRefreshScheduled = true
-        viewModelScope.launch {
-            val waitMillis = millisUntilTrialRelease()
-            if (waitMillis > 0) {
-                delay(waitMillis)
-                beforeTrialReleaseWindow.value = false
-            }
-            liveContentRepository.refreshTrial(LiveRefreshTrigger.HOME_VISIBLE)
-        }
+        if (homeVisibleRefreshJob?.isActive == true) return
+        homeVisibleRefreshJob = viewModelScope.launch { runTrialRefreshSchedule() }
+    }
+
+    fun onHomeHidden() {
+        homeVisibleRefreshJob?.cancel()
+        homeVisibleRefreshJob = null
     }
 
     fun refresh() {
@@ -107,16 +116,48 @@ class HomeViewModel @Inject constructor(
         return localTime < TRIAL_RELEASE_TIME
     }
 
-    private fun millisUntilTrialRelease(): Long {
-        val now = clock.instant().atZone(BEIJING)
-        if (now.toLocalTime() >= TRIAL_RELEASE_TIME) return 0L
-        val release = now.toLocalDate().atTime(TRIAL_RELEASE_TIME).atZone(BEIJING)
-        return Duration.between(now, release).toMillis().coerceAtLeast(0L)
+    private suspend fun runTrialRefreshSchedule() {
+        while (currentCoroutineContext().isActive) {
+            val now = clock.instant().atZone(BEIJING)
+            currentBeijingDate.value = now.toLocalDate()
+            val beforeRelease = now.toLocalTime() < TRIAL_RELEASE_TIME
+            beforeTrialReleaseWindow.value = beforeRelease
+            if (beforeRelease) {
+                val release = now.toLocalDate().atTime(TRIAL_RELEASE_TIME).atZone(BEIJING)
+                delay(
+                    minOf(
+                        Duration.between(now, release).toMillis().coerceAtLeast(1L),
+                        millisUntilNextMidnight(now),
+                    ),
+                )
+                continue
+            }
+            val result = liveContentRepository.refreshTrial(LiveRefreshTrigger.HOME_VISIBLE)
+            val waitMillis = when (result) {
+                LiveContentRefreshResult.Success -> millisUntilNextMidnight(now)
+                is LiveContentRefreshResult.Failed -> TRIAL_RETRY_MILLIS
+                is LiveContentRefreshResult.Skipped -> when (result.reason) {
+                    com.lucky3d.app.domain.livecontent.SkipReason.ALREADY_SUCCEEDED_TODAY,
+                    com.lucky3d.app.domain.livecontent.SkipReason.DAILY_AUTO_LIMIT,
+                    -> millisUntilNextMidnight(now)
+                    com.lucky3d.app.domain.livecontent.SkipReason.COOLDOWN -> TRIAL_RETRY_MILLIS
+                    com.lucky3d.app.domain.livecontent.SkipReason.BEFORE_RELEASE_WINDOW -> 1_000L
+                    com.lucky3d.app.domain.livecontent.SkipReason.TRIGGER_NOT_APPLICABLE -> return
+                }
+            }
+            delay(minOf(waitMillis, millisUntilNextMidnight(now)).coerceAtLeast(1L))
+        }
+    }
+
+    private fun millisUntilNextMidnight(now: java.time.ZonedDateTime): Long {
+        val midnight = now.toLocalDate().plusDays(1).atStartOfDay(BEIJING)
+        return Duration.between(now, midnight).toMillis().coerceAtLeast(1L)
     }
 
     private companion object {
         val BEIJING: ZoneId = ZoneId.of("Asia/Shanghai")
-        val TRIAL_RELEASE_TIME: LocalTime = LocalTime.of(16, 35)
+        val TRIAL_RELEASE_TIME: LocalTime = LocalTime.of(18, 30)
+        const val TRIAL_RETRY_MILLIS = 30 * 60 * 1000L
     }
 }
 

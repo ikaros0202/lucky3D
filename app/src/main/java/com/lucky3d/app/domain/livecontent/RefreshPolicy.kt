@@ -120,6 +120,6 @@ object RefreshPolicy {
         LiveRefreshTrigger.AUTO_FOREGROUND,
         LiveRefreshTrigger.HOME_VISIBLE,
     )
-    private val TRIAL_RELEASE_TIME: LocalTime = LocalTime.of(16, 35)
+    private val TRIAL_RELEASE_TIME: LocalTime = LocalTime.of(18, 30)
     private const val MAX_DAILY_AUTO_ATTEMPTS = 3
 }

@@ -14,11 +14,13 @@ import com.lucky3d.app.data.repository.SyncResult
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshState
 import com.lucky3d.app.domain.livecontent.LiveRefreshTrigger
+import java.time.Clock
+import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -28,28 +30,43 @@ class LifecycleSyncObserverTest {
     fun `one onStart triggers draw sync trial auto refresh and caibao cleanup once each`() = runTest {
         val draws = FakeDrawRepository()
         val live = FakeLiveContentRepository()
-        val observer = LifecycleSyncObserver(draws, live, CoroutineScope(coroutineContext))
+        val observer = LifecycleSyncObserver(
+            draws,
+            live,
+            CoroutineScope(coroutineContext),
+            fixedBeijing("2026-08-03T19:00:00"),
+        )
 
         observer.onStart(UnusedLifecycleOwner)
-        advanceUntilIdle()
+        runCurrent()
 
         assertThat(draws.foregroundCalls).isEqualTo(1)
+        assertThat(live.seedImports).isEqualTo(1)
         assertThat(live.trialTriggers).containsExactly(LiveRefreshTrigger.AUTO_FOREGROUND)
+        assertThat(live.trialEvents).containsExactly("seed", "refresh").inOrder()
         assertThat(live.cleanupCalls).isEqualTo(1)
+        observer.onStop(UnusedLifecycleOwner)
     }
 
     @Test
     fun `a failing draw sync does not prevent either live content action`() = runTest {
         val draws = FakeDrawRepository(throwOnForeground = true)
         val live = FakeLiveContentRepository()
-        val observer = LifecycleSyncObserver(draws, live, CoroutineScope(coroutineContext))
+        val observer = LifecycleSyncObserver(
+            draws,
+            live,
+            CoroutineScope(coroutineContext),
+            fixedBeijing("2026-08-03T19:00:00"),
+        )
 
         observer.onStart(UnusedLifecycleOwner)
-        advanceUntilIdle()
+        runCurrent()
 
         assertThat(draws.foregroundCalls).isEqualTo(1)
+        assertThat(live.seedImports).isEqualTo(1)
         assertThat(live.trialTriggers).containsExactly(LiveRefreshTrigger.AUTO_FOREGROUND)
         assertThat(live.cleanupCalls).isEqualTo(1)
+        observer.onStop(UnusedLifecycleOwner)
     }
 
     private class FakeDrawRepository(
@@ -75,15 +92,24 @@ class LifecycleSyncObserverTest {
 
     private class FakeLiveContentRepository : LiveContentRepository {
         var cleanupCalls = 0
+        var seedImports = 0
+        val trialEvents = mutableListOf<String>()
         val trialTriggers = mutableListOf<LiveRefreshTrigger>()
         override val trialNumber: Flow<TrialNumber?> = emptyFlow()
         override val trialRefreshState: Flow<LiveContentRefreshState> = emptyFlow()
         override val caibaoDocument: Flow<CaibaoDocument?> = emptyFlow()
         override val caibaoRefreshState: Flow<LiveContentRefreshState> = emptyFlow()
 
+        override suspend fun importBundledTrialSeed(): com.lucky3d.app.data.repository.BundledTrialSeedImportResult {
+            seedImports += 1
+            trialEvents += "seed"
+            return com.lucky3d.app.data.repository.BundledTrialSeedImportResult.AlreadyCurrent
+        }
+
         override suspend fun refreshTrial(
             trigger: LiveRefreshTrigger,
         ): LiveContentRefreshResult {
+            trialEvents += "refresh"
             trialTriggers += trigger
             return LiveContentRefreshResult.Success
         }
@@ -108,5 +134,12 @@ class LifecycleSyncObserverTest {
     private object UnusedLifecycleOwner : LifecycleOwner {
         override val lifecycle: Lifecycle
             get() = error("Lifecycle is not read by the observer")
+    }
+
+    private fun fixedBeijing(localDateTime: String): Clock {
+        val instant = java.time.ZonedDateTime
+            .parse("$localDateTime+08:00[Asia/Shanghai]")
+            .toInstant()
+        return Clock.fixed(instant, ZoneId.of("Asia/Shanghai"))
     }
 }

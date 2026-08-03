@@ -335,6 +335,7 @@ class DefaultLiveContentRepository internal constructor(
         val validationFailure = when {
             !ISSUE_PATTERN.matches(record.issue) -> LiveContentFailure.INVALID_ISSUE
             !NUMBER_PATTERN.matches(record.number) -> LiveContentFailure.INVALID_NUMBER
+            record.sourceDate != now.atZone(BEIJING).toLocalDate() -> LiveContentFailure.INVALID_ISSUE
             officialIssue != null && record.issue <= officialIssue -> LiveContentFailure.INVALID_ISSUE
             else -> null
         }
@@ -350,9 +351,9 @@ class DefaultLiveContentRepository internal constructor(
         val trial = TrialNumber(
             issue = record.issue,
             number = record.number,
-            source = TrialSource.CJCP_SIMULATED,
+            source = TrialSource.CAIBA_55125,
             sourcePageUrl = TRIAL_SOURCE_PAGE,
-            sourceLocalDate = now.atZone(BEIJING).toLocalDate(),
+            sourceLocalDate = record.sourceDate,
             fetchedAtEpochMillis = now.toEpochMilli(),
         )
         return try {
@@ -405,7 +406,7 @@ class DefaultLiveContentRepository internal constructor(
                 sourceDate = cached.sourceLocalDate,
             )
         }
-        for (page in 1..5) {
+        for (page in 1..1) {
             val result = try {
                 trialDataSource.fetchHistoryPage(page)
             } catch (exception: CancellationException) {
@@ -448,9 +449,9 @@ class DefaultLiveContentRepository internal constructor(
             TrialNumber(
                 issue = record.issue,
                 number = record.number,
-                source = TrialSource.CJCP_SIMULATED,
+                source = TrialSource.CAIBA_55125,
                 sourcePageUrl = TRIAL_SOURCE_PAGE,
-                sourceLocalDate = now.atZone(BEIJING).toLocalDate(),
+                sourceLocalDate = record.sourceDate,
                 fetchedAtEpochMillis = now.toEpochMilli(),
             )
         }
@@ -906,7 +907,7 @@ class DefaultLiveContentRepository internal constructor(
 
     private companion object {
         val BEIJING: ZoneId = ZoneId.of("Asia/Shanghai")
-        const val TRIAL_SOURCE_PAGE = "https://m.cjcp.cn/kjhsjh/3dls/"
+        const val TRIAL_SOURCE_PAGE = "https://www.55125.cn/3dshijihao/list-80.htm"
         const val CAIBAO_SOURCE_PAGE = "https://m.cz89.com/tuku/A11.htm"
         const val CAIBAO_IMAGE_HOST = "tuku.cz89.com"
         const val CAIBAO_EDITION = "A11"

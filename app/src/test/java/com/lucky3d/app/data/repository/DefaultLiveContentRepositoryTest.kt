@@ -100,9 +100,10 @@ class DefaultLiveContentRepositoryTest {
     fun `trial history stops after pages cover requested window`() = runTest {
         val remote = FakeTrialHistoryDataSource(
             mapOf(
-                1 to listOf(TrialRemoteRecord("2026202", "123")),
-                2 to listOf(TrialRemoteRecord("2026201", "007")),
-                3 to listOf(TrialRemoteRecord("2026200", "456")),
+                1 to listOf(
+                    TrialRemoteRecord("2026202", "123", LocalDate.of(2026, 7, 31)),
+                    TrialRemoteRecord("2026201", "007", LocalDate.of(2026, 7, 30)),
+                ),
             ),
         )
         val store = FakeLiveContentStore()
@@ -110,7 +111,7 @@ class DefaultLiveContentRepositoryTest {
 
         assertThat(repository.refreshTrialHistory(LiveRefreshTrigger.MANUAL, requiredWindow = 2))
             .isEqualTo(LiveContentRefreshResult.Success)
-        assertThat(remote.pagesRequested).containsExactly(1, 2).inOrder()
+        assertThat(remote.pagesRequested).containsExactly(1)
     }
 
     @Test
@@ -210,7 +211,11 @@ class DefaultLiveContentRepositoryTest {
     @Test
     fun `trial success commits fixed content and metadata atomically while preserving leading zero`() = runTest {
         val store = FakeLiveContentStore(latestOfficialIssue = "2026200")
-        val remote = FakeTrialDataSource(TrialRemoteResult.Success(TrialRemoteRecord("2026201", "007")))
+        val remote = FakeTrialDataSource(
+            TrialRemoteResult.Success(
+                TrialRemoteRecord("2026201", "007", LocalDate.of(2026, 7, 31)),
+            ),
+        )
         val repository = repository(store, trialRemote = remote, scope = backgroundScope)
 
         val result = repository.refreshTrial(LiveRefreshTrigger.AUTO_FOREGROUND)
@@ -221,8 +226,8 @@ class DefaultLiveContentRepositoryTest {
             TrialNumber(
                 issue = "2026201",
                 number = "007",
-                source = TrialSource.CJCP_SIMULATED,
-                sourcePageUrl = "https://m.cjcp.cn/kjhsjh/3dls/",
+                source = TrialSource.CAIBA_55125,
+                sourcePageUrl = "https://www.55125.cn/3dshijihao/list-80.htm",
                 sourceLocalDate = LocalDate.of(2026, 7, 31),
                 fetchedAtEpochMillis = NOW.toEpochMilli(),
             ),
@@ -238,7 +243,11 @@ class DefaultLiveContentRepositoryTest {
     fun `trial issue not strictly after latest official draw is rejected without replacing cache`() = runTest {
         val cached = trial("2026199", "123")
         val store = FakeLiveContentStore(latestOfficialIssue = "2026201").apply { trial.value = cached }
-        val remote = FakeTrialDataSource(TrialRemoteResult.Success(TrialRemoteRecord("2026201", "456")))
+        val remote = FakeTrialDataSource(
+            TrialRemoteResult.Success(
+                TrialRemoteRecord("2026201", "456", LocalDate.of(2026, 7, 31)),
+            ),
+        )
         val repository = repository(store, trialRemote = remote, scope = backgroundScope)
 
         val result = repository.refreshTrial(LiveRefreshTrigger.MANUAL)
@@ -763,6 +772,26 @@ class DefaultLiveContentRepositoryTest {
     }
 
     @Test
+    fun `yesterday trial page is rejected without replacing cache`() = runTest {
+        val cached = trial("2026204", "219")
+        val store = FakeLiveContentStore(latestOfficialIssue = "2026204").apply {
+            trial.value = cached
+        }
+        val remote = FakeTrialDataSource(
+            TrialRemoteResult.Success(
+                TrialRemoteRecord("2026205", "007", LocalDate.of(2026, 7, 30)),
+            ),
+        )
+        val repository = repository(store, trialRemote = remote, scope = backgroundScope)
+
+        assertThat(repository.refreshTrial(LiveRefreshTrigger.AUTO_FOREGROUND)).isEqualTo(
+            LiveContentRefreshResult.Failed(LiveContentFailure.INVALID_ISSUE),
+        )
+        assertThat(store.trial.value).isEqualTo(cached)
+        assertThat(store.trialCommits).isEqualTo(0)
+    }
+
+    @Test
     fun `bundled seed replaces legacy rows but preserves existing caiba rows`() = runTest {
         val legacy = trial("2026201", "111")
         val newerCaiba = trial("2026202", "222").copy(source = TrialSource.CAIBA_55125)
@@ -1020,7 +1049,9 @@ class DefaultLiveContentRepositoryTest {
             calls += 1
             started.complete(Unit)
             gate.await()
-            return TrialRemoteResult.Success(TrialRemoteRecord("2026201", "007"))
+            return TrialRemoteResult.Success(
+                TrialRemoteRecord("2026201", "007", LocalDate.of(2026, 7, 31)),
+            )
         }
     }
 
