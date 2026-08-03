@@ -41,6 +41,11 @@ interface LiveContentDao {
     @Upsert
     suspend fun upsertTrial(trial: TrialNumberEntity)
 
+    @Transaction
+    suspend fun upsertTrials(trials: List<TrialNumberEntity>) {
+        trials.forEach { upsertTrial(it) }
+    }
+
     @Upsert
     suspend fun upsertCaibao(document: CaibaoDocumentEntity)
 

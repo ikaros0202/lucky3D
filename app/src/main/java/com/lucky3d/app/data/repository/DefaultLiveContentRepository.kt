@@ -6,6 +6,9 @@ import com.lucky3d.app.core.model.TrialNumber
 import com.lucky3d.app.core.model.TrialSource
 import com.lucky3d.app.data.file.CaibaoFileException
 import com.lucky3d.app.data.file.CaibaoFileStore
+import com.lucky3d.app.data.file.BundledTrialSeedFailure
+import com.lucky3d.app.data.file.BundledTrialSeedResult
+import com.lucky3d.app.data.file.TrialSeedDataSource
 import com.lucky3d.app.data.local.CaibaoDocumentEntity
 import com.lucky3d.app.data.local.DrawDao
 import com.lucky3d.app.data.local.LiveContentDao
@@ -66,6 +69,9 @@ internal interface LiveContentStore {
     suspend fun commitTrials(trials: List<TrialNumber>, metadata: LiveContentRefreshMetadata) {
         trials.forEach { commitTrial(it, metadata) }
     }
+    suspend fun commitBundledTrials(trials: List<TrialNumber>) {
+        error("Bundled trial import is not supported by this store")
+    }
     suspend fun commitCaibao(document: CaibaoDocument, metadata: LiveContentRefreshMetadata)
     suspend fun recordMetadata(metadata: LiveContentRefreshMetadata)
     suspend fun deleteCaibao(issue: String)
@@ -77,6 +83,7 @@ class DefaultLiveContentRepository internal constructor(
     private val trialDataSource: TrialDataSource,
     private val caibaoDataSource: CaibaoDataSource,
     private val fileStore: CaibaoFileStore,
+    private val trialSeedDataSource: TrialSeedDataSource,
     private val clock: Clock,
     private val repositoryScope: CoroutineScope,
 ) : LiveContentRepository {
@@ -87,12 +94,14 @@ class DefaultLiveContentRepository internal constructor(
         trialDataSource: TrialDataSource,
         caibaoDataSource: CaibaoDataSource,
         fileStore: CaibaoFileStore,
+        trialSeedDataSource: TrialSeedDataSource,
         clock: Clock,
     ) : this(
         store = RoomLiveContentStore(liveContentDao, drawDao),
         trialDataSource = trialDataSource,
         caibaoDataSource = caibaoDataSource,
         fileStore = fileStore,
+        trialSeedDataSource = trialSeedDataSource,
         clock = clock,
         repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     )
@@ -123,6 +132,46 @@ class DefaultLiveContentRepository internal constructor(
             cleanupMetadata = store.observeMetadata(LiveContentType.CAIBAO_CLEANUP),
             runtime = caibaoRuntimeState,
         )
+
+    override suspend fun importBundledTrialSeed(): BundledTrialSeedImportResult {
+        val bundled = try {
+            trialSeedDataSource.load()
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            return BundledTrialSeedImportResult.Failed(LiveContentFailure.FILE_IO)
+        }
+        val seedRecords = when (bundled) {
+            is BundledTrialSeedResult.Success -> bundled.records
+            is BundledTrialSeedResult.Failure -> return BundledTrialSeedImportResult.Failed(
+                when (bundled.failure) {
+                    BundledTrialSeedFailure.FILE_IO -> LiveContentFailure.FILE_IO
+                    BundledTrialSeedFailure.INVALID_PAYLOAD -> LiveContentFailure.INVALID_HTML
+                },
+            )
+        }
+        if (seedRecords.isEmpty()) return BundledTrialSeedImportResult.AlreadyCurrent
+        val existing = try {
+            store.allTrials().associateBy(TrialNumber::issue)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            return BundledTrialSeedImportResult.Failed(LiveContentFailure.DATABASE)
+        }
+        val pending = seedRecords.filter { seed ->
+            val cached = existing[seed.issue]
+            cached == null || cached.source != TrialSource.CAIBA_55125
+        }
+        if (pending.isEmpty()) return BundledTrialSeedImportResult.AlreadyCurrent
+        return try {
+            store.commitBundledTrials(pending)
+            BundledTrialSeedImportResult.Imported(pending.size)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            BundledTrialSeedImportResult.Failed(LiveContentFailure.DATABASE)
+        }
+    }
 
     override suspend fun refreshTrial(trigger: LiveRefreshTrigger): LiveContentRefreshResult =
         sharedRefresh(trialInFlight) { performTrialRefresh(trigger) }
@@ -918,6 +967,10 @@ private class RoomLiveContentStore(
             trials = trials.map(TrialNumber::toEntity),
             metadata = metadata.toEntity(),
         )
+    }
+
+    override suspend fun commitBundledTrials(trials: List<TrialNumber>) {
+        liveContentDao.upsertTrials(trials.map(TrialNumber::toEntity))
     }
 
     override suspend fun commitCaibao(

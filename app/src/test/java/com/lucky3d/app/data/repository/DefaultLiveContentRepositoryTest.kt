@@ -7,6 +7,9 @@ import com.lucky3d.app.core.model.TrialNumber
 import com.lucky3d.app.core.model.TrialSource
 import com.lucky3d.app.data.file.AtomicFileMover
 import com.lucky3d.app.data.file.CaibaoFileStore
+import com.lucky3d.app.data.file.BundledTrialSeedFailure
+import com.lucky3d.app.data.file.BundledTrialSeedResult
+import com.lucky3d.app.data.file.TrialSeedDataSource
 import com.lucky3d.app.data.file.ImageBounds
 import com.lucky3d.app.data.file.ImageBoundsReader
 import com.lucky3d.app.data.file.ImageIntegrityValidator
@@ -759,6 +762,72 @@ class DefaultLiveContentRepositoryTest {
             .isEqualTo(LiveContentRefreshState.Failed(LiveContentFailure.DATABASE))
     }
 
+    @Test
+    fun `bundled seed replaces legacy rows but preserves existing caiba rows`() = runTest {
+        val legacy = trial("2026201", "111")
+        val newerCaiba = trial("2026202", "222").copy(source = TrialSource.CAIBA_55125)
+        val seedRecords = listOf(
+            legacy.copy(number = "123", source = TrialSource.CAIBA_55125),
+            newerCaiba.copy(number = "999"),
+            trial("2026203", "007").copy(source = TrialSource.CAIBA_55125),
+        )
+        val store = FakeLiveContentStore().apply {
+            putTrial(legacy)
+            putTrial(newerCaiba)
+        }
+        val repository = repository(
+            store = store,
+            trialSeed = TrialSeedDataSource { BundledTrialSeedResult.Success(seedRecords) },
+            scope = backgroundScope,
+        )
+
+        assertThat(repository.importBundledTrialSeed()).isEqualTo(
+            BundledTrialSeedImportResult.Imported(2),
+        )
+        assertThat(store.seedCommits).hasSize(1)
+        assertThat(store.allTrials().associateBy { it.issue }.getValue("2026201").number)
+            .isEqualTo("123")
+        assertThat(store.allTrials().associateBy { it.issue }.getValue("2026202").number)
+            .isEqualTo("222")
+        assertThat(store.allTrials().associateBy { it.issue }.getValue("2026203").number)
+            .isEqualTo("007")
+        assertThat(store.metadata(LiveContentType.TRIAL_NUMBER)).isNull()
+    }
+
+    @Test
+    fun `second bundled seed import is a no op`() = runTest {
+        val records = listOf(trial("2026201", "007").copy(source = TrialSource.CAIBA_55125))
+        val store = FakeLiveContentStore()
+        val repository = repository(
+            store = store,
+            trialSeed = TrialSeedDataSource { BundledTrialSeedResult.Success(records) },
+            scope = backgroundScope,
+        )
+
+        assertThat(repository.importBundledTrialSeed())
+            .isEqualTo(BundledTrialSeedImportResult.Imported(1))
+        assertThat(repository.importBundledTrialSeed())
+            .isEqualTo(BundledTrialSeedImportResult.AlreadyCurrent)
+        assertThat(store.seedCommits).hasSize(1)
+    }
+
+    @Test
+    fun `invalid bundled seed never writes Room`() = runTest {
+        val store = FakeLiveContentStore()
+        val repository = repository(
+            store = store,
+            trialSeed = TrialSeedDataSource {
+                BundledTrialSeedResult.Failure(BundledTrialSeedFailure.INVALID_PAYLOAD)
+            },
+            scope = backgroundScope,
+        )
+
+        assertThat(repository.importBundledTrialSeed()).isEqualTo(
+            BundledTrialSeedImportResult.Failed(LiveContentFailure.INVALID_HTML),
+        )
+        assertThat(store.seedCommits).isEmpty()
+    }
+
     private fun TestScope.repository(
         store: FakeLiveContentStore = FakeLiveContentStore(),
         trialRemote: TrialDataSource = FakeTrialDataSource(
@@ -766,12 +835,16 @@ class DefaultLiveContentRepositoryTest {
         ),
         caibaoRemote: CaibaoDataSource = FakeCaibaoDataSource(descriptor("2026201")),
         fileStore: CaibaoFileStore = fileStore(),
+        trialSeed: TrialSeedDataSource = TrialSeedDataSource {
+            BundledTrialSeedResult.Success(emptyList())
+        },
         scope: CoroutineScope,
     ) = DefaultLiveContentRepository(
         store = store,
         trialDataSource = trialRemote,
         caibaoDataSource = caibaoRemote,
         fileStore = fileStore,
+        trialSeedDataSource = trialSeed,
         clock = Clock.fixed(NOW, ZoneOffset.UTC),
         repositoryScope = scope,
     )
@@ -801,6 +874,8 @@ class DefaultLiveContentRepositoryTest {
         val trial = MutableStateFlow<TrialNumber?>(null)
         val caibao = MutableStateFlow<CaibaoDocument?>(null)
         val caibaoDocuments = linkedMapOf<String, CaibaoDocument>()
+        private val trials = linkedMapOf<String, TrialNumber>()
+        val seedCommits = mutableListOf<List<TrialNumber>>()
         private val metadata = LiveContentType.entries.associateWith {
             MutableStateFlow<LiveContentRefreshMetadata?>(null)
         }
@@ -821,7 +896,10 @@ class DefaultLiveContentRepositoryTest {
 
         override suspend fun latestCaibao(): CaibaoDocument? = caibao.value
 
-        override suspend fun allTrials(): List<TrialNumber> = trial.value?.let(::listOf).orEmpty()
+        override suspend fun allTrials(): List<TrialNumber> = buildMap {
+            trial.value?.let { put(it.issue, it) }
+            putAll(trials)
+        }.values.toList()
 
         override suspend fun allCaibao(): List<CaibaoDocument> =
             caibaoDocuments.values.toList()
@@ -835,6 +913,14 @@ class DefaultLiveContentRepositoryTest {
             trialCommits += 1
             this.trial.value = trial
             setMetadata(metadata)
+        }
+
+        override suspend fun commitBundledTrials(trials: List<TrialNumber>) {
+            seedCommits += trials
+            trials.forEach { this.trials[it.issue] = it }
+            trial.value = this.trials.values.maxWithOrNull(
+                compareBy<TrialNumber> { it.sourceLocalDate }.thenBy { it.fetchedAtEpochMillis },
+            )
         }
 
         override suspend fun commitCaibao(
@@ -863,6 +949,13 @@ class DefaultLiveContentRepositoryTest {
 
         fun setMetadata(value: LiveContentRefreshMetadata) {
             metadata.getValue(value.contentType).value = value
+        }
+
+        fun putTrial(value: TrialNumber) {
+            trials[value.issue] = value
+            trial.value = trials.values.maxWithOrNull(
+                compareBy<TrialNumber> { it.sourceLocalDate }.thenBy { it.fetchedAtEpochMillis },
+            )
         }
 
         fun updateCaibaoFlow() {

@@ -14,6 +14,12 @@ sealed interface CaibaoImageReadResult {
     data class Unavailable(val failure: LiveContentFailure) : CaibaoImageReadResult
 }
 
+sealed interface BundledTrialSeedImportResult {
+    data class Imported(val count: Int) : BundledTrialSeedImportResult
+    data object AlreadyCurrent : BundledTrialSeedImportResult
+    data class Failed(val failure: LiveContentFailure) : BundledTrialSeedImportResult
+}
+
 interface LiveContentRepository {
     val trialNumber: Flow<TrialNumber?>
     val trialNumbers: Flow<List<TrialNumber>>
@@ -23,6 +29,9 @@ interface LiveContentRepository {
     val caibaoDocuments: Flow<List<CaibaoDocument>>
         get() = caibaoDocument.map { it?.let(::listOf).orEmpty() }
     val caibaoRefreshState: Flow<LiveContentRefreshState>
+
+    suspend fun importBundledTrialSeed(): BundledTrialSeedImportResult =
+        BundledTrialSeedImportResult.AlreadyCurrent
 
     suspend fun refreshTrial(trigger: LiveRefreshTrigger): LiveContentRefreshResult
     suspend fun refreshTrialHistory(

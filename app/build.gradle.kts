@@ -115,7 +115,8 @@ val verifySeedAndPrepackagedDatabase by tasks.registering {
 
     val seedFile = rootProject.layout.projectDirectory.file("data/fc3d-seed.json")
     val databaseFile = layout.projectDirectory.file("src/main/assets/database/lucky3d.db")
-    inputs.files(seedFile, databaseFile)
+    val trialSeedFile = layout.projectDirectory.file("src/main/assets/trial/caiba-55125-trial-seed.json")
+    inputs.files(seedFile, databaseFile, trialSeedFile)
 
     doLast {
         fun sha256(file: File): String {
@@ -133,8 +134,10 @@ val verifySeedAndPrepackagedDatabase by tasks.registering {
 
         val seed = seedFile.asFile
         val database = databaseFile.asFile
+        val trialSeed = trialSeedFile.asFile
         check(seed.exists()) { "Missing approved seed: $seed" }
         check(database.exists()) { "Missing prepackaged Room database: $database" }
+        check(trialSeed.exists()) { "Missing approved trial seed: $trialSeed" }
         check(sha256(seed) == "7D90B6074551476D5FDEDC989F001B20A9C3336476438F819E3F770C1757F4EA") {
             "Approved seed SHA-256 changed"
         }
@@ -143,6 +146,18 @@ val verifySeedAndPrepackagedDatabase by tasks.registering {
         check(sha256(database) == "89B2263DA8973DDDA3856382CCB8B939A7AC615631C769103D74FB71E81B66F2") {
             "Prepackaged database SHA-256 changed; rebuild and review it explicitly"
         }
+        check(sha256(trialSeed) == "FCEEEE05265703BAFB32EAC24882256C781F7A2FBA7B360443BC26FB10243190") {
+            "Approved Caiba trial seed SHA-256 changed; regenerate and review it explicitly"
+        }
+        val trialSeedText = trialSeed.readText(Charsets.UTF_8)
+        val trialIssues = Regex(""""issue"\s*:\s*"(20\d{5})"""")
+            .findAll(trialSeedText)
+            .map { it.groupValues[1] }
+            .toList()
+        check(trialIssues.size == 555) { "Expected 555 trial records, found ${trialIssues.size}" }
+        check(trialIssues.firstOrNull() == "2025001") { "Trial seed must start at 2025001" }
+        check(trialIssues.lastOrNull() == "2026204") { "Trial seed must end at 2026204" }
+        check(trialIssues.distinct().size == trialIssues.size) { "Trial seed contains duplicate issues" }
     }
 }
 

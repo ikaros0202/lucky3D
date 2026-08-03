@@ -10,6 +10,7 @@ enum class LiveContentType {
 
 enum class TrialSource {
     CJCP_SIMULATED,
+    CAIBA_55125,
 }
 
 data class TrialNumber(

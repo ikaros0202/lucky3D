@@ -52,6 +52,35 @@ class LiveContentDaoTest {
     }
 
     @Test
+    fun bundledTrialBatchRollsBackAsOneTransaction() = runTest {
+        database.useConnection(isReadOnly = false) { connection ->
+            connection.usePrepared(
+                """
+                CREATE TRIGGER abort_second_bundled_trial
+                BEFORE INSERT ON trial_numbers
+                WHEN NEW.issue = '2026202'
+                BEGIN
+                    SELECT RAISE(ABORT, 'bundled trial write failed');
+                END
+                """.trimIndent(),
+            ) { statement -> statement.step() }
+        }
+
+        val failure = runCatching {
+            dao.upsertTrials(
+                listOf(
+                    trial(issue = "2026201", number = "007", date = "2026-07-20"),
+                    trial(issue = "2026202", number = "219", date = "2026-07-21"),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertThat(failure).isNotNull()
+        assertThat(trialRowCount()).isEqualTo(0L)
+        assertThat(dao.refreshMetadata("TRIAL_NUMBER")).isNull()
+    }
+
+    @Test
     fun caibaoContentAndRefreshMetadataAreBothVisibleAfterAtomicUpsert() = runTest {
         val document = caibao(issue = "2026202", date = "2026-07-21")
         val refresh = metadata(contentType = "CAIBAO", successDate = "2026-07-21")

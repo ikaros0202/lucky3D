@@ -2,6 +2,8 @@ package com.lucky3d.app.data.repository
 
 import android.content.Context
 import com.lucky3d.app.data.file.CaibaoFileStore
+import com.lucky3d.app.data.file.BundledTrialSeedDataSource
+import com.lucky3d.app.data.file.TrialSeedDataSource
 import com.lucky3d.app.data.remote.OfficialDrawDataSource
 import com.lucky3d.app.data.remote.OfficialFc3dDataSource
 import com.lucky3d.app.data.remote.CaibaoDataSource
@@ -33,6 +35,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideTrialDataSource(client: OkHttpClient): TrialDataSource = CaibaTrialDataSource(client)
+
+    @Provides
+    @Singleton
+    fun provideTrialSeedDataSource(source: BundledTrialSeedDataSource): TrialSeedDataSource = source
 
     @Provides
     @Singleton
