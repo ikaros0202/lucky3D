@@ -11,8 +11,16 @@ data class OmissionStatistics(
 )
 
 object OmissionCalculator {
-    fun calculate(values: List<Int>, target: Int): OmissionStatistics {
-        require(target in 0..9) { "Target digit must be between 0 and 9" }
+    fun calculate(values: List<Int>, target: Int): OmissionStatistics =
+        calculate(values = values, target = target, allowedRange = 0..9)
+
+    fun calculate(
+        values: List<Int>,
+        target: Int,
+        allowedRange: IntRange,
+    ): OmissionStatistics {
+        require(!allowedRange.isEmpty()) { "Allowed range must not be empty" }
+        require(target in allowedRange) { "Target must be within allowed range" }
 
         var currentOmission = 0
         var previousHitIndex: Int? = null
@@ -20,7 +28,7 @@ object OmissionCalculator {
         val completed = mutableListOf<Int>()
 
         values.forEachIndexed { index, value ->
-            require(value in 0..9) { "History digits must be between 0 and 9" }
+            require(value in allowedRange) { "History values must be within allowed range" }
             if (value == target) {
                 previousHitIndex?.let { completed += index - it - 1 }
                 previousHitIndex = index
@@ -49,9 +57,21 @@ object OmissionCalculator {
         values: List<Int>,
         target: Int,
         visibleWindowSize: Int,
+    ): OmissionStatistics = calculateVisibleWindow(
+        values = values,
+        target = target,
+        visibleWindowSize = visibleWindowSize,
+        allowedRange = 0..9,
+    )
+
+    fun calculateVisibleWindow(
+        values: List<Int>,
+        target: Int,
+        visibleWindowSize: Int,
+        allowedRange: IntRange,
     ): OmissionStatistics {
         require(visibleWindowSize > 0) { "Visible window must be positive" }
-        val full = calculate(values, target)
+        val full = calculate(values, target, allowedRange)
         return full.copy(omissionByDraw = full.omissionByDraw.takeLast(visibleWindowSize))
     }
 }

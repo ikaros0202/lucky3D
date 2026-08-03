@@ -1,6 +1,7 @@
 package com.lucky3d.app.domain.omission
 
 import com.google.common.truth.Truth.assertThat
+import kotlin.test.assertFailsWith
 import org.junit.Test
 
 class OmissionCalculatorTest {
@@ -30,5 +31,41 @@ class OmissionCalculatorTest {
         assertThat(result.currentOmission).isEqualTo(3)
         assertThat(result.averageOmission).isNull()
         assertThat(result.maxOmission).isNull()
+    }
+
+    @Test
+    fun `explicit sum range supports zero and twenty seven`() {
+        val zero = OmissionCalculator.calculate(
+            values = listOf(0, 9, 27, 0),
+            target = 0,
+            allowedRange = 0..27,
+        )
+        val twentySeven = OmissionCalculator.calculateVisibleWindow(
+            values = listOf(0, 27, 9, 27),
+            target = 27,
+            visibleWindowSize = 2,
+            allowedRange = 0..27,
+        )
+
+        assertThat(zero.omissionByDraw).containsExactly(0, 1, 2, 0).inOrder()
+        assertThat(zero.completedOmissions).containsExactly(2)
+        assertThat(twentySeven.omissionByDraw).containsExactly(1, 0).inOrder()
+    }
+
+    @Test
+    fun `explicit range rejects targets and history outside its bounds`() {
+        assertFailsWith<IllegalArgumentException> {
+            OmissionCalculator.calculate(listOf(0, 27), target = 28, allowedRange = 0..27)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            OmissionCalculator.calculate(listOf(0, -1), target = 0, allowedRange = 0..27)
+        }
+    }
+
+    @Test
+    fun `legacy digit overload remains fixed to zero through nine`() {
+        assertFailsWith<IllegalArgumentException> {
+            OmissionCalculator.calculate(listOf(0, 10), target = 0)
+        }
     }
 }
