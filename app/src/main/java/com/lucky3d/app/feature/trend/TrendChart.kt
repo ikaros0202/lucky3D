@@ -64,10 +64,28 @@ private val TrendPrefixWidth = 48.dp
 private val TrendRowHeight = 32.dp
 private val TrendGroupHeight = 44.dp
 private const val TrendDigitCount = 30
+private const val TrendSumCount = 28
 private val TrendAttributeWidth = 62.dp
-private val TrendAttributeLabels = listOf("和值", "和尾", "跨度", "奇偶比", "大小比", "012路个数比")
+private val TrendAttributeLabels = listOf("和尾", "跨度", "奇偶比", "大小比", "012路个数比")
 private const val FutureRowCount = 2
 private const val SummaryRowCount = 4
+
+internal fun calculateTrendLogicalRightWidth(
+    prefixWidth: Float,
+    cellWidth: Float,
+    attributeWidth: Float,
+): Float = prefixWidth * 2f +
+    cellWidth * (TrendDigitCount + TrendSumCount) +
+    attributeWidth * TrendAttributeLabels.size
+
+internal fun calculateTrendValueCellCenterX(
+    sum: Int,
+    prefixWidth: Float,
+    cellWidth: Float,
+): Float {
+    require(sum in 0..27) { "Sum must be between 0 and 27" }
+    return prefixWidth * 2f + (TrendDigitCount + sum + 0.5f) * cellWidth
+}
 
 internal fun calculateTrendFitScale(
     availableWidthPx: Float,
@@ -231,9 +249,11 @@ fun TrendChart(
     }
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
             val baseLockedWidth = if (maxWidth < 390.dp) 72.dp else 80.dp
-            val logicalRightWidth = TrendPrefixWidth * 2 +
-                TrendCellWidth * TrendDigitCount +
-                TrendAttributeWidth * TrendAttributeLabels.size
+            val logicalRightWidth = calculateTrendLogicalRightWidth(
+                prefixWidth = TrendPrefixWidth.value,
+                cellWidth = TrendCellWidth.value,
+                attributeWidth = TrendAttributeWidth.value,
+            ).dp
             val baseHeaderHeight = TrendGroupHeight + TrendRowHeight
             val baseBodyHeight = TrendRowHeight * bodyRowCount
             val viewportWidthPx = with(density) { maxWidth.toPx() }
@@ -686,7 +706,8 @@ private fun DrawScope.drawRightTrendHeader(
 ) {
     val headerHeight = groupHeight + rowHeight
     val digitStart = prefixWidth * 2f
-    val attributeStart = digitStart + TrendDigitCount * cellWidth
+    val sumStart = digitStart + TrendDigitCount * cellWidth
+    val attributeStart = sumStart + TrendSumCount * cellWidth
     drawRect(surfaceVariant.copy(alpha = 0.72f), size = androidx.compose.ui.geometry.Size(rightContentWidth, headerHeight))
     repeat(3) { group ->
         drawRect(
@@ -715,6 +736,25 @@ private fun DrawScope.drawRightTrendHeader(
             groupPaint,
         )
     }
+    drawRect(
+        primary.copy(alpha = 0.10f),
+        topLeft = Offset(sumStart, 0f),
+        size = androidx.compose.ui.geometry.Size(TrendSumCount * cellWidth, groupHeight),
+    )
+    drawCenteredText(
+        "和值",
+        sumStart + TrendSumCount * cellWidth / 2f,
+        groupHeight / 2f,
+        groupPaint,
+    )
+    repeat(TrendSumCount) { sum ->
+        drawCenteredText(
+            sum.toString(),
+            sumStart + (sum + 0.5f) * cellWidth,
+            groupHeight + rowHeight / 2f,
+            groupPaint,
+        )
+    }
     TrendAttributeLabels.forEachIndexed { index, label ->
         drawCenteredText(
             label,
@@ -729,6 +769,15 @@ private fun DrawScope.drawRightTrendHeader(
     repeat(TrendDigitCount + 1) { column ->
         val x = digitStart + column * cellWidth
         drawLine(gridColor, Offset(x, groupHeight), Offset(x, headerHeight), 0.7.dp.toPx())
+    }
+    repeat(TrendSumCount + 1) { column ->
+        val x = sumStart + column * cellWidth
+        drawLine(
+            gridColor,
+            Offset(x, if (column == 0 || column == TrendSumCount) 0f else groupHeight),
+            Offset(x, headerHeight),
+            if (column == 0 || column == TrendSumCount) 1.5.dp.toPx() else 0.7.dp.toPx(),
+        )
     }
     repeat(TrendAttributeLabels.size + 1) { column ->
         val x = attributeStart + column * attributeWidth
@@ -816,8 +865,8 @@ private fun buildTrendAccessibilitySummary(
     futureIssues: List<String>,
     summaryLabels: List<String>,
 ): String = buildString {
-    append(base)
-    append("；表头：期号、试机号、开奖号、百位、十位、个位、和值、和尾、跨度、奇偶比、大小比、012路个数比")
+    append(base.replace("百位十位个位遗漏走势图", "百位十位个位及和值0至27遗漏走势图"))
+    append("；表头：期号、试机号、开奖号、百位、十位、个位、和值0至27连线走势、和尾、跨度、奇偶比、大小比、012路个数比")
     state.tableRows.forEach { row ->
         append("；期号 ${row.issue}，试机号 ${row.trialNumber ?: "—"}，开奖号 ${row.drawNumber}")
         append("，百位 ${row.drawNumber[0]}，十位 ${row.drawNumber[1]}，个位 ${row.drawNumber[2]}")
@@ -846,7 +895,8 @@ private fun DrawScope.drawTrendBody(
     val rows = state.tableRows
     val bodyRows = rows.size + FutureRowCount + SummaryRowCount
     val digitStart = prefixWidth * 2f
-    val attributeStart = digitStart + TrendDigitCount * cellWidth
+    val sumStart = digitStart + TrendDigitCount * cellWidth
+    val attributeStart = sumStart + TrendSumCount * cellWidth
     drawRect(background, size = androidx.compose.ui.geometry.Size(logicalWidth, logicalHeight))
     repeat(3) { group ->
         drawRect(
@@ -886,6 +936,19 @@ private fun DrawScope.drawTrendBody(
             start = Offset(x, 0f),
             end = Offset(x, logicalHeight),
             strokeWidth = if (column % 10 == 0) {
+                1.5.dp.toPx() * scale
+            } else {
+                0.7.dp.toPx() * scale
+            },
+        )
+    }
+    repeat(TrendSumCount + 1) { column ->
+        val x = sumStart + column * cellWidth
+        drawLine(
+            color = gridColor,
+            start = Offset(x, 0f),
+            end = Offset(x, logicalHeight),
+            strokeWidth = if (column == 0 || column == TrendSumCount) {
                 1.5.dp.toPx() * scale
             } else {
                 0.7.dp.toPx() * scale
@@ -942,6 +1005,18 @@ private fun DrawScope.drawTrendBody(
                 )
             }
         }
+        repeat(TrendSumCount) { sum ->
+            if (row.sum != sum) {
+                row.sumOmissions.getOrNull(sum)?.let { omission ->
+                    drawCenteredText(
+                        omission.toString(),
+                        sumStart + (sum + 0.5f) * cellWidth,
+                        (rowIndex + 0.5f) * rowHeight,
+                        omissionPaint,
+                    )
+                }
+            }
+        }
         drawCenteredText(
             row.trialNumber ?: "—",
             prefixWidth / 2f,
@@ -954,7 +1029,7 @@ private fun DrawScope.drawTrendBody(
             (rowIndex + 0.5f) * rowHeight,
             statPaint,
         )
-        listOf(row.sum.toString(), row.sumTail, row.span, row.oddEvenRatio, row.bigSmallRatio, row.routeRatio)
+        listOf(row.sumTail, row.span, row.oddEvenRatio, row.bigSmallRatio, row.routeRatio)
             .forEachIndexed { attributeIndex, value ->
                 drawCenteredText(
                     value,
@@ -982,6 +1057,14 @@ private fun DrawScope.drawTrendBody(
         primary,
         scale,
     )
+    drawSumTrendLineAndHits(
+        rows = rows,
+        prefixWidth = prefixWidth,
+        cellWidth = cellWidth,
+        rowHeight = rowHeight,
+        primary = primary,
+        scale = scale,
+    )
     val statisticsByPosition = state.statistics.associateBy(TrendPositionStatistics::position)
     repeat(TrendDigitCount) { column ->
         val position = TrendPosition.entries[column / 10]
@@ -1002,6 +1085,57 @@ private fun DrawScope.drawTrendBody(
                 statPaint,
             )
         }
+    }
+    state.sumStatistics.forEach { stat ->
+        val values = listOf(
+            stat.occurrences.toString(),
+            stat.currentOmission.toString(),
+            stat.averageOmission?.let { String.format(Locale.US, "%.2f", it) } ?: "--",
+            stat.maxOmission?.toString() ?: "--",
+        )
+        values.forEachIndexed { summaryIndex, value ->
+            val rowIndex = rows.size + FutureRowCount + summaryIndex
+            drawCenteredText(
+                value,
+                sumStart + (stat.sum + 0.5f) * cellWidth,
+                (rowIndex + 0.5f) * rowHeight,
+                statPaint,
+            )
+        }
+    }
+}
+
+private fun DrawScope.drawSumTrendLineAndHits(
+    rows: List<TrendTableRow>,
+    prefixWidth: Float,
+    cellWidth: Float,
+    rowHeight: Float,
+    primary: Color,
+    scale: Float,
+) {
+    val centers = rows.mapIndexed { rowIndex, row ->
+        Offset(
+            x = calculateTrendValueCellCenterX(row.sum, prefixWidth, cellWidth),
+            y = (rowIndex + 0.5f) * rowHeight,
+        )
+    }
+    centers.zipWithNext().forEach { (start, end) ->
+        drawLine(
+            color = primary.copy(alpha = 0.82f),
+            start = start,
+            end = end,
+            strokeWidth = 1.6.dp.toPx() * scale,
+        )
+    }
+    val hitPaint = tablePaint(
+        Color.White,
+        10.dp.toPx() * scale,
+        monospace = true,
+        bold = true,
+    )
+    centers.forEachIndexed { rowIndex, center ->
+        drawCircle(primary, 12.dp.toPx() * scale, center)
+        drawCenteredText(rows[rowIndex].sum.toString(), center.x, center.y, hitPaint)
     }
 }
 

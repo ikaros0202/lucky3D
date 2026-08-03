@@ -29,6 +29,25 @@ class TrendViewModelTest {
     }
 
     @Test
+    fun `logical width includes twenty eight sum cells and five scalar attributes`() {
+        assertThat(
+            calculateTrendLogicalRightWidth(
+                prefixWidth = 48f,
+                cellWidth = 34f,
+                attributeWidth = 62f,
+            ),
+        ).isEqualTo(2_378f)
+    }
+
+    @Test
+    fun `sum zero and twenty seven centers use first and last sum cells`() {
+        assertThat(calculateTrendValueCellCenterX(0, prefixWidth = 48f, cellWidth = 34f))
+            .isEqualTo(1_133f)
+        assertThat(calculateTrendValueCellCenterX(27, prefixWidth = 48f, cellWidth = 34f))
+            .isEqualTo(2_051f)
+    }
+
+    @Test
     fun `viewport scale changes every table dimension by the same ratio`() {
         val metrics = calculateTrendViewportMetrics(
             scale = 0.5f,

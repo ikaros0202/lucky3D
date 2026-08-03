@@ -49,10 +49,13 @@ class TrendScreenTest {
         composeRule.onNodeWithText("100期").assertIsDisplayed()
         composeRule.onNodeWithText("自定义").assertDoesNotExist()
         composeRule
-            .onNodeWithContentDescription("表头：期号、试机号、开奖号、百位、十位、个位", substring = true)
+            .onNodeWithContentDescription("表头：期号、试机号、开奖号、百位、十位、个位、和值0至27连线走势", substring = true)
             .assertIsDisplayed()
         composeRule
-            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位及和值0至27遗漏走势图", substring = true)
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithContentDescription("和值0至27连线走势", substring = true)
             .assertIsDisplayed()
         composeRule.onNodeWithText("纵向连续浏览期次", substring = true).assertDoesNotExist()
         composeRule.onNodeWithText("试机号　开奖号　百位", substring = true).assertDoesNotExist()
@@ -109,7 +112,7 @@ class TrendScreenTest {
         composeRule.onNodeWithText("没有可用于走势图的数据").assertIsDisplayed()
         composeRule.onNodeWithText("请返回首页确认内置数据是否可读取。").assertIsDisplayed()
         composeRule
-            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位及和值0至27遗漏走势图", substring = true)
             .assertDoesNotExist()
     }
 
@@ -126,10 +129,10 @@ class TrendScreenTest {
         }
 
         composeRule
-            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位及和值0至27遗漏走势图", substring = true)
             .performTouchInput { swipeUp(durationMillis = 500) }
         composeRule
-            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位及和值0至27遗漏走势图", substring = true)
             .assertIsDisplayed()
     }
 
@@ -148,7 +151,7 @@ class TrendScreenTest {
         }
 
         composeRule
-            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位及和值0至27遗漏走势图", substring = true)
             .performTouchInput {
                 val gestureY = height * 0.25f
                 down(0, Offset(width * 0.20f, gestureY))
@@ -224,7 +227,7 @@ class TrendScreenTest {
         }
 
         composeRule
-            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位遗漏走势图", substring = true)
+            .onNodeWithContentDescription("纵向长页、横向可滑动的百位十位个位及和值0至27遗漏走势图", substring = true)
             .performTouchInput {
                 val gestureY = height * 0.30f
                 down(0, Offset(width * 0.20f, gestureY))
@@ -271,6 +274,8 @@ class TrendScreenTest {
                     issue = draw.issue,
                     drawNumber = draw.number.value,
                     omissions = List(30) { column -> (rowIndex + column) % 49 },
+                    sum = draw.number.hundreds + draw.number.tens + draw.number.ones,
+                    sumOmissions = List(28) { sum -> (rowIndex + sum) % 49 },
                 )
             },
             points = points,
@@ -293,6 +298,15 @@ class TrendScreenTest {
                     ),
                 ),
             ),
+            sumStatistics = (0..27).map { sum ->
+                TrendSumStatistics(
+                    sum = sum,
+                    occurrences = sum % 3,
+                    currentOmission = sum + 1,
+                    averageOmission = sum / 3.0,
+                    maxOmission = sum + 2,
+                )
+            },
         )
     }
 }
