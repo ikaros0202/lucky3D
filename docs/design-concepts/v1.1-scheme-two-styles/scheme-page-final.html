@@ -1,0 +1,1128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lucky3D 方案页最终视觉稿</title>
+  <style>
+    :root {
+      --font-ui: "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+      --font-number: "Roboto", "DIN Alternate", "Arial", sans-serif;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+      --space-7: 48px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --radius-phone: 40px;
+      --radius-pill: 999px;
+      --type-caption: 12px;
+      --type-label: 13px;
+      --type-body: 14px;
+      --type-title: 18px;
+      --type-display: 24px;
+      --shadow-phone: 0 24px 64px rgba(48, 14, 22, .16);
+      --shadow-float: 0 8px 24px rgba(117, 13, 35, .12);
+      color-scheme: light;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font-ui);
+      color: #23171a;
+      background: #eee9e9;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input { font: inherit; }
+    svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+    .icon-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .board {
+      --color-primary: #c81634;
+      --color-primary-strong: #980f29;
+      --color-primary-soft: #fff0f1;
+      --color-primary-softer: #fff7f5;
+      --color-on-primary: #ffffff;
+      --color-bg: #f5efef;
+      --color-phone: #fffdfc;
+      --color-surface: #ffffff;
+      --color-surface-alt: #faf5f4;
+      --color-text: #24171a;
+      --color-text-secondary: #6e5b60;
+      --color-text-tertiary: #9b858a;
+      --color-border: #eadedf;
+      --color-border-strong: #d9c6c9;
+      --color-wait: #7c5a22;
+      --color-wait-bg: #fff5df;
+      --color-neutral-status: #4d4547;
+      --color-neutral-status-bg: #f1eded;
+      --color-success: #9d1430;
+      --color-success-bg: #fff0f2;
+      position: relative;
+      min-width: 1350px;
+      padding: var(--space-6);
+      overflow: hidden;
+      background: var(--color-bg);
+    }
+    .board + .board { margin-top: var(--space-5); }
+    .board-head {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      width: 1234px;
+      margin: 0 auto var(--space-5);
+    }
+    .board-kicker {
+      margin-bottom: var(--space-1);
+      color: var(--color-primary);
+      font-size: var(--type-label);
+      font-weight: 800;
+      letter-spacing: .12em;
+    }
+    .board-title {
+      margin: 0;
+      color: var(--color-text);
+      font-size: var(--type-display);
+      line-height: 1.25;
+    }
+    .board-note {
+      max-width: 330px;
+      margin: 0;
+      color: var(--color-text-secondary);
+      font-size: var(--type-label);
+      line-height: 1.7;
+      text-align: right;
+    }
+    .phones {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(3, 390px);
+      gap: var(--space-6);
+      justify-content: center;
+      align-items: start;
+    }
+    .phone-label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin: 0 0 var(--space-2) var(--space-2);
+      color: var(--color-text-secondary);
+      font-size: var(--type-label);
+      font-weight: 700;
+    }
+    .phone-label::before {
+      width: 18px;
+      height: 2px;
+      content: "";
+      background: var(--color-primary);
+    }
+    .phone {
+      position: relative;
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      color: var(--color-text);
+      background: var(--color-phone);
+      border-radius: var(--radius-phone);
+      box-shadow: var(--shadow-phone);
+    }
+    .statusbar {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      height: 28px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-5);
+      font-family: var(--font-number);
+      font-size: var(--type-caption);
+      font-weight: 700;
+    }
+    .status-icons { display: flex; align-items: center; gap: var(--space-1); }
+    .status-icons svg { width: 14px; height: 14px; stroke-width: 2.2; }
+    .appbar {
+      position: relative;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: var(--space-7) 1fr var(--space-7);
+      min-height: 52px;
+      align-items: center;
+      padding: 0 var(--space-2);
+    }
+    .appbar-title {
+      justify-self: center;
+      font-size: var(--type-title);
+      font-weight: 800;
+    }
+    .icon-button {
+      display: inline-flex;
+      width: var(--space-7);
+      height: var(--space-7);
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      color: inherit;
+      background: transparent;
+      border: 0;
+      border-radius: var(--radius-pill);
+    }
+    .icon-button.end { justify-self: end; }
+    .screen {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      height: 764px;
+      flex-direction: column;
+    }
+    .segmented-wrap { padding: var(--space-2) var(--space-4); }
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 40px;
+      padding: var(--space-1);
+      background: var(--color-surface-alt);
+      border-radius: var(--radius-md);
+    }
+    .segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      color: var(--color-text-secondary);
+      font-size: var(--type-body);
+      font-weight: 700;
+      border-radius: var(--radius-sm);
+    }
+    .segment.active {
+      color: var(--color-primary);
+      background: var(--color-surface);
+    }
+    .count {
+      display: inline-flex;
+      min-width: 20px;
+      height: 20px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 var(--space-1);
+      color: var(--color-primary);
+      background: var(--color-primary-soft);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-number);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .search-wrap { padding: 0 var(--space-4) var(--space-2); }
+    .search {
+      display: flex;
+      height: var(--space-7);
+      align-items: center;
+      gap: var(--space-2);
+      padding: 0 var(--space-3);
+      color: var(--color-text-tertiary);
+      background: var(--color-surface-alt);
+      border-radius: var(--radius-md);
+      font-size: var(--type-body);
+    }
+    .search svg { width: 18px; height: 18px; }
+    .filters {
+      display: flex;
+      min-height: 40px;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 0 var(--space-4) var(--space-2);
+    }
+    .filter {
+      display: inline-flex;
+      min-width: 64px;
+      height: 32px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 var(--space-3);
+      color: var(--color-text-secondary);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      font-size: var(--type-label);
+      font-weight: 700;
+    }
+    .filter.active {
+      color: var(--color-on-primary);
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+    .notice {
+      display: flex;
+      min-height: 40px;
+      align-items: center;
+      gap: var(--space-2);
+      margin: 0 var(--space-4) var(--space-2);
+      padding: 0 var(--space-3);
+      color: var(--color-primary-strong);
+      background: var(--color-primary-soft);
+      border-radius: var(--radius-md);
+      font-size: var(--type-label);
+      font-weight: 700;
+    }
+    .notice svg { width: 18px; height: 18px; }
+    .notice-link { margin-left: auto; color: var(--color-primary); }
+    .scheme-list {
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
+      background: var(--color-surface);
+    }
+    .group-head {
+      display: flex;
+      height: var(--space-6);
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-4);
+      color: var(--color-text-secondary);
+      background: var(--color-surface-alt);
+      font-size: var(--type-caption);
+      font-weight: 800;
+      letter-spacing: .06em;
+    }
+    .group-count { color: var(--color-text-tertiary); font-family: var(--font-number); }
+    .scheme-row {
+      position: relative;
+      min-height: 88px;
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .template-tip {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      gap: var(--space-2);
+      margin: 0 var(--space-4) var(--space-2);
+      padding: 0 var(--space-3);
+      color: var(--color-text-secondary);
+      background: var(--color-surface-alt);
+      border-radius: var(--radius-md);
+      font-size: var(--type-caption);
+      line-height: 1.7;
+    }
+    .template-tip svg {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      color: var(--color-primary);
+    }
+    .template-list {
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
+      background: var(--color-surface);
+    }
+    .template-row {
+      min-height: 116px;
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .template-title-line,
+    .template-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+    .template-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--color-text);
+      font-size: var(--type-body);
+      font-weight: 900;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .play-badge {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      padding: 0 var(--space-2);
+      color: var(--color-primary);
+      background: var(--color-primary-soft);
+      border-radius: var(--radius-pill);
+      font-size: var(--type-caption);
+      font-weight: 800;
+    }
+    .template-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+      color: var(--color-text-secondary);
+      font-size: var(--type-caption);
+    }
+    .template-actions {
+      justify-content: flex-end;
+      margin-top: var(--space-2);
+    }
+    .template-action {
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 var(--space-3);
+      color: var(--color-text-secondary);
+      background: var(--color-surface-alt);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      font-size: var(--type-caption);
+      font-weight: 800;
+    }
+    .template-action.primary {
+      color: var(--color-on-primary);
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+    .row-top, .row-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+    .row-bottom { margin-top: var(--space-2); }
+    .scheme-id {
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+    }
+    .issue {
+      flex: 0 0 auto;
+      color: var(--color-primary);
+      font-family: var(--font-number);
+      font-size: var(--type-label);
+      font-weight: 800;
+    }
+    .scheme-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--color-text);
+      font-size: var(--type-body);
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .status {
+      display: inline-flex;
+      flex: 0 0 auto;
+      min-height: 28px;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0 var(--space-2);
+      border-radius: var(--radius-pill);
+      font-size: var(--type-caption);
+      font-weight: 800;
+    }
+    .status svg { width: 15px; height: 15px; }
+    .status.wait { color: var(--color-wait); background: var(--color-wait-bg); }
+    .status.hit { color: var(--color-success); background: var(--color-success-bg); }
+    .status.miss { color: var(--color-neutral-status); background: var(--color-neutral-status-bg); }
+    .meta {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--color-text-secondary);
+      font-size: var(--type-caption);
+      white-space: nowrap;
+    }
+    .meta b { color: var(--color-text); font-weight: 800; }
+    .row-action {
+      flex: 0 0 auto;
+      color: var(--color-primary);
+      font-size: var(--type-label);
+      font-weight: 800;
+    }
+    .ball-line { display: flex; align-items: center; gap: var(--space-1); }
+    .ball {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-on-primary);
+      background: var(--color-primary);
+      border: 2px solid rgba(255, 255, 255, .42);
+      border-radius: 50%;
+      font-family: var(--font-number);
+      font-size: 15px;
+      font-weight: 900;
+      box-shadow: inset 0 -2px 0 rgba(91, 0, 20, .2);
+    }
+    .ball.large {
+      width: 48px;
+      height: 48px;
+      font-size: 27px;
+      border-width: 2px;
+    }
+    .bottom-nav {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      min-height: 72px;
+      padding: var(--space-2) var(--space-2) var(--space-1);
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+    }
+    .nav-item {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      color: var(--color-text-tertiary);
+      font-size: var(--type-caption);
+      font-weight: 700;
+    }
+    .nav-item svg { width: 23px; height: 23px; }
+    .nav-item.active { color: var(--color-primary); }
+    .nav-mark {
+      display: flex;
+      width: 40px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-pill);
+    }
+    .nav-item.active .nav-mark { background: var(--color-primary-soft); }
+
+    .detail-scroll {
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
+      padding: 0 var(--space-4) var(--space-4);
+    }
+    .detail-hero {
+      position: relative;
+      min-height: 160px;
+      overflow: hidden;
+      padding: var(--space-4);
+      color: var(--color-on-primary);
+      background: var(--color-primary);
+      border-radius: var(--radius-lg);
+    }
+    .hero-issue {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: var(--type-caption);
+      font-weight: 800;
+    }
+    .hero-title {
+      position: relative;
+      z-index: 2;
+      margin: var(--space-1) 0 var(--space-3);
+      font-size: var(--type-title);
+      font-weight: 900;
+    }
+    .result-line {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+    .result-balls { display: flex; gap: var(--space-2); }
+    .detail-hero .ball {
+      color: var(--color-primary);
+      background: var(--color-on-primary);
+      border-color: rgba(255, 255, 255, .72);
+      box-shadow: inset 0 -2px 0 rgba(91, 0, 20, .14);
+    }
+    .hit-label {
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0 var(--space-2);
+      color: var(--color-on-primary);
+      background: rgba(255, 255, 255, .16);
+      border: 1px solid rgba(255, 255, 255, .42);
+      border-radius: var(--radius-pill);
+      font-size: var(--type-caption);
+      font-weight: 800;
+    }
+    .hit-label svg { width: 16px; height: 16px; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      min-height: 72px;
+      margin-top: var(--space-3);
+      background: var(--color-surface);
+      border-radius: var(--radius-md);
+    }
+    .summary-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+    }
+    .summary-item + .summary-item::before {
+      position: absolute;
+      left: 0;
+      width: 1px;
+      height: var(--space-6);
+      content: "";
+      background: var(--color-border);
+    }
+    .summary-label { color: var(--color-text-secondary); font-size: var(--type-caption); }
+    .summary-value { color: var(--color-text); font-family: var(--font-number); font-size: var(--type-title); font-weight: 900; }
+    .detail-section {
+      margin-top: var(--space-3);
+      padding: var(--space-3);
+      background: var(--color-surface);
+      border-radius: var(--radius-md);
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-2);
+      font-size: var(--type-body);
+      font-weight: 900;
+    }
+    .section-hint { color: var(--color-text-tertiary); font-size: var(--type-caption); font-weight: 700; }
+    .candidate-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .candidate {
+      display: inline-flex;
+      height: 32px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 var(--space-2);
+      color: var(--color-primary-strong);
+      background: var(--color-primary-soft);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-number);
+      font-size: var(--type-label);
+      font-weight: 800;
+    }
+    .condition-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .condition {
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0 var(--space-2);
+      color: var(--color-text-secondary);
+      background: var(--color-surface-alt);
+      border-radius: var(--radius-sm);
+      font-size: var(--type-caption);
+      font-weight: 700;
+    }
+    .condition b { color: var(--color-text); }
+    .note {
+      margin: 0;
+      color: var(--color-text-secondary);
+      font-size: var(--type-label);
+      line-height: 1.7;
+    }
+    .locked {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+      color: var(--color-text-tertiary);
+      font-size: var(--type-caption);
+    }
+    .locked svg { width: 16px; height: 16px; }
+    .cta-bar {
+      display: flex;
+      min-height: 72px;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-4) var(--space-3);
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+    }
+    .primary-button {
+      display: flex;
+      min-height: var(--space-7);
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      color: var(--color-on-primary);
+      background: var(--color-primary);
+      border: 0;
+      border-radius: var(--radius-md);
+      font-size: var(--type-body);
+      font-weight: 900;
+    }
+    .primary-button svg { width: 18px; height: 18px; }
+
+    .theme-cinnabar {
+      --color-primary: #cf1232;
+      --color-primary-strong: #95051f;
+      --color-primary-soft: #ffedef;
+      --color-primary-softer: #fff7f4;
+      --color-bg: #f3e9e8;
+      --color-phone: #fffaf7;
+      --color-surface: #fffdfb;
+      --color-surface-alt: #f9f0ed;
+      --color-text: #261519;
+      --color-text-secondary: #715b60;
+      --color-text-tertiary: #a1878c;
+      --color-border: #ead8d9;
+      --color-border-strong: #d7bdc0;
+      background:
+        radial-gradient(circle at 5% 12%, rgba(207, 18, 50, .11), transparent 25%),
+        linear-gradient(145deg, #f8f0ee, #eee3e3);
+    }
+    .theme-cinnabar::before,
+    .theme-cinnabar::after {
+      position: absolute;
+      width: 520px;
+      height: 160px;
+      content: "";
+      background: linear-gradient(100deg, rgba(149, 5, 31, .18), rgba(207, 18, 50, .05));
+      border-radius: 50%;
+      transform: rotate(-12deg);
+    }
+    .theme-cinnabar::before { top: -100px; right: -100px; }
+    .theme-cinnabar::after { bottom: -130px; left: -120px; }
+    .theme-cinnabar .phone::before {
+      position: absolute;
+      z-index: 1;
+      top: -84px;
+      right: -76px;
+      width: 260px;
+      height: 132px;
+      content: "";
+      background: linear-gradient(115deg, var(--color-primary-strong), var(--color-primary));
+      border-radius: 50%;
+      transform: rotate(-12deg);
+      opacity: .95;
+    }
+    .theme-cinnabar .segment.active { box-shadow: 0 2px 10px rgba(114, 12, 31, .08); }
+    .theme-cinnabar .detail-hero {
+      background:
+        radial-gradient(circle at 84% 12%, rgba(255, 255, 255, .24) 0 3px, transparent 4px),
+        linear-gradient(120deg, var(--color-primary-strong), var(--color-primary));
+    }
+    .theme-cinnabar .detail-hero::after {
+      position: absolute;
+      right: -56px;
+      bottom: -92px;
+      width: 220px;
+      height: 160px;
+      content: "";
+      border: 18px solid rgba(255, 255, 255, .10);
+      border-radius: 50%;
+      transform: rotate(-18deg);
+    }
+
+    .theme-crystal {
+      --color-primary: #c91b3d;
+      --color-primary-strong: #99142f;
+      --color-primary-soft: rgba(255, 232, 237, .82);
+      --color-primary-softer: rgba(255, 247, 249, .86);
+      --color-bg: #ececf4;
+      --color-phone: #fbf9fc;
+      --color-surface: rgba(255, 255, 255, .86);
+      --color-surface-alt: rgba(246, 241, 247, .90);
+      --color-text: #261921;
+      --color-text-secondary: #71616c;
+      --color-text-tertiary: #9b8995;
+      --color-border: rgba(203, 172, 187, .48);
+      --color-border-strong: rgba(182, 142, 161, .56);
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, .72), transparent 38%),
+        linear-gradient(150deg, #eef1fa, #f6e9ed 54%, #eceaf3);
+    }
+    .theme-crystal::before {
+      position: absolute;
+      inset: 0;
+      content: "";
+      opacity: .58;
+      background:
+        linear-gradient(32deg, transparent 25%, rgba(255, 255, 255, .66) 25% 27%, transparent 27%),
+        linear-gradient(154deg, transparent 68%, rgba(201, 27, 61, .07) 68% 70%, transparent 70%);
+      background-size: 270px 220px, 330px 280px;
+    }
+    .theme-crystal .phone {
+      border: 1px solid rgba(255, 255, 255, .92);
+      background:
+        radial-gradient(circle at 100% 0, rgba(255, 223, 231, .48), transparent 32%),
+        var(--color-phone);
+    }
+    .theme-crystal .phone::before,
+    .theme-crystal .phone::after {
+      position: absolute;
+      z-index: 1;
+      content: "";
+      pointer-events: none;
+    }
+    .theme-crystal .phone::before {
+      top: 30px;
+      right: -36px;
+      width: 118px;
+      height: 118px;
+      border: 1px solid rgba(201, 27, 61, .12);
+      background: linear-gradient(135deg, rgba(255, 255, 255, .62), rgba(255, 214, 224, .16));
+      transform: rotate(34deg);
+    }
+    .theme-crystal .phone::after {
+      bottom: 58px;
+      left: -34px;
+      width: 90px;
+      height: 90px;
+      border: 1px solid rgba(94, 110, 163, .12);
+      background: linear-gradient(135deg, rgba(255, 255, 255, .48), rgba(207, 214, 241, .16));
+      transform: rotate(18deg);
+    }
+    .theme-crystal .segmented,
+    .theme-crystal .search,
+    .theme-crystal .notice,
+    .theme-crystal .scheme-list,
+    .theme-crystal .summary,
+    .theme-crystal .detail-section {
+      border: 1px solid var(--color-border);
+      backdrop-filter: blur(10px);
+    }
+    .theme-crystal .scheme-list,
+    .theme-crystal .template-list {
+      margin: 0 var(--space-4);
+      overflow: hidden;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+    }
+    .theme-crystal .scheme-row:last-child,
+    .theme-crystal .template-row:last-child { border-bottom: 0; }
+    .theme-crystal .detail-hero {
+      border: 1px solid rgba(255, 255, 255, .68);
+      background:
+        linear-gradient(138deg, rgba(255, 255, 255, .18), transparent 42%),
+        linear-gradient(125deg, var(--color-primary-strong), var(--color-primary));
+      box-shadow: var(--shadow-float);
+    }
+    .theme-crystal .detail-hero::before,
+    .theme-crystal .detail-hero::after {
+      position: absolute;
+      content: "";
+      border: 1px solid rgba(255, 255, 255, .28);
+      transform: rotate(35deg);
+    }
+    .theme-crystal .detail-hero::before { top: -48px; right: 4px; width: 110px; height: 110px; }
+    .theme-crystal .detail-hero::after { right: -28px; bottom: -48px; width: 90px; height: 90px; }
+    .theme-crystal .summary,
+    .theme-crystal .detail-section { background: rgba(255, 255, 255, .76); }
+    .theme-crystal .primary-button {
+      background: linear-gradient(120deg, var(--color-primary-strong), var(--color-primary));
+      box-shadow: var(--shadow-float);
+    }
+    .theme-crystal .bottom-nav,
+    .theme-crystal .cta-bar { background: rgba(255, 255, 255, .90); backdrop-filter: blur(12px); }
+
+    @media (max-width: 1370px) {
+      .board { min-width: 0; padding: var(--space-4); }
+      .board-head { width: 390px; align-items: flex-start; flex-direction: column; gap: var(--space-2); }
+      .board-note { text-align: left; }
+      .phones { grid-template-columns: 390px; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="icon-defs" aria-hidden="true">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12 2.2 2.3 4.8-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6m0-6-6 6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="10" height="11" rx="2"/><path d="M15 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m4 10 8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="M4 18 9 12l4 3 7-9"/><path d="M16 6h4v4"/></symbol>
+    <symbol id="i-pick" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></symbol>
+    <symbol id="i-scheme" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8.5 9h7m-7 4h7m-7 4h4"/></symbol>
+    <symbol id="i-paper" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 11h6m-6 4h6"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M4 9a12 12 0 0 1 16 0M7 12a8 8 0 0 1 10 0m-7 3a3 3 0 0 1 4 0"/><circle cx="12" cy="18" r=".7"/></symbol>
+    <symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10v4M6 10h9v4H6z"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19 7v5h-5M5 17v-5h5"/><path d="M17.5 9A7 7 0 0 0 6 7l-1 1m2 7a7 7 0 0 0 11 2l1-1"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  </svg>
+
+  <section class="board theme-cinnabar" id="style-1">
+    <header class="board-head">
+      <div>
+        <div class="board-kicker">方向 01 · 流动朱砂</div>
+        <h1 class="board-title">方案页最终稿</h1>
+      </div>
+      <p class="board-note">宣纸暖白、朱砂红流线、紧凑分组清单。视觉有识别度，但不挤占方案内容。</p>
+    </header>
+    <div class="phones">
+      <article>
+        <div class="phone-label">方案列表 · 正常状态</div>
+        <div class="phone">
+          <div class="statusbar"><span>19:42</span><span class="status-icons"><svg><use href="#i-wifi"/></svg><svg><use href="#i-battery"/></svg></span></div>
+          <div class="appbar"><span></span><div class="appbar-title">方案</div><span></span></div>
+          <div class="screen">
+            <div class="segmented-wrap"><div class="segmented"><div class="segment active">方案 <span class="count">12</span></div><div class="segment">模板 <span class="count">4</span></div></div></div>
+            <div class="search-wrap"><div class="search"><svg><use href="#i-search"/></svg><span>按期号、日期或标题查找</span></div></div>
+            <div class="filters"><span class="filter active">全部</span><span class="filter">待开奖</span><span class="filter">已复盘</span></div>
+            <div class="notice"><svg><use href="#i-refresh"/></svg><span>1个方案已完成开奖复盘</span><span class="notice-link">查看</span></div>
+            <div class="scheme-list">
+              <div class="group-head"><span>进行中</span><span class="group-count">2</span></div>
+              <div class="scheme-row">
+                <div class="row-top"><div class="scheme-id"><span class="issue">2026204期</span><span class="scheme-name">周三定位方案</span></div><span class="status wait"><svg><use href="#i-clock"/></svg>等待开奖</span></div>
+                <div class="row-bottom"><div class="meta"><b>单选</b><span>18注</span><span>36元</span><span>候选54个</span></div><span class="row-action">查看详情</span></div>
+              </div>
+              <div class="scheme-row">
+                <div class="row-top"><div class="scheme-id"><span class="issue">2026204期</span><span class="scheme-name">重点组三</span></div><span class="status wait"><svg><use href="#i-clock"/></svg>等待开奖</span></div>
+                <div class="row-bottom"><div class="meta"><b>组选3</b><span>6注</span><span>12元</span><span>候选12个</span></div><span class="row-action">查看详情</span></div>
+              </div>
+              <div class="group-head"><span>历史复盘</span><span class="group-count">10</span></div>
+              <div class="scheme-row">
+                <div class="row-top"><div class="scheme-id"><span class="issue">2026203期</span><span class="scheme-name">和值筛选方案</span></div><span class="status hit"><svg><use href="#i-check"/></svg>包含开奖号</span></div>
+                <div class="row-bottom"><div class="meta"><b>单选</b><span>12注</span><span>24元</span></div><div class="ball-line"><span class="ball">6</span><span class="ball">8</span><span class="ball">5</span></div></div>
+              </div>
+              <div class="scheme-row">
+                <div class="row-top"><div class="scheme-id"><span class="issue">2026202期</span><span class="scheme-name">直选观察</span></div><span class="status miss"><svg><use href="#i-x"/></svg>未包含开奖号</span></div>
+                <div class="row-bottom"><div class="meta"><b>单选</b><span>10注</span><span>20元</span></div><div class="ball-line"><span class="ball">1</span><span class="ball">0</span><span class="ball">7</span></div></div>
+              </div>
+            </div>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-home"/></svg></span><span>首页</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-trend"/></svg></span><span>走势</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-pick"/></svg></span><span>选号</span></div>
+              <div class="nav-item active"><span class="nav-mark"><svg><use href="#i-scheme"/></svg></span><span>方案</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-paper"/></svg></span><span>彩报</span></div>
+            </nav>
+          </div>
+        </div>
+      </article>
+      <article>
+        <div class="phone-label">模板列表 · 高级功能收起</div>
+        <div class="phone">
+          <div class="statusbar"><span>19:42</span><span class="status-icons"><svg><use href="#i-wifi"/></svg><svg><use href="#i-battery"/></svg></span></div>
+          <div class="appbar"><span></span><div class="appbar-title">方案</div><span></span></div>
+          <div class="screen">
+            <div class="segmented-wrap"><div class="segmented"><div class="segment">方案 <span class="count">12</span></div><div class="segment active">模板 <span class="count">4</span></div></div></div>
+            <div class="template-tip"><svg><use href="#i-scheme"/></svg><span>模板保存筛选条件，不绑定期号；可随时套用或回测。</span></div>
+            <div class="template-list">
+              <div class="group-head"><span>常用模板</span><span class="group-count">2</span></div>
+              <div class="template-row">
+                <div class="template-title-line"><span class="template-name">和值跨度组合</span><span class="play-badge">单选</span></div>
+                <div class="template-meta"><span>观察30期</span><span>4个条件</span><span>7月28日修改</span></div>
+                <div class="template-actions"><span class="template-action">历史回测</span><span class="template-action primary">套用到本期</span></div>
+              </div>
+              <div class="template-row">
+                <div class="template-title-line"><span class="template-name">组六基础过滤</span><span class="play-badge">组选6</span></div>
+                <div class="template-meta"><span>观察50期</span><span>3个条件</span><span>7月26日修改</span></div>
+                <div class="template-actions"><span class="template-action">历史回测</span><span class="template-action primary">套用到本期</span></div>
+              </div>
+              <div class="group-head"><span>全部模板</span><span class="group-count">2</span></div>
+              <div class="template-row">
+                <div class="template-title-line"><span class="template-name">定位冷号排除</span><span class="play-badge">单选</span></div>
+                <div class="template-meta"><span>观察20期</span><span>5个条件</span><span>7月21日修改</span></div>
+                <div class="template-actions"><span class="template-action">历史回测</span><span class="template-action primary">套用到本期</span></div>
+              </div>
+              <div class="template-row">
+                <div class="template-title-line"><span class="template-name">组三和值区间</span><span class="play-badge">组选3</span></div>
+                <div class="template-meta"><span>观察30期</span><span>2个条件</span><span>7月18日修改</span></div>
+                <div class="template-actions"><span class="template-action">历史回测</span><span class="template-action primary">套用到本期</span></div>
+              </div>
+            </div>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-home"/></svg></span><span>首页</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-trend"/></svg></span><span>走势</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-pick"/></svg></span><span>选号</span></div>
+              <div class="nav-item active"><span class="nav-mark"><svg><use href="#i-scheme"/></svg></span><span>方案</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-paper"/></svg></span><span>彩报</span></div>
+            </nav>
+          </div>
+        </div>
+      </article>
+      <article>
+        <div class="phone-label">方案详情 · 已开奖复盘</div>
+        <div class="phone">
+          <div class="statusbar"><span>19:42</span><span class="status-icons"><svg><use href="#i-wifi"/></svg><svg><use href="#i-battery"/></svg></span></div>
+          <div class="appbar"><button class="icon-button" aria-label="返回"><svg><use href="#i-back"/></svg></button><div class="appbar-title">方案详情</div><button class="icon-button end" aria-label="更多"><svg><use href="#i-more"/></svg></button></div>
+          <div class="screen">
+            <main class="detail-scroll">
+              <section class="detail-hero">
+                <div class="hero-issue"><span>2026203期 · 单选</span><span>已复盘</span></div>
+                <div class="hero-title">和值筛选方案</div>
+                <div class="result-line">
+                  <div class="result-balls"><span class="ball large">6</span><span class="ball large">8</span><span class="ball large">5</span></div>
+                  <span class="hit-label"><svg><use href="#i-check"/></svg>包含开奖号</span>
+                </div>
+              </section>
+              <section class="summary">
+                <div class="summary-item"><span class="summary-label">注数</span><span class="summary-value">12注</span></div>
+                <div class="summary-item"><span class="summary-label">倍数</span><span class="summary-value">1倍</span></div>
+                <div class="summary-item"><span class="summary-label">金额</span><span class="summary-value">24元</span></div>
+              </section>
+              <section class="detail-section">
+                <div class="section-title"><span>候选号码</span><span class="section-hint">共54个 · 展开</span></div>
+                <div class="candidate-list"><span class="candidate">015</span><span class="candidate">016</span><span class="candidate">025</span><span class="candidate">056</span><span class="candidate">068</span><span class="candidate">685</span><span class="candidate">更多 48</span></div>
+              </section>
+              <section class="detail-section">
+                <div class="section-title"><span>筛选条件</span><span class="section-hint">观察30期</span></div>
+                <div class="condition-list"><span class="condition">和值 <b>14–21</b></span><span class="condition">跨度 <b>3–7</b></span><span class="condition">奇偶 <b>1:2 / 2:1</b></span><span class="condition">排除 <b>全奇</b></span></div>
+              </section>
+              <section class="detail-section">
+                <div class="section-title"><span>备注</span><span class="section-hint">2026-07-28</span></div>
+                <p class="note">重点观察中段和值，开奖后保留复盘结果。</p>
+              </section>
+              <div class="locked"><svg><use href="#i-lock"/></svg><span>已开奖方案不可覆盖，修改将创建副本</span></div>
+            </main>
+            <div class="cta-bar"><button class="primary-button"><svg><use href="#i-copy"/></svg>复制到本期</button></div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="board theme-crystal" id="style-4">
+    <header class="board-head">
+      <div>
+        <div class="board-kicker">方向 04 · 柔光晶体</div>
+        <h1 class="board-title">方案页最终稿</h1>
+      </div>
+      <p class="board-note">冷白柔光、轻晶体边界、红色业务焦点。装饰退到背景，号码球保持哑光清晰。</p>
+    </header>
+    <div class="phones">
+      <article>
+        <div class="phone-label">方案列表 · 正常状态</div>
+        <div class="phone">
+          <div class="statusbar"><span>19:42</span><span class="status-icons"><svg><use href="#i-wifi"/></svg><svg><use href="#i-battery"/></svg></span></div>
+          <div class="appbar"><span></span><div class="appbar-title">方案</div><span></span></div>
+          <div class="screen">
+            <div class="segmented-wrap"><div class="segmented"><div class="segment active">方案 <span class="count">12</span></div><div class="segment">模板 <span class="count">4</span></div></div></div>
+            <div class="search-wrap"><div class="search"><svg><use href="#i-search"/></svg><span>按期号、日期或标题查找</span></div></div>
+            <div class="filters"><span class="filter active">全部</span><span class="filter">待开奖</span><span class="filter">已复盘</span></div>
+            <div class="notice"><svg><use href="#i-refresh"/></svg><span>1个方案已完成开奖复盘</span><span class="notice-link">查看</span></div>
+            <div class="scheme-list">
+              <div class="group-head"><span>进行中</span><span class="group-count">2</span></div>
+              <div class="scheme-row">
+                <div class="row-top"><div class="scheme-id"><span class="issue">2026204期</span><span class="scheme-name">周三定位方案</span></div><span class="status wait"><svg><use href="#i-clock"/></svg>等待开奖</span></div>
+                <div class="row-bottom"><div class="meta"><b>单选</b><span>18注</span><span>36元</span><span>候选54个</span></div><span class="row-action">查看详情</span></div>
+              </div>
+              <div class="scheme-row">
+                <div class="row-top"><div class="scheme-id"><span class="issue">2026204期</span><span class="scheme-name">重点组三</span></div><span class="status wait"><svg><use href="#i-clock"/></svg>等待开奖</span></div>
+                <div class="row-bottom"><div class="meta"><b>组选3</b><span>6注</span><span>12元</span><span>候选12个</span></div><span class="row-action">查看详情</span></div>
+              </div>
+              <div class="group-head"><span>历史复盘</span><span class="group-count">10</span></div>
+              <div class="scheme-row">
+                <div class="row-top"><div class="scheme-id"><span class="issue">2026203期</span><span class="scheme-name">和值筛选方案</span></div><span class="status hit"><svg><use href="#i-check"/></svg>包含开奖号</span></div>
+                <div class="row-bottom"><div class="meta"><b>单选</b><span>12注</span><span>24元</span></div><div class="ball-line"><span class="ball">6</span><span class="ball">8</span><span class="ball">5</span></div></div>
+              </div>
+              <div class="scheme-row">
+                <div class="row-top"><div class="scheme-id"><span class="issue">2026202期</span><span class="scheme-name">直选观察</span></div><span class="status miss"><svg><use href="#i-x"/></svg>未包含开奖号</span></div>
+                <div class="row-bottom"><div class="meta"><b>单选</b><span>10注</span><span>20元</span></div><div class="ball-line"><span class="ball">1</span><span class="ball">0</span><span class="ball">7</span></div></div>
+              </div>
+            </div>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-home"/></svg></span><span>首页</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-trend"/></svg></span><span>走势</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-pick"/></svg></span><span>选号</span></div>
+              <div class="nav-item active"><span class="nav-mark"><svg><use href="#i-scheme"/></svg></span><span>方案</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-paper"/></svg></span><span>彩报</span></div>
+            </nav>
+          </div>
+        </div>
+      </article>
+      <article>
+        <div class="phone-label">模板列表 · 高级功能收起</div>
+        <div class="phone">
+          <div class="statusbar"><span>19:42</span><span class="status-icons"><svg><use href="#i-wifi"/></svg><svg><use href="#i-battery"/></svg></span></div>
+          <div class="appbar"><span></span><div class="appbar-title">方案</div><span></span></div>
+          <div class="screen">
+            <div class="segmented-wrap"><div class="segmented"><div class="segment">方案 <span class="count">12</span></div><div class="segment active">模板 <span class="count">4</span></div></div></div>
+            <div class="template-tip"><svg><use href="#i-scheme"/></svg><span>模板保存筛选条件，不绑定期号；可随时套用或回测。</span></div>
+            <div class="template-list">
+              <div class="group-head"><span>常用模板</span><span class="group-count">2</span></div>
+              <div class="template-row">
+                <div class="template-title-line"><span class="template-name">和值跨度组合</span><span class="play-badge">单选</span></div>
+                <div class="template-meta"><span>观察30期</span><span>4个条件</span><span>7月28日修改</span></div>
+                <div class="template-actions"><span class="template-action">历史回测</span><span class="template-action primary">套用到本期</span></div>
+              </div>
+              <div class="template-row">
+                <div class="template-title-line"><span class="template-name">组六基础过滤</span><span class="play-badge">组选6</span></div>
+                <div class="template-meta"><span>观察50期</span><span>3个条件</span><span>7月26日修改</span></div>
+                <div class="template-actions"><span class="template-action">历史回测</span><span class="template-action primary">套用到本期</span></div>
+              </div>
+              <div class="group-head"><span>全部模板</span><span class="group-count">2</span></div>
+              <div class="template-row">
+                <div class="template-title-line"><span class="template-name">定位冷号排除</span><span class="play-badge">单选</span></div>
+                <div class="template-meta"><span>观察20期</span><span>5个条件</span><span>7月21日修改</span></div>
+                <div class="template-actions"><span class="template-action">历史回测</span><span class="template-action primary">套用到本期</span></div>
+              </div>
+              <div class="template-row">
+                <div class="template-title-line"><span class="template-name">组三和值区间</span><span class="play-badge">组选3</span></div>
+                <div class="template-meta"><span>观察30期</span><span>2个条件</span><span>7月18日修改</span></div>
+                <div class="template-actions"><span class="template-action">历史回测</span><span class="template-action primary">套用到本期</span></div>
+              </div>
+            </div>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-home"/></svg></span><span>首页</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-trend"/></svg></span><span>走势</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-pick"/></svg></span><span>选号</span></div>
+              <div class="nav-item active"><span class="nav-mark"><svg><use href="#i-scheme"/></svg></span><span>方案</span></div>
+              <div class="nav-item"><span class="nav-mark"><svg><use href="#i-paper"/></svg></span><span>彩报</span></div>
+            </nav>
+          </div>
+        </div>
+      </article>
+      <article>
+        <div class="phone-label">方案详情 · 已开奖复盘</div>
+        <div class="phone">
+          <div class="statusbar"><span>19:42</span><span class="status-icons"><svg><use href="#i-wifi"/></svg><svg><use href="#i-battery"/></svg></span></div>
+          <div class="appbar"><button class="icon-button" aria-label="返回"><svg><use href="#i-back"/></svg></button><div class="appbar-title">方案详情</div><button class="icon-button end" aria-label="更多"><svg><use href="#i-more"/></svg></button></div>
+          <div class="screen">
+            <main class="detail-scroll">
+              <section class="detail-hero">
+                <div class="hero-issue"><span>2026203期 · 单选</span><span>已复盘</span></div>
+                <div class="hero-title">和值筛选方案</div>
+                <div class="result-line">
+                  <div class="result-balls"><span class="ball large">6</span><span class="ball large">8</span><span class="ball large">5</span></div>
+                  <span class="hit-label"><svg><use href="#i-check"/></svg>包含开奖号</span>
+                </div>
+              </section>
+              <section class="summary">
+                <div class="summary-item"><span class="summary-label">注数</span><span class="summary-value">12注</span></div>
+                <div class="summary-item"><span class="summary-label">倍数</span><span class="summary-value">1倍</span></div>
+                <div class="summary-item"><span class="summary-label">金额</span><span class="summary-value">24元</span></div>
+              </section>
+              <section class="detail-section">
+                <div class="section-title"><span>候选号码</span><span class="section-hint">共54个 · 展开</span></div>
+                <div class="candidate-list"><span class="candidate">015</span><span class="candidate">016</span><span class="candidate">025</span><span class="candidate">056</span><span class="candidate">068</span><span class="candidate">685</span><span class="candidate">更多 48</span></div>
+              </section>
+              <section class="detail-section">
+                <div class="section-title"><span>筛选条件</span><span class="section-hint">观察30期</span></div>
+                <div class="condition-list"><span class="condition">和值 <b>14–21</b></span><span class="condition">跨度 <b>3–7</b></span><span class="condition">奇偶 <b>1:2 / 2:1</b></span><span class="condition">排除 <b>全奇</b></span></div>
+              </section>
+              <section class="detail-section">
+                <div class="section-title"><span>备注</span><span class="section-hint">2026-07-28</span></div>
+                <p class="note">重点观察中段和值，开奖后保留复盘结果。</p>
+              </section>
+              <div class="locked"><svg><use href="#i-lock"/></svg><span>已开奖方案不可覆盖，修改将创建副本</span></div>
+            </main>
+            <div class="cta-bar"><button class="primary-button"><svg><use href="#i-copy"/></svg>复制到本期</button></div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+</body>
+</html>
