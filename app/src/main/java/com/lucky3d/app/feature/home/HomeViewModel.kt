@@ -10,6 +10,7 @@ import com.lucky3d.app.domain.livecontent.LiveRefreshTrigger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Clock
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import javax.inject.Inject
@@ -35,6 +36,7 @@ class HomeViewModel @Inject constructor(
     private val currentBeijingDate = MutableStateFlow(
         clock.instant().atZone(BEIJING).toLocalDate(),
     )
+    private val manualTrialFailureDate = MutableStateFlow<LocalDate?>(null)
     private var homeVisibleRefreshJob: Job? = null
 
     private val drawState = combine(
@@ -59,13 +61,21 @@ class HomeViewModel @Inject constructor(
         )
     }
 
+    private val trialFailureDateState = combine(
+        currentBeijingDate,
+        manualTrialFailureDate,
+    ) { today, manualFailureDate ->
+        today to manualFailureDate
+    }
+
     val uiState: StateFlow<HomeUiState> = combine(
         drawState,
         liveContentRepository.trialNumber,
         liveContentRepository.trialRefreshState,
         beforeTrialReleaseWindow,
-        currentBeijingDate,
-    ) { home, trial, trialState, beforeRelease, today ->
+        trialFailureDateState,
+    ) { home, trial, trialState, beforeRelease, dateState ->
+        val (today, manualFailureDate) = dateState
         val currentTrial = trial?.takeIf { candidate ->
             candidate.sourceLocalDate == today &&
                 home.latest?.issue?.let { candidate.issue > it } != false
@@ -74,6 +84,8 @@ class HomeViewModel @Inject constructor(
             trialNumber = currentTrial,
             trialState = trialState,
             isBeforeTrialReleaseWindow = beforeRelease,
+            trialManualRefreshFailed =
+                manualFailureDate == today && !beforeRelease && currentTrial == null,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -107,7 +119,12 @@ class HomeViewModel @Inject constructor(
 
     fun refreshTrial() {
         viewModelScope.launch {
-            liveContentRepository.refreshTrial(LiveRefreshTrigger.MANUAL)
+            manualTrialFailureDate.value = null
+            val result = liveContentRepository.refreshTrial(LiveRefreshTrigger.MANUAL)
+            val now = clock.instant().atZone(BEIJING)
+            if (result is LiveContentRefreshResult.Failed && now.toLocalTime() >= TRIAL_RELEASE_TIME) {
+                manualTrialFailureDate.value = now.toLocalDate()
+            }
         }
     }
 

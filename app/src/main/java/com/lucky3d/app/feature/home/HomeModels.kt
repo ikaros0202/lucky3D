@@ -24,6 +24,7 @@ data class HomeUiState(
     val trialNumber: TrialNumber? = null,
     val trialState: LiveContentRefreshState = LiveContentRefreshState.Idle,
     val isBeforeTrialReleaseWindow: Boolean = false,
+    val trialManualRefreshFailed: Boolean = false,
 )
 
 enum class HistoryInputError {

@@ -202,6 +202,89 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `post release manual trial failure is exposed as failed`() = runTest {
+        val live = FakeLiveContentRepository().apply {
+            trialRefreshResults.addLast(
+                LiveContentRefreshResult.Failed(LiveContentFailure.NETWORK),
+            )
+        }
+        val viewModel = homeViewModel(
+            repository = FakeDrawRepository(),
+            live = live,
+            clock = fixedBeijing("2026-08-03T18:31:00"),
+        )
+        advanceUntilIdle()
+
+        viewModel.refreshTrial()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.trialManualRefreshFailed).isTrue()
+    }
+
+    @Test
+    fun `pre release manual trial failure stays as dashes`() = runTest {
+        val live = FakeLiveContentRepository().apply {
+            trialRefreshResults.addLast(
+                LiveContentRefreshResult.Failed(LiveContentFailure.NETWORK),
+            )
+        }
+        val viewModel = homeViewModel(
+            repository = FakeDrawRepository(),
+            live = live,
+            clock = fixedBeijing("2026-08-03T18:29:00"),
+        )
+        advanceUntilIdle()
+
+        viewModel.refreshTrial()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.trialManualRefreshFailed).isFalse()
+    }
+
+    @Test
+    fun `automatic trial failure does not become manual failure`() = runTest {
+        val live = FakeLiveContentRepository().apply {
+            trialRefreshResults.addLast(
+                LiveContentRefreshResult.Failed(LiveContentFailure.NETWORK),
+            )
+        }
+        val viewModel = homeViewModel(
+            repository = FakeDrawRepository(),
+            live = live,
+            clock = fixedBeijing("2026-08-03T18:31:00"),
+        )
+        advanceUntilIdle()
+
+        viewModel.onHomeVisible()
+        runCurrent()
+        assertThat(viewModel.uiState.value.trialManualRefreshFailed).isFalse()
+        viewModel.onHomeHidden()
+    }
+
+    @Test
+    fun `successful manual trial refresh clears previous failure`() = runTest {
+        val live = FakeLiveContentRepository().apply {
+            trialRefreshResults.addLast(
+                LiveContentRefreshResult.Failed(LiveContentFailure.NETWORK),
+            )
+            trialRefreshResults.addLast(LiveContentRefreshResult.Success)
+        }
+        val viewModel = homeViewModel(
+            repository = FakeDrawRepository(),
+            live = live,
+            clock = fixedBeijing("2026-08-03T18:31:00"),
+        )
+        advanceUntilIdle()
+
+        viewModel.refreshTrial()
+        advanceUntilIdle()
+        viewModel.refreshTrial()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.trialManualRefreshFailed).isFalse()
+    }
+
+    @Test
     fun `home visible triggers at most one eligible trial refresh`() = runTest {
         val live = FakeLiveContentRepository()
         val viewModel = homeViewModel(FakeDrawRepository(), live)
