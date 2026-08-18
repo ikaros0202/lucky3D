@@ -8,6 +8,9 @@ import com.lucky3d.app.data.local.Lucky3dDatabase
 import com.lucky3d.app.data.local.MIGRATION_1_2
 import com.lucky3d.app.data.local.MIGRATION_2_3
 import com.lucky3d.app.data.local.MIGRATION_3_4
+import com.lucky3d.app.data.local.MIGRATION_4_5
+import com.lucky3d.app.data.local.MIGRATION_5_6
+import com.lucky3d.app.data.local.MIGRATION_6_7
 import com.lucky3d.app.data.remote.OfficialFc3dDataSource
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
@@ -25,7 +28,14 @@ class ManualSyncDeviceSmokeTest {
         val database = Room.databaseBuilder(context, Lucky3dDatabase::class.java, databaseName)
             .createFromAsset(Lucky3dDatabase.ASSET_PATH)
             .setDriver(BundledSQLiteDriver())
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(
+                MIGRATION_1_2,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+            )
             .build()
         try {
             val coordinator = SyncCoordinator(

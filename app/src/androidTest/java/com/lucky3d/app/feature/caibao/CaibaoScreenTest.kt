@@ -2,8 +2,11 @@ package com.lucky3d.app.feature.caibao
 
 import com.google.common.truth.Truth.assertThat
 import android.graphics.Bitmap
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -49,6 +52,39 @@ class CaibaoScreenTest {
         ).forEach { forbidden ->
             composeRule.onNodeWithText(forbidden, substring = true).assertDoesNotExist()
         }
+    }
+
+    @Test
+    fun editionSharesTitleRowAndAdjacentIssueButtonsExposeDisabledBoundaries() {
+        val selectedIssue = mutableStateOf("2026204")
+        composeRule.setContent {
+            Lucky3DTheme {
+                CaibaoScreen(
+                    state = cachedState().copy(
+                        selectedIssue = selectedIssue.value,
+                        issueOptions = listOf("2026204", "2026203", "2026202"),
+                    ),
+                    image = testImage(),
+                    onRefresh = {},
+                )
+            }
+        }
+
+        val titleBounds = composeRule.onNodeWithText("彩报").fetchSemanticsNode().boundsInRoot
+        val editionBounds =
+            composeRule.onNodeWithText("A11第三版").fetchSemanticsNode().boundsInRoot
+        val issueBounds =
+            composeRule.onNodeWithText("2026204期").fetchSemanticsNode().boundsInRoot
+
+        assertThat(editionBounds.center.y).isWithin(1f).of(titleBounds.center.y)
+        assertThat(editionBounds.bottom).isLessThan(issueBounds.top)
+        composeRule.onNodeWithText("上一期").assertIsEnabled()
+        composeRule.onNodeWithText("下一期").assertIsNotEnabled()
+
+        composeRule.runOnIdle { selectedIssue.value = "2026202" }
+
+        composeRule.onNodeWithText("上一期").assertIsNotEnabled()
+        composeRule.onNodeWithText("下一期").assertIsEnabled()
     }
 
     @Test

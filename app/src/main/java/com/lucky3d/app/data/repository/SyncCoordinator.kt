@@ -99,18 +99,22 @@ class SyncCoordinator @Inject constructor(
                 .associateBy { it.issue }
             val added = mutableListOf<DrawEntity>()
             val corrected = mutableListOf<DrawEntity>()
+            val metadataUpdates = mutableListOf<DrawEntity>()
             var unchanged = 0
             allRemote.forEach { official ->
                 val entity = official.toEntity()
                 val local = existing[official.issue]
                 when {
                     local == null -> added += entity
-                    local == entity -> unchanged += 1
+                    local.hasSameDrawFieldsAs(entity) -> {
+                        unchanged += 1
+                        if (local != entity) metadataUpdates += entity
+                    }
                     else -> corrected += entity
                 }
             }
 
-            val changed = added + corrected
+            val changed = added + corrected + metadataUpdates
             val latestIssue = sequenceOf(
                 localLatest?.issue,
                 allRemote.maxOfOrNull { it.issue },
@@ -133,7 +137,7 @@ class SyncCoordinator @Inject constructor(
             )
             store.commit(changed, successMetadata)
 
-            val replayIssues = changed.mapTo(sortedSetOf()) { it.issue }
+            val replayIssues = (added + corrected).mapTo(sortedSetOf()) { it.issue }
             if (replayIssues.isNotEmpty()) replayRefresher.refresh(replayIssues)
             return SyncResult.Updated(
                 added = added.size,
@@ -209,6 +213,14 @@ class SyncCoordinator @Inject constructor(
         const val AUTO_THROTTLE_MILLIS = 5 * 60 * 1000L
     }
 }
+
+private fun DrawEntity.hasSameDrawFieldsAs(other: DrawEntity): Boolean =
+    issue == other.issue &&
+        drawDate == other.drawDate &&
+        hundreds == other.hundreds &&
+        tens == other.tens &&
+        ones == other.ones &&
+        officialDetailUrl == other.officialDetailUrl
 
 private fun OfficialDataResult.failureName(): String = when (this) {
     OfficialDataResult.EmptyResponse -> "EMPTY_RESPONSE"

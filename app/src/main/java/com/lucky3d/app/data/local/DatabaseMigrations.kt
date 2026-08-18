@@ -135,3 +135,44 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         )
     }
 }
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE `draws` ADD COLUMN `salesAmountYuan` INTEGER",
+        )
+    }
+}
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `yunnan_announcements` (
+                `issue` TEXT NOT NULL,
+                `drawDate` TEXT NOT NULL,
+                `winningNumber` TEXT NOT NULL,
+                `salesAmountYuan` INTEGER NOT NULL,
+                `winningTotalYuan` INTEGER NOT NULL,
+                `playsJson` TEXT NOT NULL,
+                `redemptionDeadline` TEXT,
+                `sourceUpdatedAt` TEXT NOT NULL,
+                `fetchedAtEpochMillis` INTEGER NOT NULL,
+                `fingerprint` TEXT NOT NULL,
+                PRIMARY KEY(`issue`)
+            )
+            """.trimIndent(),
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_yunnan_announcements_drawDate` ON `yunnan_announcements` (`drawDate`)",
+        )
+    }
+}
+
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE `yunnan_announcements` ADD COLUMN `prizePoolBalanceFen` INTEGER",
+        )
+    }
+}

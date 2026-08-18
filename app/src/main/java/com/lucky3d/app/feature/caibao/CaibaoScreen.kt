@@ -173,6 +173,7 @@ private fun CaibaoHeader(
     val visibleIssueOptions = remember(issueOptions, displayedIssue) {
         compactCaibaoIssueOptions(issueOptions, displayedIssue)
     }
+    val displayedIssueIndex = visibleIssueOptions.indexOf(displayedIssue)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -196,6 +197,16 @@ private fun CaibaoHeader(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
+            Text(
+                text = stringResource(
+                    R.string.caibao_edition,
+                    document?.edition ?: DEFAULT_CAIBAO_EDITION,
+                ),
+                modifier = Modifier.padding(start = 8.dp),
+                color = Color.White.copy(alpha = 0.72f),
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+            )
             Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = onRefresh) {
                 Icon(
@@ -210,7 +221,7 @@ private fun CaibaoHeader(
                 .fillMaxWidth()
                 .height(56.dp)
                 .padding(horizontal = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (displayedIssue != null) {
@@ -263,33 +274,31 @@ private fun CaibaoHeader(
                         }
                     }
                 }
-                Text(
-                    text = stringResource(
-                        R.string.caibao_edition,
-                        document?.edition ?: DEFAULT_CAIBAO_EDITION,
-                    ),
-                    color = Color.White.copy(alpha = 0.82f),
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                )
-                Spacer(modifier = Modifier.weight(1f))
                 TextButton(
                     onClick = onPrevious,
-                    enabled = issueOptions.indexOf(displayedIssue) < issueOptions.lastIndex,
+                    enabled = displayedIssueIndex in 0 until visibleIssueOptions.lastIndex,
+                    modifier = Modifier.height(48.dp),
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color.White,
+                        disabledContentColor = Color.White.copy(alpha = 0.38f),
+                    ),
                 ) {
                     Text(
                         text = stringResource(R.string.caibao_previous_issue),
-                        color = Color.White,
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
                 TextButton(
                     onClick = onNext,
-                    enabled = issueOptions.indexOf(displayedIssue) > 0,
+                    enabled = displayedIssueIndex > 0,
+                    modifier = Modifier.height(48.dp),
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color.White,
+                        disabledContentColor = Color.White.copy(alpha = 0.38f),
+                    ),
                 ) {
                     Text(
                         text = stringResource(R.string.caibao_next_issue),
-                        color = Color.White,
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }

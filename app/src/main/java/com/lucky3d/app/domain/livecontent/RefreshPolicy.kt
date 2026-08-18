@@ -79,7 +79,7 @@ object RefreshPolicy {
             return RefreshDecision.Skip(SkipReason.TRIGGER_NOT_APPLICABLE)
         }
         val localDateTime = context.now.atZone(context.zoneId)
-        if (localDateTime.toLocalTime() < TRIAL_RELEASE_TIME) {
+        if (localDateTime.toLocalTime() < TRIAL_REFRESH_TIME) {
             return RefreshDecision.Skip(SkipReason.BEFORE_RELEASE_WINDOW)
         }
         return decideAutomatic(context, localDateTime.toLocalDate())
@@ -120,6 +120,6 @@ object RefreshPolicy {
         LiveRefreshTrigger.AUTO_FOREGROUND,
         LiveRefreshTrigger.HOME_VISIBLE,
     )
-    private val TRIAL_RELEASE_TIME: LocalTime = LocalTime.of(18, 30)
+    private val TRIAL_REFRESH_TIME: LocalTime = LocalTime.of(16, 30)
     private const val MAX_DAILY_AUTO_ATTEMPTS = 3
 }

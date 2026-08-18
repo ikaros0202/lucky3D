@@ -86,9 +86,9 @@ class CaibaoViewModel @Inject constructor(
         }
     }
 
-    fun selectPrevious() = selectRelativeIssue(-1)
+    fun selectPrevious() = selectRelativeIssue(1)
 
-    fun selectNext() = selectRelativeIssue(1)
+    fun selectNext() = selectRelativeIssue(-1)
 
     private fun selectRelativeIssue(delta: Int) {
         val options = uiState.value.issueOptions

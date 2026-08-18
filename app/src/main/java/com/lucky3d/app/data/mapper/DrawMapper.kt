@@ -11,4 +11,5 @@ fun OfficialDraw.toEntity(): DrawEntity = DrawEntity(
     ones = number.ones,
     officialDetailUrl = detailUrl,
     officialFingerprint = fingerprint,
+    salesAmountYuan = salesAmountYuan,
 )

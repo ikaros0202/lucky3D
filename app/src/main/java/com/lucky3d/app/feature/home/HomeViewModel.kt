@@ -5,6 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.lucky3d.app.data.repository.DrawRepository
 import com.lucky3d.app.data.repository.DrawSyncMetadata
 import com.lucky3d.app.data.repository.LiveContentRepository
+import com.lucky3d.app.data.repository.AnnouncementRefreshState
+import com.lucky3d.app.data.repository.OfficialDataSyncCoordinator
+import com.lucky3d.app.data.repository.OfficialDataSyncTrigger
+import com.lucky3d.app.data.repository.YunnanAnnouncementRepository
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
 import com.lucky3d.app.domain.livecontent.LiveRefreshTrigger
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -30,9 +35,35 @@ class HomeViewModel @Inject constructor(
     private val repository: DrawRepository,
     private val liveContentRepository: LiveContentRepository,
     private val clock: Clock,
+    private val yunnanRepository: YunnanAnnouncementRepository,
+    private val officialDataSyncCoordinator: OfficialDataSyncCoordinator,
 ) : ViewModel() {
+    constructor(
+        repository: DrawRepository,
+        liveContentRepository: LiveContentRepository,
+        clock: Clock,
+    ) : this(
+        repository,
+        liveContentRepository,
+        clock,
+        EmptyHomeYunnanRepository,
+        OfficialDataSyncCoordinator(repository, EmptyHomeYunnanRepository),
+    )
+
+    internal constructor(
+        repository: DrawRepository,
+        liveContentRepository: LiveContentRepository,
+        clock: Clock,
+        yunnanRepository: YunnanAnnouncementRepository,
+    ) : this(
+        repository,
+        liveContentRepository,
+        clock,
+        yunnanRepository,
+        OfficialDataSyncCoordinator(repository, yunnanRepository),
+    )
     private val isRefreshing = MutableStateFlow(false)
-    private val beforeTrialReleaseWindow = MutableStateFlow(isBeforeTrialReleaseWindow())
+    private val beforeTrialReleaseWindow = MutableStateFlow(isBeforeTrialRefreshWindow())
     private val currentBeijingDate = MutableStateFlow(
         clock.instant().atZone(BEIJING).toLocalDate(),
     )
@@ -68,8 +99,25 @@ class HomeViewModel @Inject constructor(
         today to manualFailureDate
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(
+    private val announcementState = combine(
         drawState,
+        yunnanRepository.latestAnnouncement,
+        officialDataSyncCoordinator.announcementRefreshState,
+    ) { home, announcement, refreshState ->
+        home.copy(
+            yunnanAnnouncement = announcement,
+            announcementRefreshFailed = refreshState == AnnouncementRefreshState.ERROR ||
+                refreshState == AnnouncementRefreshState.DRAW_ERROR,
+            syncState = if (refreshState == AnnouncementRefreshState.REFRESHING) {
+                HomeSyncState.UPDATING
+            } else {
+                home.syncState
+            },
+        )
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(
+        announcementState,
         liveContentRepository.trialNumber,
         liveContentRepository.trialRefreshState,
         beforeTrialReleaseWindow,
@@ -77,8 +125,8 @@ class HomeViewModel @Inject constructor(
     ) { home, trial, trialState, beforeRelease, dateState ->
         val (today, manualFailureDate) = dateState
         val currentTrial = trial?.takeIf { candidate ->
-            candidate.sourceLocalDate == today &&
-                home.latest?.issue?.let { candidate.issue > it } != false
+            candidate.sourceLocalDate == today ||
+                (beforeRelease && candidate.sourceLocalDate == today.minusDays(1))
         }
         home.copy(
             trialNumber = currentTrial,
@@ -97,7 +145,9 @@ class HomeViewModel @Inject constructor(
 
     fun onHomeVisible() {
         if (homeVisibleRefreshJob?.isActive == true) return
-        homeVisibleRefreshJob = viewModelScope.launch { runTrialRefreshSchedule() }
+        homeVisibleRefreshJob = viewModelScope.launch {
+            runTrialRefreshSchedule()
+        }
     }
 
     fun onHomeHidden() {
@@ -110,7 +160,7 @@ class HomeViewModel @Inject constructor(
         isRefreshing.value = true
         viewModelScope.launch {
             try {
-                repository.refresh()
+                officialDataSyncCoordinator.sync(OfficialDataSyncTrigger.MANUAL)
             } finally {
                 isRefreshing.value = false
             }
@@ -122,25 +172,25 @@ class HomeViewModel @Inject constructor(
             manualTrialFailureDate.value = null
             val result = liveContentRepository.refreshTrial(LiveRefreshTrigger.MANUAL)
             val now = clock.instant().atZone(BEIJING)
-            if (result is LiveContentRefreshResult.Failed && now.toLocalTime() >= TRIAL_RELEASE_TIME) {
+            if (result is LiveContentRefreshResult.Failed && now.toLocalTime() >= TRIAL_REFRESH_TIME) {
                 manualTrialFailureDate.value = now.toLocalDate()
             }
         }
     }
 
-    private fun isBeforeTrialReleaseWindow(): Boolean {
+    private fun isBeforeTrialRefreshWindow(): Boolean {
         val localTime = clock.instant().atZone(BEIJING).toLocalTime()
-        return localTime < TRIAL_RELEASE_TIME
+        return localTime < TRIAL_REFRESH_TIME
     }
 
     private suspend fun runTrialRefreshSchedule() {
         while (currentCoroutineContext().isActive) {
             val now = clock.instant().atZone(BEIJING)
             currentBeijingDate.value = now.toLocalDate()
-            val beforeRelease = now.toLocalTime() < TRIAL_RELEASE_TIME
+            val beforeRelease = now.toLocalTime() < TRIAL_REFRESH_TIME
             beforeTrialReleaseWindow.value = beforeRelease
             if (beforeRelease) {
-                val release = now.toLocalDate().atTime(TRIAL_RELEASE_TIME).atZone(BEIJING)
+                val release = now.toLocalDate().atTime(TRIAL_REFRESH_TIME).atZone(BEIJING)
                 delay(
                     minOf(
                         Duration.between(now, release).toMillis().coerceAtLeast(1L),
@@ -173,9 +223,19 @@ class HomeViewModel @Inject constructor(
 
     private companion object {
         val BEIJING: ZoneId = ZoneId.of("Asia/Shanghai")
-        val TRIAL_RELEASE_TIME: LocalTime = LocalTime.of(18, 30)
+        val TRIAL_REFRESH_TIME: LocalTime = LocalTime.of(16, 30)
         const val TRIAL_RETRY_MILLIS = 30 * 60 * 1000L
     }
+}
+
+private object EmptyHomeYunnanRepository : YunnanAnnouncementRepository {
+    override val latestAnnouncement = flowOf<com.lucky3d.app.core.model.YunnanAnnouncement?>(null)
+    override fun observeByIssue(issue: String) =
+        flowOf<com.lucky3d.app.core.model.YunnanAnnouncement?>(null)
+    override suspend fun refreshRecent(limit: Int) =
+        com.lucky3d.app.data.remote.YunnanAnnouncementDataResult.EmptyResponse
+    override suspend fun refreshIssue(issue: String) =
+        com.lucky3d.app.data.remote.YunnanAnnouncementDataResult.EmptyResponse
 }
 
 private fun DrawSyncMetadata?.defaultState(): HomeSyncState = when {

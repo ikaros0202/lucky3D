@@ -5,15 +5,21 @@ import com.lucky3d.app.MainDispatcherRule
 import com.lucky3d.app.core.model.CaibaoDocument
 import com.lucky3d.app.core.model.DrawRecord
 import com.lucky3d.app.data.repository.CaibaoImageReadResult
+import com.lucky3d.app.data.repository.DrawQuery
+import com.lucky3d.app.data.repository.DrawRepository
+import com.lucky3d.app.data.repository.DrawSyncMetadata
 import com.lucky3d.app.data.repository.LiveContentRepository
+import com.lucky3d.app.data.repository.SyncResult
 import com.lucky3d.app.domain.livecontent.LiveContentFailure
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshState
 import com.lucky3d.app.domain.livecontent.LiveRefreshTrigger
 import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -36,6 +42,47 @@ class CaibaoViewModelTest {
         assertThat(buildCaibaoIssueOptions(draws, emptyList(), today))
             .containsExactly("2026198", "2026197")
             .inOrder()
+    }
+
+    @Test
+    fun `previous selects smaller older issue and next selects larger newer issue`() = runTest {
+        val repository = FakeLiveContentRepository().apply {
+            caibao.value = caibao()
+        }
+        val viewModel = CaibaoViewModel(repository, adjacentIssueDrawRepository())
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.selectedIssue).isEqualTo("2026204")
+
+        viewModel.selectPrevious()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.selectedIssue).isEqualTo("2026203")
+
+        viewModel.selectNext()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.selectedIssue).isEqualTo("2026204")
+    }
+
+    @Test
+    fun `relative issue selection stays put when requested neighbor is absent`() = runTest {
+        val repository = FakeLiveContentRepository().apply {
+            caibao.value = caibao()
+        }
+        val viewModel = CaibaoViewModel(repository, adjacentIssueDrawRepository())
+        advanceUntilIdle()
+
+        viewModel.selectNext()
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.selectedIssue).isEqualTo("2026204")
+
+        viewModel.selectIssue("2026202")
+        advanceUntilIdle()
+        viewModel.selectPrevious()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.selectedIssue).isEqualTo("2026202")
     }
 
     @Test
@@ -204,6 +251,33 @@ class CaibaoViewModelTest {
         }
 
         override suspend fun cleanCaibaoCache() = Unit
+    }
+
+    private class FakeDrawRepository(
+        draws: List<DrawRecord>,
+    ) : DrawRepository {
+        override val latestDraw = flowOf(draws.maxByOrNull(DrawRecord::issue))
+        override val allDrawsAscending = flowOf(draws.sortedBy(DrawRecord::issue))
+        override val syncMetadata = flowOf<DrawSyncMetadata?>(null)
+
+        override fun observeRecent(limit: Int) = flowOf(emptyList<DrawRecord>())
+
+        override fun observe(query: DrawQuery) = flowOf(emptyList<DrawRecord>())
+
+        override suspend fun refresh(): SyncResult = SyncResult.Throttled
+
+        override suspend fun syncOnForeground(): SyncResult = SyncResult.Throttled
+    }
+
+    private fun adjacentIssueDrawRepository(): DrawRepository {
+        val today = LocalDate.now(ZoneId.of("Asia/Shanghai"))
+        return FakeDrawRepository(
+            listOf(
+                draw("2026202", today.minusDays(2).toString()),
+                draw("2026203", today.minusDays(1).toString()),
+                draw("2026204", today.toString()),
+            ),
+        )
     }
 
     private fun caibao() = CaibaoDocument(

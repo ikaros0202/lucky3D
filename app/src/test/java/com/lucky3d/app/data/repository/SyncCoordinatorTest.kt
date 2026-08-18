@@ -63,6 +63,54 @@ class SyncCoordinatorTest {
     }
 
     @Test
+    fun `sales announcement updates metadata without correcting draw`() = runTest {
+        val old = draw("2026198", "685", salesAmountYuan = null).toEntity()
+        val store = FakeStore(old)
+        val remote = FakeRemote(
+            recent = success(
+                listOf(
+                    draw(
+                        "2026198",
+                        "685",
+                        fingerprint = "FP-2026198-685-sales-123456789",
+                        salesAmountYuan = 123_456_789L,
+                    ),
+                ),
+            ),
+        )
+        val replays = FakeReplayRefresher()
+
+        val result = coordinator(remote, store, replays).sync(SyncTrigger.MANUAL)
+
+        assertThat(result).isEqualTo(SyncResult.Updated(0, 0, 1, "2026198"))
+        assertThat(store.draws.getValue("2026198").salesAmountYuan).isEqualTo(123_456_789L)
+        assertThat(store.draws.getValue("2026198").officialFingerprint)
+            .isEqualTo("FP-2026198-685-sales-123456789")
+        assertThat(replays.issues).isEmpty()
+
+        val correctionResult = coordinator(
+            remote = FakeRemote(
+                recent = success(
+                    listOf(
+                        draw(
+                            "2026198",
+                            "685",
+                            fingerprint = "FP-2026198-685-sales-987654321",
+                            salesAmountYuan = 987_654_321L,
+                        ),
+                    ),
+                ),
+            ),
+            store = store,
+            replay = replays,
+        ).sync(SyncTrigger.MANUAL)
+
+        assertThat(correctionResult).isEqualTo(SyncResult.Updated(0, 0, 1, "2026198"))
+        assertThat(store.draws.getValue("2026198").salesAmountYuan).isEqualTo(987_654_321L)
+        assertThat(replays.issues).isEmpty()
+    }
+
+    @Test
     fun `long gap downloads every range page before one commit`() = runTest {
         val local = draw("2026001", "001").toEntity()
         val all = (2026002..2026102).map { issue -> draw(issue.toString(), issue.toString().takeLast(3)) }
@@ -169,12 +217,14 @@ class SyncCoordinatorTest {
         issue: String,
         number: String,
         fingerprint: String = "FP-$issue-$number",
+        salesAmountYuan: Long? = null,
     ) = OfficialDraw(
         issue = issue,
         drawDate = LocalDate.of(2026, 1, 1),
         number = DrawNumber.parse(number),
         detailUrl = "https://www.cwl.gov.cn/c/$issue.shtml",
         fingerprint = fingerprint,
+        salesAmountYuan = salesAmountYuan,
     )
 
     private fun success(

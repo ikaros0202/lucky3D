@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Rule
@@ -15,7 +16,8 @@ class V1MainFlowTest {
 
     @Test
     fun fivePrimaryTabsRemainUsableWithCurrentRoomBackedData() {
-        composeRule.onNodeWithContentDescription("柔光晶体开奖台").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_live_data_layer").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("首页").assertIsSelected()
 
         composeRule.onNodeWithContentDescription("走势分析")
             .performClick()

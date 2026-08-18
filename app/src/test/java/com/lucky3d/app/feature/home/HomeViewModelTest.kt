@@ -5,11 +5,16 @@ import com.lucky3d.app.MainDispatcherRule
 import com.lucky3d.app.core.model.DrawRecord
 import com.lucky3d.app.core.model.TrialNumber
 import com.lucky3d.app.core.model.TrialSource
+import com.lucky3d.app.core.model.YunnanAnnouncement
+import com.lucky3d.app.core.model.YunnanPlayAnnouncement
+import com.lucky3d.app.core.model.YunnanPlayType
 import com.lucky3d.app.data.repository.DrawQuery
 import com.lucky3d.app.data.repository.DrawRepository
 import com.lucky3d.app.data.repository.DrawSyncMetadata
 import com.lucky3d.app.data.repository.LiveContentRepository
 import com.lucky3d.app.data.repository.SyncResult
+import com.lucky3d.app.data.repository.YunnanAnnouncementRepository
+import com.lucky3d.app.data.remote.YunnanAnnouncementDataResult
 import com.lucky3d.app.domain.attributes.DrawNumber
 import com.lucky3d.app.domain.livecontent.LiveContentFailure
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
@@ -21,6 +26,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.advanceTimeBy
@@ -113,6 +119,76 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `manual refresh exposes yunnan validation failure instead of reporting updated`() = runTest {
+        val yunnan = FakeYunnanAnnouncementRepository().apply {
+            refreshResult = YunnanAnnouncementDataResult.InvalidPayload("Unsupported award name")
+        }
+        val viewModel = homeViewModel(FakeDrawRepository(), yunnan = yunnan)
+        advanceUntilIdle()
+
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        assertThat(yunnan.recentRefreshCount).isEqualTo(1)
+        assertThat(viewModel.uiState.value.announcementRefreshFailed).isTrue()
+    }
+
+    @Test
+    fun `empty yunnan response keeps announcement unavailable after an earlier failure`() = runTest {
+        val yunnan = FakeYunnanAnnouncementRepository().apply {
+            refreshResult = YunnanAnnouncementDataResult.NetworkFailure("offline")
+        }
+        val viewModel = homeViewModel(FakeDrawRepository(), yunnan = yunnan)
+        advanceUntilIdle()
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.announcementRefreshFailed).isTrue()
+
+        yunnan.refreshResult = YunnanAnnouncementDataResult.EmptyResponse
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.announcementRefreshFailed).isTrue()
+    }
+
+    @Test
+    fun `successful yunnan retry clears an earlier announcement failure`() = runTest {
+        val yunnan = FakeYunnanAnnouncementRepository().apply {
+            refreshResult = YunnanAnnouncementDataResult.NetworkFailure("offline")
+        }
+        val viewModel = homeViewModel(FakeDrawRepository(), yunnan = yunnan)
+        advanceUntilIdle()
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.announcementRefreshFailed).isTrue()
+
+        yunnan.refreshResult = YunnanAnnouncementDataResult.Success(
+            listOf(yunnanAnnouncement()),
+        )
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.announcementRefreshFailed).isFalse()
+    }
+
+    @Test
+    fun `home visible does not bypass coordinated announcement refresh`() = runTest {
+        val yunnan = FakeYunnanAnnouncementRepository()
+        val viewModel = homeViewModel(FakeDrawRepository(), yunnan = yunnan)
+
+        viewModel.onHomeVisible()
+        try {
+            runCurrent()
+            assertThat(yunnan.recentRefreshCount).isEqualTo(0)
+        } finally {
+            viewModel.onHomeHidden()
+            runCurrent()
+        }
+    }
+
+    @Test
     fun `home state does not expose a recent draw collection`() {
         val stateFields = HomeUiState::class.java.declaredFields.map { it.name }
 
@@ -136,7 +212,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `next day hides yesterday cached trial until current issue arrives`() = runTest {
+    fun `previous day trial remains visible until 1630 even after official draw catches up`() = runTest {
         val draws = FakeDrawRepository().apply {
             latest.value = draw("2026204", "978")
         }
@@ -146,7 +222,25 @@ class HomeViewModelTest {
         val viewModel = homeViewModel(
             repository = draws,
             live = live,
-            clock = fixedBeijing("2026-08-03T10:00:00"),
+            clock = fixedBeijing("2026-08-03T16:29:59"),
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.trialNumber?.number).isEqualTo("219")
+    }
+
+    @Test
+    fun `previous day trial expires exactly at 1630 until current trial arrives`() = runTest {
+        val draws = FakeDrawRepository().apply {
+            latest.value = draw("2026204", "978")
+        }
+        val live = FakeLiveContentRepository().apply {
+            trial.value = trial("2026204", "219", LocalDate.parse("2026-08-02"))
+        }
+        val viewModel = homeViewModel(
+            repository = draws,
+            live = live,
+            clock = fixedBeijing("2026-08-03T16:30:00"),
         )
         advanceUntilIdle()
 
@@ -159,7 +253,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `today trial not later than official draw stays hidden`() = runTest {
+    fun `today trial remains visible after official draw catches up`() = runTest {
         val draws = FakeDrawRepository().apply {
             latest.value = draw("2026205", "123")
         }
@@ -173,14 +267,14 @@ class HomeViewModelTest {
         )
         advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.trialNumber).isNull()
+        assertThat(viewModel.uiState.value.trialNumber?.number).isEqualTo("007")
     }
 
     @Test
-    fun `before 1830 exposes release-window state without inventing a trial`() = runTest {
+    fun `before 1630 exposes refresh-window state without inventing a trial`() = runTest {
         val viewModel = homeViewModel(
             repository = FakeDrawRepository(),
-            clock = fixedBeijing("2026-07-31T18:29:00"),
+            clock = fixedBeijing("2026-07-31T16:29:00"),
         )
         advanceUntilIdle()
 
@@ -211,7 +305,7 @@ class HomeViewModelTest {
         val viewModel = homeViewModel(
             repository = FakeDrawRepository(),
             live = live,
-            clock = fixedBeijing("2026-08-03T18:31:00"),
+            clock = fixedBeijing("2026-08-03T16:31:00"),
         )
         advanceUntilIdle()
 
@@ -231,7 +325,7 @@ class HomeViewModelTest {
         val viewModel = homeViewModel(
             repository = FakeDrawRepository(),
             live = live,
-            clock = fixedBeijing("2026-08-03T18:29:00"),
+            clock = fixedBeijing("2026-08-03T16:29:00"),
         )
         advanceUntilIdle()
 
@@ -251,7 +345,7 @@ class HomeViewModelTest {
         val viewModel = homeViewModel(
             repository = FakeDrawRepository(),
             live = live,
-            clock = fixedBeijing("2026-08-03T18:31:00"),
+            clock = fixedBeijing("2026-08-03T16:31:00"),
         )
         advanceUntilIdle()
 
@@ -272,7 +366,7 @@ class HomeViewModelTest {
         val viewModel = homeViewModel(
             repository = FakeDrawRepository(),
             live = live,
-            clock = fixedBeijing("2026-08-03T18:31:00"),
+            clock = fixedBeijing("2026-08-03T16:31:00"),
         )
         advanceUntilIdle()
 
@@ -303,7 +397,7 @@ class HomeViewModelTest {
 
     @Test
     fun `failed foreground trial check retries after thirty minutes`() = runTest {
-        val clock = MutableClock("2026-08-03T18:30:00")
+        val clock = MutableClock("2026-08-03T16:30:00")
         val live = FakeLiveContentRepository().apply {
             trialRefreshResults.addLast(
                 LiveContentRefreshResult.Failed(LiveContentFailure.INVALID_ISSUE),
@@ -329,13 +423,13 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `midnight tick hides previous day trial while app remains open`() = runTest {
-        val clock = MutableClock("2026-08-03T19:00:00")
+    fun `1630 tick hides previous day trial while app remains open`() = runTest {
+        val clock = MutableClock("2026-08-03T16:29:00")
         val draws = FakeDrawRepository().apply {
             latest.value = draw("2026204", "978")
         }
         val live = FakeLiveContentRepository().apply {
-            trial.value = trial("2026205", "007", LocalDate.parse("2026-08-03"))
+            trial.value = trial("2026204", "007", LocalDate.parse("2026-08-02"))
         }
         val viewModel = homeViewModel(draws, live, clock)
         advanceUntilIdle()
@@ -344,12 +438,12 @@ class HomeViewModelTest {
         viewModel.onHomeVisible()
         try {
             runCurrent()
-            clock.advanceSeconds(5 * 60 * 60)
-            advanceTimeBy(5 * 60 * 60 * 1000L)
+            clock.advanceSeconds(60)
+            advanceTimeBy(60 * 1000L)
             runCurrent()
 
             assertThat(viewModel.uiState.value.trialNumber).isNull()
-            assertThat(viewModel.uiState.value.isBeforeTrialReleaseWindow).isTrue()
+            assertThat(viewModel.uiState.value.isBeforeTrialReleaseWindow).isFalse()
         } finally {
             viewModel.onHomeHidden()
         }
@@ -359,7 +453,8 @@ class HomeViewModelTest {
         repository: FakeDrawRepository,
         live: FakeLiveContentRepository = FakeLiveContentRepository(),
         clock: Clock = fixedBeijing("2026-07-31T18:31:00"),
-    ) = HomeViewModel(repository, live, clock)
+        yunnan: YunnanAnnouncementRepository = FakeYunnanAnnouncementRepository(),
+    ) = HomeViewModel(repository, live, clock, yunnan)
 
     private class FakeDrawRepository : DrawRepository {
         val latest = MutableStateFlow<DrawRecord?>(null)
@@ -461,6 +556,41 @@ class HomeViewModelTest {
             .parse("$localDateTime+08:00[Asia/Shanghai]")
             .toInstant()
         return Clock.fixed(instant, ZoneId.of("Asia/Shanghai"))
+    }
+
+    private fun yunnanAnnouncement(issue: String = "2026214") = YunnanAnnouncement(
+        issue = issue,
+        drawDate = "2026-08-13",
+        number = DrawNumber.parse("007"),
+        salesAmountYuan = 100L,
+        winningTotalYuan = 200L,
+        prizePoolBalanceFen = 300L,
+        plays = listOf(
+            YunnanPlayAnnouncement(YunnanPlayType.SINGLE, winningCount = 1L, prizePerBetYuan = 1L),
+            YunnanPlayAnnouncement(YunnanPlayType.GROUP3, winningCount = 2L, prizePerBetYuan = 2L),
+            YunnanPlayAnnouncement(YunnanPlayType.GROUP6, winningCount = 3L, prizePerBetYuan = 3L),
+        ),
+        redemptionDeadline = "2026-09-13",
+        sourceUpdatedAt = "2026-08-13T00:00:00",
+        fetchedAtEpochMillis = 1L,
+        fingerprint = "fingerprint-$issue",
+    )
+
+    private class FakeYunnanAnnouncementRepository : YunnanAnnouncementRepository {
+        override val latestAnnouncement = MutableStateFlow<com.lucky3d.app.core.model.YunnanAnnouncement?>(null)
+        var refreshResult: YunnanAnnouncementDataResult = YunnanAnnouncementDataResult.EmptyResponse
+        var recentRefreshCount = 0
+
+        override fun observeByIssue(issue: String) =
+            flowOf<com.lucky3d.app.core.model.YunnanAnnouncement?>(null)
+
+        override suspend fun refreshRecent(limit: Int): YunnanAnnouncementDataResult {
+            recentRefreshCount += 1
+            return refreshResult
+        }
+
+        override suspend fun refreshIssue(issue: String): YunnanAnnouncementDataResult =
+            refreshResult
     }
 
     private class MutableClock(localDateTime: String) : Clock() {

@@ -1,5 +1,6 @@
 package com.lucky3d.app.app.navigation
 
+import android.app.Activity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -35,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +50,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Path
@@ -59,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.view.WindowCompat
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -96,6 +101,16 @@ private data object SettingsDestination : NavKey
 @Composable
 fun AppNavigation() {
     val backStack = rememberNavBackStack(RootDestination)
+    val context = LocalContext.current
+    val view = LocalView.current
+    val topDestination = backStack.lastOrNull()
+    SideEffect {
+        val window = (context as? Activity)?.window
+        window?.let { currentWindow ->
+            WindowCompat.getInsetsController(currentWindow, view).isAppearanceLightStatusBars =
+                topDestination !is HistoryDestination
+        }
+    }
 
     NavDisplay(
         backStack = backStack,
@@ -364,7 +379,6 @@ private fun HomeRoute(
         onRefresh = viewModel::refresh,
         onRefreshTrial = viewModel::refreshTrial,
         onOpenIssue = { issue -> onOpenHistory(issue, null) },
-        onOpenDate = { date -> onOpenHistory(null, date) },
         onOpenSettings = onOpenSettings,
     )
 }
@@ -378,19 +392,12 @@ private fun HistoryRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(issue, date) {
-        when {
-            issue != null -> viewModel.searchIssue(issue)
-            date != null -> viewModel.searchDateRange(date, date)
-        }
+        issue?.let(viewModel::searchIssue)
     }
     HistoryScreen(
         state = state,
         onBack = onBack,
-        onShowRecent = viewModel::showRecent,
         onSearchIssue = viewModel::searchIssue,
-        onSearchYear = viewModel::searchYear,
-        onSearchDateRange = viewModel::searchDateRange,
-        onSelectDraw = viewModel::selectDraw,
     )
 }
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_yunnan_announcement">云南省开奖公告</string>
+    <string name="home_yunnan_issue">第%1$s期</string>
+    <string name="home_yunnan_sales_label">销售额</string>
+    <string name="home_yunnan_winning_total_label">中奖总额</string>
+    <string name="home_yunnan_amount_yuan">%1$,d元</string>
+    <string name="home_yunnan_winning_count">%1$,d注</string>
+    <string name="home_yunnan_prize_per_bet">%1$,d元/注</string>
+    <string name="home_yunnan_single">单选</string>
+    <string name="home_yunnan_group3">组三</string>
+    <string name="home_yunnan_group6">组六</string>
+    <string name="home_yunnan_payout_prefix">【派奖】</string>
+    <string name="home_yunnan_announcement_pending">开奖公告更新中</string>
+    <string name="home_issue_entry_a11y">按期号查看第%1$s期，开奖日期%2$s</string>
+</resources>

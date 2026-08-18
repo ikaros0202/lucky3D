@@ -46,6 +46,7 @@ class OfficialFc3dDataSourceTest {
         assertThat(draws.map { it.issue }).containsExactly("2026198", "2026197").inOrder()
         assertThat(draws.first().drawDate.toString()).isEqualTo("2026-07-27")
         assertThat(draws.first().number.value).isEqualTo("685")
+        assertThat(draws.first().salesAmountYuan).isEqualTo(123_456_789L)
         assertThat(draws.first().detailUrl)
             .isEqualTo("https://www.cwl.gov.cn/c/2026/07/27/662242.shtml")
         assertThat(draws.first().fingerprint).matches("[0-9A-F]{64}")
@@ -73,6 +74,51 @@ class OfficialFc3dDataSourceTest {
         server.enqueue(MockResponse().setBody(fixture.replace("\"red\": \"2,3,2\"", "\"red\": \"2,13,2\"")))
 
         assertThat(source.fetchRecent()).isInstanceOf(OfficialDataResult.InvalidPayload::class.java)
+    }
+
+    @Test
+    fun `invalid non numeric sales amount rejects whole batch`() = runTest {
+        server.enqueue(MockResponse().setBody(fixture.replace("\"123456789\"", "\"not-a-number\"")))
+
+        assertThat(source.fetchRecent()).isInstanceOf(OfficialDataResult.InvalidPayload::class.java)
+    }
+
+    @Test
+    fun `missing or empty sales amount is accepted as unknown`() {
+        val missing = source.parse(singleDrawPayload(), pageNumber = 1, pageSize = 100)
+        val empty = source.parse(singleDrawPayload(sales = ""), pageNumber = 1, pageSize = 100)
+
+        assertThat((missing as OfficialDataResult.Success).page.draws.single().salesAmountYuan).isNull()
+        assertThat((empty as OfficialDataResult.Success).page.draws.single().salesAmountYuan).isNull()
+    }
+
+    @Test
+    fun `sales amount must be a positive integer of at most fifteen digits`() {
+        val valid = source.parse(
+            singleDrawPayload(sales = "9".repeat(15)),
+            pageNumber = 1,
+            pageSize = 100,
+        )
+        assertThat((valid as OfficialDataResult.Success).page.draws.single().salesAmountYuan)
+            .isEqualTo(999_999_999_999_999L)
+
+        listOf("0", "000", " ", "1 ", " 1", "9".repeat(16)).forEach { sales ->
+            val result = source.parse(singleDrawPayload(sales), pageNumber = 1, pageSize = 100)
+            assertThat(result).isInstanceOf(OfficialDataResult.InvalidPayload::class.java)
+        }
+    }
+
+    @Test
+    fun `sales amount does not change draw fingerprint`() {
+        val missing = source.parse(singleDrawPayload(), pageNumber = 1, pageSize = 100)
+            .successDraw()
+        val empty = source.parse(singleDrawPayload(sales = ""), pageNumber = 1, pageSize = 100)
+            .successDraw()
+        val announced = source.parse(singleDrawPayload(sales = "1"), pageNumber = 1, pageSize = 100)
+            .successDraw()
+
+        assertThat(missing.fingerprint).isEqualTo(empty.fingerprint)
+        assertThat(announced.fingerprint).isEqualTo(missing.fingerprint)
     }
 
     @Test
@@ -116,4 +162,14 @@ class OfficialFc3dDataSourceTest {
         assertThat(request.requestUrl?.queryParameter("pageNo")).isEqualTo("2")
         assertThat(request.requestUrl?.queryParameter("pageSize")).isEqualTo("100")
     }
+
+    private fun singleDrawPayload(sales: String? = null): String {
+        val salesField = sales?.let { ",\"sales\":\"$it\"" }.orEmpty()
+        return """
+            {"state":0,"result":[{"code":"2026198","detailsLink":"/c/2026/07/27/662242.shtml","date":"2026-07-27","red":"6,8,5"$salesField}]}
+        """.trimIndent()
+    }
+
+    private fun OfficialDataResult.successDraw(): OfficialDraw =
+        (this as OfficialDataResult.Success).page.draws.single()
 }

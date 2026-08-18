@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -78,6 +77,17 @@ internal fun calculateTrendLogicalRightWidth(
     cellWidth * (TrendDigitCount + TrendSumCount) +
     attributeWidth * TrendAttributeLabels.size
 
+internal fun calculateTrendLogicalTableWidth(
+    issueWidth: Float,
+    prefixWidth: Float,
+    cellWidth: Float,
+    attributeWidth: Float,
+): Float = issueWidth + calculateTrendLogicalRightWidth(
+    prefixWidth = prefixWidth,
+    cellWidth = cellWidth,
+    attributeWidth = attributeWidth,
+)
+
 internal fun calculateTrendValueCellCenterX(
     sum: Int,
     prefixWidth: Float,
@@ -97,7 +107,7 @@ internal fun calculateTrendFitScale(
 }
 
 internal data class TrendViewportMetrics(
-    val lockedWidth: Float,
+    val issueWidth: Float,
     val cellWidth: Float,
     val prefixWidth: Float,
     val attributeWidth: Float,
@@ -108,9 +118,9 @@ internal data class TrendViewportMetrics(
 
 internal fun calculateTrendViewportMetrics(
     scale: Float,
-    baseLockedWidth: Float,
+    baseIssueWidth: Float,
 ): TrendViewportMetrics = TrendViewportMetrics(
-    lockedWidth = baseLockedWidth * scale,
+    issueWidth = baseIssueWidth * scale,
     cellWidth = TrendCellWidth.value * scale,
     prefixWidth = TrendPrefixWidth.value * scale,
     attributeWidth = TrendAttributeWidth.value * scale,
@@ -134,9 +144,8 @@ internal data class TrendViewport(
 internal data class TrendViewportBounds(
     val viewportWidth: Float,
     val viewportHeight: Float,
-    val baseLockedWidth: Float,
     val baseHeaderHeight: Float,
-    val rightContentWidth: Float,
+    val contentWidth: Float,
     val bodyContentHeight: Float,
     val fitScale: Float,
 )
@@ -146,13 +155,11 @@ internal fun constrainTrendViewport(
     bounds: TrendViewportBounds,
 ): TrendViewport {
     val scale = viewport.scale.coerceIn(bounds.fitScale, 2.5f)
-    val renderedLockedWidth = bounds.baseLockedWidth * scale
     val renderedHeaderHeight = bounds.baseHeaderHeight * scale
-    val availableRightWidth = (bounds.viewportWidth - renderedLockedWidth).coerceAtLeast(0f)
     val availableBodyHeight = (bounds.viewportHeight - renderedHeaderHeight).coerceAtLeast(0f)
-    val renderedRightWidth = bounds.rightContentWidth * scale
+    val renderedContentWidth = bounds.contentWidth * scale
     val renderedBodyHeight = bounds.bodyContentHeight * scale
-    val maxOffsetX = (renderedRightWidth - availableRightWidth).coerceAtLeast(0f)
+    val maxOffsetX = (renderedContentWidth - bounds.viewportWidth).coerceAtLeast(0f)
     val maxOffsetY = (renderedBodyHeight - availableBodyHeight).coerceAtLeast(0f)
     return TrendViewport(
         scale = scale,
@@ -178,18 +185,10 @@ internal fun transformTrendViewport(
     )
     val currentCentroidX = centroidX + panX
     val currentCentroidY = centroidY + panY
-    val oldLockedWidth = bounds.baseLockedWidth * oldScale
-    val newLockedWidth = bounds.baseLockedWidth * newScale
     val oldHeaderHeight = bounds.baseHeaderHeight * oldScale
     val newHeaderHeight = bounds.baseHeaderHeight * newScale
-    val nextOffsetX = if (
-        centroidX > oldLockedWidth && currentCentroidX > newLockedWidth
-    ) {
-        val logicalX = (viewport.offsetX + centroidX - oldLockedWidth) / oldScale
-        logicalX * newScale - (currentCentroidX - newLockedWidth)
-    } else {
-        viewport.offsetX
-    }
+    val logicalX = (viewport.offsetX + centroidX) / oldScale
+    val nextOffsetX = logicalX * newScale - currentCentroidX
     val nextOffsetY = if (
         centroidY > oldHeaderHeight && currentCentroidY > newHeaderHeight
     ) {
@@ -212,11 +211,10 @@ internal fun panTrendViewport(
     viewport: TrendViewport,
     panX: Float,
     panY: Float,
-    allowHorizontal: Boolean,
     bounds: TrendViewportBounds,
 ): TrendViewport = constrainTrendViewport(
     viewport = viewport.copy(
-        offsetX = if (allowHorizontal) viewport.offsetX - panX else viewport.offsetX,
+        offsetX = viewport.offsetX - panX,
         offsetY = viewport.offsetY - panY,
     ),
     bounds = bounds,
@@ -248,8 +246,14 @@ fun TrendChart(
         nextIssues(state.tableRows.lastOrNull()?.issue)
     }
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-            val baseLockedWidth = if (maxWidth < 390.dp) 72.dp else 80.dp
+            val baseIssueWidth = if (maxWidth < 390.dp) 72.dp else 80.dp
             val logicalRightWidth = calculateTrendLogicalRightWidth(
+                prefixWidth = TrendPrefixWidth.value,
+                cellWidth = TrendCellWidth.value,
+                attributeWidth = TrendAttributeWidth.value,
+            ).dp
+            val logicalTableWidth = calculateTrendLogicalTableWidth(
+                issueWidth = baseIssueWidth.value,
                 prefixWidth = TrendPrefixWidth.value,
                 cellWidth = TrendCellWidth.value,
                 attributeWidth = TrendAttributeWidth.value,
@@ -258,20 +262,18 @@ fun TrendChart(
             val baseBodyHeight = TrendRowHeight * bodyRowCount
             val viewportWidthPx = with(density) { maxWidth.toPx() }
             val viewportHeightPx = with(density) { maxHeight.toPx() }
-            val baseLockedWidthPx = with(density) { baseLockedWidth.toPx() }
-            val rightContentWidthPx = with(density) { logicalRightWidth.toPx() }
+            val contentWidthPx = with(density) { logicalTableWidth.toPx() }
             val baseHeaderHeightPx = with(density) { baseHeaderHeight.toPx() }
             val bodyContentHeightPx = with(density) { baseBodyHeight.toPx() }
             val fitScale = calculateTrendFitScale(
                 availableWidthPx = viewportWidthPx,
-                logicalTableWidthPx = baseLockedWidthPx + rightContentWidthPx,
+                logicalTableWidthPx = contentWidthPx,
             )
             val bounds = TrendViewportBounds(
                 viewportWidth = viewportWidthPx,
                 viewportHeight = viewportHeightPx,
-                baseLockedWidth = baseLockedWidthPx,
                 baseHeaderHeight = baseHeaderHeightPx,
-                rightContentWidth = rightContentWidthPx,
+                contentWidth = contentWidthPx,
                 bodyContentHeight = bodyContentHeightPx,
                 fitScale = fitScale,
             )
@@ -355,7 +357,6 @@ fun TrendChart(
                                                 viewport = viewport,
                                                 panX = 0f,
                                                 panY = pan.y,
-                                                allowHorizontal = false,
                                                 bounds = bounds,
                                             )
                                             moved = true
@@ -363,12 +364,10 @@ fun TrendChart(
                                         }
 
                                         TrendDragAxis.Horizontal -> {
-                                            val lockedWidth = bounds.baseLockedWidth * viewport.scale
                                             viewport = panTrendViewport(
                                                 viewport = viewport,
                                                 panX = pan.x,
                                                 panY = 0f,
-                                                allowHorizontal = firstDown.position.x > lockedWidth,
                                                 bounds = bounds,
                                             )
                                             moved = true
@@ -388,6 +387,7 @@ fun TrendChart(
                                         tap = firstDown.position,
                                         viewport = viewport,
                                         bounds = bounds,
+                                        issueWidthPx = with(density) { baseIssueWidth.toPx() },
                                         cellWidthPx = with(density) { TrendCellWidth.toPx() },
                                         prefixWidthPx = with(density) { TrendPrefixWidth.toPx() },
                                         rowHeightPx = with(density) { TrendRowHeight.toPx() },
@@ -404,7 +404,7 @@ fun TrendChart(
                     futureIssues = futureIssues,
                     summaryLabels = summaryLabels,
                     positionLabels = positionLabels,
-                    baseLockedWidth = baseLockedWidth.toPx(),
+                    issueWidth = baseIssueWidth.toPx(),
                     cellWidth = TrendCellWidth.toPx(),
                     prefixWidth = TrendPrefixWidth.toPx(),
                     attributeWidth = TrendAttributeWidth.toPx(),
@@ -504,19 +504,19 @@ private fun hitTestTrendPoint(
     tap: Offset,
     viewport: TrendViewport,
     bounds: TrendViewportBounds,
+    issueWidthPx: Float,
     cellWidthPx: Float,
     prefixWidthPx: Float,
     rowHeightPx: Float,
     touchRadiusPx: Float,
 ): TrendPoint? {
-    val lockedWidth = bounds.baseLockedWidth * viewport.scale
     val headerHeight = bounds.baseHeaderHeight * viewport.scale
-    if (tap.x <= lockedWidth || tap.y <= headerHeight) return null
-    val logicalX = (tap.x - lockedWidth + viewport.offsetX) / viewport.scale
+    if (tap.y <= headerHeight) return null
+    val logicalX = (tap.x + viewport.offsetX) / viewport.scale
     val logicalY = (tap.y - headerHeight + viewport.offsetY) / viewport.scale
     val rowIndex = floor(logicalY / rowHeightPx).toInt()
     if (rowIndex !in state.tableRows.indices) return null
-    val digitStart = prefixWidthPx * 2f
+    val digitStart = issueWidthPx + prefixWidthPx * 2f
     val groupIndex = floor((logicalX - digitStart) / (cellWidthPx * 10f)).toInt()
     if (groupIndex !in TrendPosition.entries.indices) return null
     val row = state.tableRows[rowIndex]
@@ -546,7 +546,7 @@ private fun DrawScope.drawTrendViewport(
     futureIssues: List<String>,
     summaryLabels: List<String>,
     positionLabels: List<String>,
-    baseLockedWidth: Float,
+    issueWidth: Float,
     cellWidth: Float,
     prefixWidth: Float,
     attributeWidth: Float,
@@ -561,94 +561,60 @@ private fun DrawScope.drawTrendViewport(
     background: Color,
     surfaceVariant: Color,
 ) {
-    val renderedLockedWidth = baseLockedWidth * viewport.scale
     val logicalHeaderHeight = groupHeight + rowHeight
     val renderedHeaderHeight = logicalHeaderHeight * viewport.scale
     drawRect(background)
 
     clipRect(
-        left = renderedLockedWidth,
+        left = 0f,
         top = 0f,
         right = size.width,
         bottom = renderedHeaderHeight.coerceAtMost(size.height),
     ) {
-        translate(left = renderedLockedWidth - viewport.offsetX) {
+        translate(left = -viewport.offsetX) {
             scale(viewport.scale, pivot = Offset.Zero) {
-                drawRightTrendHeader(
-                    positionLabels = positionLabels,
-                    cellWidth = cellWidth,
-                    prefixWidth = prefixWidth,
-                    attributeWidth = attributeWidth,
+                drawIssueTrendHeader(
+                    issueWidth = issueWidth,
                     groupHeight = groupHeight,
                     rowHeight = rowHeight,
-                    rightContentWidth = rightContentWidth,
                     gridColor = gridColor,
                     textColor = strongTextColor,
-                    primary = primary,
                     surfaceVariant = surfaceVariant,
                 )
+                translate(left = issueWidth) {
+                    drawRightTrendHeader(
+                        positionLabels = positionLabels,
+                        cellWidth = cellWidth,
+                        prefixWidth = prefixWidth,
+                        attributeWidth = attributeWidth,
+                        groupHeight = groupHeight,
+                        rowHeight = rowHeight,
+                        rightContentWidth = rightContentWidth,
+                        gridColor = gridColor,
+                        textColor = strongTextColor,
+                        primary = primary,
+                        surfaceVariant = surfaceVariant,
+                    )
+                }
             }
         }
     }
     clipRect(
         left = 0f,
-        top = 0f,
-        right = renderedLockedWidth.coerceAtMost(size.width),
-        bottom = renderedHeaderHeight.coerceAtMost(size.height),
-    ) {
-        scale(viewport.scale, pivot = Offset.Zero) {
-            drawLockedTrendHeader(
-                lockedWidth = baseLockedWidth,
-                groupHeight = groupHeight,
-                rowHeight = rowHeight,
-                gridColor = gridColor,
-                textColor = strongTextColor,
-                surfaceVariant = surfaceVariant,
-            )
-        }
-    }
-    clipRect(
-        left = renderedLockedWidth,
         top = renderedHeaderHeight,
         right = size.width,
         bottom = size.height,
     ) {
         translate(
-            left = renderedLockedWidth - viewport.offsetX,
+            left = -viewport.offsetX,
             top = renderedHeaderHeight - viewport.offsetY,
         ) {
             scale(viewport.scale, pivot = Offset.Zero) {
-                drawTrendBody(
-                    state = state,
-                    logicalWidth = rightContentWidth,
-                    logicalHeight = bodyContentHeight,
-                    cellWidth = cellWidth,
-                    prefixWidth = prefixWidth,
-                    attributeWidth = attributeWidth,
-                    rowHeight = rowHeight,
-                    scale = 1f,
-                    gridColor = gridColor,
-                    textColor = textColor,
-                    primary = primary,
-                    background = background,
-                    surfaceVariant = surfaceVariant,
-                )
-            }
-        }
-    }
-    clipRect(
-        left = 0f,
-        top = renderedHeaderHeight,
-        right = renderedLockedWidth.coerceAtMost(size.width),
-        bottom = size.height,
-    ) {
-        translate(top = renderedHeaderHeight - viewport.offsetY) {
-            scale(viewport.scale, pivot = Offset.Zero) {
-                drawLockedTrendBody(
+                drawIssueTrendBody(
                     rows = state.tableRows,
                     futureIssues = futureIssues,
                     summaryLabels = summaryLabels,
-                    lockedWidth = baseLockedWidth,
+                    issueWidth = issueWidth,
                     bodyHeight = bodyContentHeight,
                     rowHeight = rowHeight,
                     gridColor = gridColor,
@@ -658,20 +624,30 @@ private fun DrawScope.drawTrendViewport(
                     background = background,
                     surfaceVariant = surfaceVariant,
                 )
+                translate(left = issueWidth) {
+                    drawTrendBody(
+                        state = state,
+                        logicalWidth = rightContentWidth,
+                        logicalHeight = bodyContentHeight,
+                        cellWidth = cellWidth,
+                        prefixWidth = prefixWidth,
+                        attributeWidth = attributeWidth,
+                        rowHeight = rowHeight,
+                        scale = 1f,
+                        gridColor = gridColor,
+                        textColor = textColor,
+                        primary = primary,
+                        background = background,
+                        surfaceVariant = surfaceVariant,
+                    )
+                }
             }
         }
     }
-    drawRect(
-        brush = Brush.horizontalGradient(
-            listOf(strongTextColor.copy(alpha = 0.10f), Color.Transparent),
-        ),
-        topLeft = Offset(renderedLockedWidth, 0f),
-        size = androidx.compose.ui.geometry.Size(8.dp.toPx(), size.height),
-    )
 }
 
-private fun DrawScope.drawLockedTrendHeader(
-    lockedWidth: Float,
+private fun DrawScope.drawIssueTrendHeader(
+    issueWidth: Float,
     groupHeight: Float,
     rowHeight: Float,
     gridColor: Color,
@@ -679,13 +655,13 @@ private fun DrawScope.drawLockedTrendHeader(
     surfaceVariant: Color,
 ) {
     val headerHeight = groupHeight + rowHeight
-    drawRect(surfaceVariant.copy(alpha = 0.78f), size = androidx.compose.ui.geometry.Size(lockedWidth, headerHeight))
-    drawLine(gridColor, Offset(0f, groupHeight), Offset(lockedWidth, groupHeight), 0.8.dp.toPx())
-    drawLine(gridColor, Offset(0f, headerHeight), Offset(lockedWidth, headerHeight), 0.8.dp.toPx())
-    drawLine(gridColor, Offset(lockedWidth, 0f), Offset(lockedWidth, headerHeight), 1.dp.toPx())
+    drawRect(surfaceVariant.copy(alpha = 0.78f), size = androidx.compose.ui.geometry.Size(issueWidth, headerHeight))
+    drawLine(gridColor, Offset(0f, groupHeight), Offset(issueWidth, groupHeight), 0.8.dp.toPx())
+    drawLine(gridColor, Offset(0f, headerHeight), Offset(issueWidth, headerHeight), 0.8.dp.toPx())
+    drawLine(gridColor, Offset(issueWidth, 0f), Offset(issueWidth, headerHeight), 1.dp.toPx())
     drawCenteredText(
         "期号",
-        lockedWidth / 2f,
+        issueWidth / 2f,
         groupHeight + rowHeight / 2f,
         tablePaint(textColor, 10.dp.toPx(), monospace = false, bold = true),
     )
@@ -787,11 +763,11 @@ private fun DrawScope.drawRightTrendHeader(
     drawLine(gridColor, Offset(0f, headerHeight), Offset(rightContentWidth, headerHeight), 1.dp.toPx())
 }
 
-private fun DrawScope.drawLockedTrendBody(
+private fun DrawScope.drawIssueTrendBody(
     rows: List<TrendTableRow>,
     futureIssues: List<String>,
     summaryLabels: List<String>,
-    lockedWidth: Float,
+    issueWidth: Float,
     bodyHeight: Float,
     rowHeight: Float,
     gridColor: Color,
@@ -801,12 +777,12 @@ private fun DrawScope.drawLockedTrendBody(
     background: Color,
     surfaceVariant: Color,
 ) {
-    drawRect(background, size = androidx.compose.ui.geometry.Size(lockedWidth, bodyHeight))
+    drawRect(background, size = androidx.compose.ui.geometry.Size(issueWidth, bodyHeight))
     if (rows.isNotEmpty()) {
         drawRect(
             primary.copy(alpha = 0.10f),
             topLeft = Offset(0f, rows.lastIndex * rowHeight),
-            size = androidx.compose.ui.geometry.Size(lockedWidth, rowHeight),
+            size = androidx.compose.ui.geometry.Size(issueWidth, rowHeight),
         )
     }
     futureIssues.indices.forEach { index ->
@@ -814,16 +790,16 @@ private fun DrawScope.drawLockedTrendBody(
         drawRect(
             primary.copy(alpha = 0.04f),
             topLeft = Offset(0f, y),
-            size = androidx.compose.ui.geometry.Size(lockedWidth, rowHeight),
+            size = androidx.compose.ui.geometry.Size(issueWidth, rowHeight),
         )
-        drawHatch(y, lockedWidth, rowHeight, primary.copy(alpha = 0.10f), 1f)
+        drawHatch(y, issueWidth, rowHeight, primary.copy(alpha = 0.10f), 1f)
     }
     summaryLabels.indices.forEach { index ->
         val y = (rows.size + FutureRowCount + index) * rowHeight
         drawRect(
             surfaceVariant.copy(alpha = 0.72f),
             topLeft = Offset(0f, y),
-            size = androidx.compose.ui.geometry.Size(lockedWidth, rowHeight),
+            size = androidx.compose.ui.geometry.Size(issueWidth, rowHeight),
         )
     }
     repeat(rows.size + FutureRowCount + SummaryRowCount + 1) { index ->
@@ -831,20 +807,20 @@ private fun DrawScope.drawLockedTrendBody(
         drawLine(
             gridColor,
             Offset(0f, y),
-            Offset(lockedWidth, y),
+            Offset(issueWidth, y),
             if (index in 1..rows.size && index % 5 == 0) 1.5.dp.toPx() else 0.7.dp.toPx(),
         )
     }
-    drawLine(gridColor, Offset(lockedWidth, 0f), Offset(lockedWidth, bodyHeight), 1.dp.toPx())
+    drawLine(gridColor, Offset(issueWidth, 0f), Offset(issueWidth, bodyHeight), 1.dp.toPx())
     val issuePaint = tablePaint(textColor, 10.dp.toPx(), monospace = true)
     val mutedPaint = tablePaint(mutedTextColor, 10.dp.toPx(), monospace = true)
     rows.forEachIndexed { index, row ->
-        drawCenteredText(row.issue, lockedWidth / 2f, (index + 0.5f) * rowHeight, issuePaint)
+        drawCenteredText(row.issue, issueWidth / 2f, (index + 0.5f) * rowHeight, issuePaint)
     }
     futureIssues.forEachIndexed { index, issue ->
         drawCenteredText(
             issue,
-            lockedWidth / 2f,
+            issueWidth / 2f,
             (rows.size + index + 0.5f) * rowHeight,
             mutedPaint,
         )
@@ -852,7 +828,7 @@ private fun DrawScope.drawLockedTrendBody(
     summaryLabels.forEachIndexed { index, label ->
         drawCenteredText(
             label,
-            lockedWidth / 2f,
+            issueWidth / 2f,
             (rows.size + FutureRowCount + index + 0.5f) * rowHeight,
             issuePaint,
         )

@@ -10,7 +10,10 @@ import com.lucky3d.app.data.repository.DrawQuery
 import com.lucky3d.app.data.repository.DrawRepository
 import com.lucky3d.app.data.repository.DrawSyncMetadata
 import com.lucky3d.app.data.repository.LiveContentRepository
+import com.lucky3d.app.data.repository.OfficialDataSyncCoordinator
 import com.lucky3d.app.data.repository.SyncResult
+import com.lucky3d.app.data.repository.YunnanAnnouncementRepository
+import com.lucky3d.app.data.remote.YunnanAnnouncementDataResult
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshState
 import com.lucky3d.app.domain.livecontent.LiveRefreshTrigger
@@ -28,19 +31,23 @@ import org.junit.Test
 class LifecycleSyncObserverTest {
     @Test
     fun `one onStart triggers draw sync trial auto refresh and caibao cleanup once each`() = runTest {
-        val draws = FakeDrawRepository()
+        val officialEvents = mutableListOf<String>()
+        val draws = FakeDrawRepository(events = officialEvents)
+        val yunnan = FakeYunnanRepository(officialEvents)
         val live = FakeLiveContentRepository()
         val observer = LifecycleSyncObserver(
-            draws,
+            OfficialDataSyncCoordinator(draws, yunnan),
             live,
             CoroutineScope(coroutineContext),
-            fixedBeijing("2026-08-03T19:00:00"),
+            fixedBeijing("2026-08-03T16:30:00"),
         )
 
         observer.onStart(UnusedLifecycleOwner)
         runCurrent()
 
         assertThat(draws.foregroundCalls).isEqualTo(1)
+        assertThat(yunnan.refreshCalls).isEqualTo(1)
+        assertThat(officialEvents).containsExactly("draw", "yunnan").inOrder()
         assertThat(live.seedImports).isEqualTo(1)
         assertThat(live.trialTriggers).containsExactly(LiveRefreshTrigger.AUTO_FOREGROUND)
         assertThat(live.trialEvents).containsExactly("seed", "refresh").inOrder()
@@ -50,19 +57,23 @@ class LifecycleSyncObserverTest {
 
     @Test
     fun `a failing draw sync does not prevent either live content action`() = runTest {
-        val draws = FakeDrawRepository(throwOnForeground = true)
+        val officialEvents = mutableListOf<String>()
+        val draws = FakeDrawRepository(throwOnForeground = true, events = officialEvents)
+        val yunnan = FakeYunnanRepository(officialEvents)
         val live = FakeLiveContentRepository()
         val observer = LifecycleSyncObserver(
-            draws,
+            OfficialDataSyncCoordinator(draws, yunnan),
             live,
             CoroutineScope(coroutineContext),
-            fixedBeijing("2026-08-03T19:00:00"),
+            fixedBeijing("2026-08-03T16:30:00"),
         )
 
         observer.onStart(UnusedLifecycleOwner)
         runCurrent()
 
         assertThat(draws.foregroundCalls).isEqualTo(1)
+        assertThat(yunnan.refreshCalls).isEqualTo(1)
+        assertThat(officialEvents).containsExactly("draw", "yunnan").inOrder()
         assertThat(live.seedImports).isEqualTo(1)
         assertThat(live.trialTriggers).containsExactly(LiveRefreshTrigger.AUTO_FOREGROUND)
         assertThat(live.cleanupCalls).isEqualTo(1)
@@ -71,6 +82,7 @@ class LifecycleSyncObserverTest {
 
     private class FakeDrawRepository(
         private val throwOnForeground: Boolean = false,
+        private val events: MutableList<String> = mutableListOf(),
     ) : DrawRepository {
         var foregroundCalls = 0
         override val latestDraw: Flow<DrawRecord?> = emptyFlow()
@@ -85,9 +97,29 @@ class LifecycleSyncObserverTest {
 
         override suspend fun syncOnForeground(): SyncResult {
             foregroundCalls += 1
+            events += "draw"
             if (throwOnForeground) error("draw sync failed")
             return SyncResult.Throttled
         }
+    }
+
+    private class FakeYunnanRepository(
+        private val events: MutableList<String>,
+    ) : YunnanAnnouncementRepository {
+        var refreshCalls = 0
+        override val latestAnnouncement = emptyFlow<com.lucky3d.app.core.model.YunnanAnnouncement?>()
+
+        override fun observeByIssue(issue: String) =
+            emptyFlow<com.lucky3d.app.core.model.YunnanAnnouncement?>()
+
+        override suspend fun refreshRecent(limit: Int): YunnanAnnouncementDataResult {
+            refreshCalls += 1
+            events += "yunnan"
+            return YunnanAnnouncementDataResult.EmptyResponse
+        }
+
+        override suspend fun refreshIssue(issue: String): YunnanAnnouncementDataResult =
+            YunnanAnnouncementDataResult.EmptyResponse
     }
 
     private class FakeLiveContentRepository : LiveContentRepository {

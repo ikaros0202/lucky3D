@@ -19,7 +19,14 @@ object DatabaseModule {
         Room.databaseBuilder(context, Lucky3dDatabase::class.java, Lucky3dDatabase.DATABASE_NAME)
             .createFromAsset(Lucky3dDatabase.ASSET_PATH)
             .setDriver(BundledSQLiteDriver())
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(
+                MIGRATION_1_2,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+            )
             .build()
 
     @Provides
@@ -34,5 +41,9 @@ object DatabaseModule {
 
     @Provides
     fun provideLiveContentDao(database: Lucky3dDatabase): LiveContentDao = database.liveContentDao()
+
+    @Provides
+    fun provideYunnanAnnouncementDao(database: Lucky3dDatabase): YunnanAnnouncementDao =
+        database.yunnanAnnouncementDao()
 
 }

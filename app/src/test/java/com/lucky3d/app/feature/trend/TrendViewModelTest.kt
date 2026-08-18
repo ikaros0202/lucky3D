@@ -24,7 +24,7 @@ class TrendViewModelTest {
 
     @Test
     fun `fit scale is bounded by one and uses complete logical width`() {
-        assertThat(calculateTrendFitScale(360f, 1_488f)).isWithin(0.0001f).of(360f / 1_488f)
+        assertThat(calculateTrendFitScale(360f, 2_450f)).isWithin(0.0001f).of(360f / 2_450f)
         assertThat(calculateTrendFitScale(2_000f, 1_488f)).isEqualTo(1f)
     }
 
@@ -37,6 +37,14 @@ class TrendViewModelTest {
                 attributeWidth = 62f,
             ),
         ).isEqualTo(2_378f)
+        assertThat(
+            calculateTrendLogicalTableWidth(
+                issueWidth = 72f,
+                prefixWidth = 48f,
+                cellWidth = 34f,
+                attributeWidth = 62f,
+            ),
+        ).isEqualTo(2_450f)
     }
 
     @Test
@@ -51,10 +59,10 @@ class TrendViewModelTest {
     fun `viewport scale changes every table dimension by the same ratio`() {
         val metrics = calculateTrendViewportMetrics(
             scale = 0.5f,
-            baseLockedWidth = 80f,
+            baseIssueWidth = 80f,
         )
 
-        assertThat(metrics.lockedWidth).isEqualTo(40f)
+        assertThat(metrics.issueWidth).isEqualTo(40f)
         assertThat(metrics.cellWidth).isEqualTo(17f)
         assertThat(metrics.prefixWidth).isEqualTo(24f)
         assertThat(metrics.attributeWidth).isEqualTo(31f)
@@ -86,15 +94,14 @@ class TrendViewModelTest {
         val bounds = TrendViewportBounds(
             viewportWidth = 1080f,
             viewportHeight = 1800f,
-            baseLockedWidth = 240f,
             baseHeaderHeight = 228f,
-            rightContentWidth = 4464f,
+            contentWidth = 4704f,
             bodyContentHeight = 10176f,
             fitScale = 0.23f,
         )
         var centroidX = 690f
         var centroidY = 930f
-        val logicalX = (900f + centroidX - bounds.baseLockedWidth) / 1f
+        val logicalX = (900f + centroidX) / 1f
         val logicalY = (1600f + centroidY - bounds.baseHeaderHeight) / 1f
         var viewport = TrendViewport(
             scale = 1f,
@@ -117,8 +124,7 @@ class TrendViewModelTest {
             centroidX += panX
             centroidY += panY
 
-            val renderedX = bounds.baseLockedWidth * viewport.scale +
-                logicalX * viewport.scale - viewport.offsetX
+            val renderedX = logicalX * viewport.scale - viewport.offsetX
             val renderedY = bounds.baseHeaderHeight * viewport.scale +
                 logicalY * viewport.scale - viewport.offsetY
             assertThat(renderedX).isWithin(0.001f).of(centroidX)
@@ -127,13 +133,43 @@ class TrendViewModelTest {
     }
 
     @Test
+    fun `issue column participates in the same horizontal viewport transformation`() {
+        val bounds = TrendViewportBounds(
+            viewportWidth = 360f,
+            viewportHeight = 800f,
+            baseHeaderHeight = 76f,
+            contentWidth = 2_450f,
+            bodyContentHeight = 1_152f,
+            fitScale = 360f / 2_450f,
+        )
+
+        val zoomed = transformTrendViewport(
+            viewport = TrendViewport(scale = 1f),
+            zoomChange = 2f,
+            centroidX = 36f,
+            centroidY = 300f,
+            panX = 0f,
+            panY = 0f,
+            bounds = bounds,
+        )
+        val panned = panTrendViewport(
+            viewport = zoomed,
+            panX = -40f,
+            panY = 0f,
+            bounds = bounds,
+        )
+
+        assertThat(zoomed.offsetX).isEqualTo(36f)
+        assertThat(panned.offsetX).isEqualTo(76f)
+    }
+
+    @Test
     fun `shrinking then enlarging at the top left never exposes empty canvas`() {
         val bounds = TrendViewportBounds(
             viewportWidth = 1080f,
             viewportHeight = 1800f,
-            baseLockedWidth = 240f,
             baseHeaderHeight = 228f,
-            rightContentWidth = 4464f,
+            contentWidth = 4704f,
             bodyContentHeight = 10176f,
             fitScale = 0.23f,
         )
@@ -169,9 +205,8 @@ class TrendViewModelTest {
         val bounds = TrendViewportBounds(
             viewportWidth = 1080f,
             viewportHeight = 1800f,
-            baseLockedWidth = 240f,
             baseHeaderHeight = 228f,
-            rightContentWidth = 4464f,
+            contentWidth = 4704f,
             bodyContentHeight = 10176f,
             fitScale = 0.23f,
         )
@@ -194,9 +229,8 @@ class TrendViewModelTest {
         val bounds = TrendViewportBounds(
             viewportWidth = 1080f,
             viewportHeight = 1800f,
-            baseLockedWidth = 240f,
             baseHeaderHeight = 228f,
-            rightContentWidth = 4464f,
+            contentWidth = 4704f,
             bodyContentHeight = 10176f,
             fitScale = 0.23f,
         )
@@ -205,7 +239,6 @@ class TrendViewModelTest {
             viewport = TrendViewport(scale = 1f, offsetX = 360f, offsetY = 900f),
             panX = 0f,
             panY = -180f,
-            allowHorizontal = false,
             bounds = bounds,
         )
 
@@ -218,9 +251,8 @@ class TrendViewModelTest {
         val bounds = TrendViewportBounds(
             viewportWidth = 1080f,
             viewportHeight = 1800f,
-            baseLockedWidth = 240f,
             baseHeaderHeight = 228f,
-            rightContentWidth = 4464f,
+            contentWidth = 4704f,
             bodyContentHeight = 10176f,
             fitScale = 0.23f,
         )
@@ -229,14 +261,12 @@ class TrendViewModelTest {
             viewport = TrendViewport(scale = 1f),
             panX = 0f,
             panY = 900f,
-            allowHorizontal = false,
             bounds = bounds,
         )
         val draggedPastBottom = panTrendViewport(
             viewport = TrendViewport(scale = 1f, offsetY = 8_000f),
             panX = 0f,
             panY = -5_000f,
-            allowHorizontal = false,
             bounds = bounds,
         )
 
@@ -249,9 +279,8 @@ class TrendViewModelTest {
         val bounds = TrendViewportBounds(
             viewportWidth = 1080f,
             viewportHeight = 1800f,
-            baseLockedWidth = 240f,
             baseHeaderHeight = 228f,
-            rightContentWidth = 4464f,
+            contentWidth = 4704f,
             bodyContentHeight = 10176f,
             fitScale = 0.23f,
         )
@@ -260,14 +289,12 @@ class TrendViewModelTest {
             viewport = TrendViewport(scale = 1f),
             panX = 0f,
             panY = 700f,
-            allowHorizontal = false,
             bounds = bounds,
         )
         val afterRight = panTrendViewport(
             viewport = afterDown,
             panX = 700f,
             panY = 0f,
-            allowHorizontal = true,
             bounds = bounds,
         )
 

@@ -25,6 +25,7 @@ data class OfficialDraw(
     val number: DrawNumber,
     val detailUrl: String,
     val fingerprint: String,
+    val salesAmountYuan: Long? = null,
 )
 
 data class OfficialDrawPage(
@@ -167,6 +168,14 @@ class OfficialFc3dDataSource(
             return null
         }
         val detailUrl = resolveOfficialDetailUrl(dto.detailsLink) ?: return null
+        val salesAmountYuan = dto.sales
+            ?.takeUnless { it.isEmpty() }
+            ?.let { sales ->
+                if (!SALES_PATTERN.matches(sales)) return null
+                sales.toLongOrNull()?.takeIf { it > 0L } ?: return null
+            }
+        // The fingerprint identifies the draw result and remains stable when an
+        // announcement-only field (sales) is added or corrected later.
         val fingerprintInput = "${dto.code}|$dateText|${number.value}|$detailUrl"
         return OfficialDraw(
             issue = dto.code,
@@ -174,6 +183,7 @@ class OfficialFc3dDataSource(
             number = number,
             detailUrl = detailUrl,
             fingerprint = sha256(fingerprintInput),
+            salesAmountYuan = salesAmountYuan,
         )
     }
 
@@ -201,6 +211,7 @@ class OfficialFc3dDataSource(
         const val OFFICIAL_REFERER = "https://www.cwl.gov.cn/"
         const val USER_AGENT = "Lucky3D Android/0.1"
         val ISSUE_PATTERN = Regex("""\d{7}""")
+        val SALES_PATTERN = Regex("""\d{1,15}""")
         val DATE_PREFIX = Regex("""^\d{4}-\d{2}-\d{2}""")
         val STRICT_DATE: DateTimeFormatter =
             DateTimeFormatter.ofPattern("uuuu-MM-dd").withResolverStyle(ResolverStyle.STRICT)
@@ -225,4 +236,5 @@ private data class OfficialDrawDto(
     val date: String,
     val red: String,
     val detailsLink: String,
+    val sales: String? = null,
 )

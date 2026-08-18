@@ -10,6 +10,8 @@ import com.lucky3d.app.data.remote.CaibaoDataSource
 import com.lucky3d.app.data.remote.CaibaTrialDataSource
 import com.lucky3d.app.data.remote.Cz89CaibaoDataSource
 import com.lucky3d.app.data.remote.TrialDataSource
+import com.lucky3d.app.data.remote.YunnanAnnouncementDataSource
+import com.lucky3d.app.data.remote.YunnanOfficialDataSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,6 +33,11 @@ object RepositoryModule {
     @Singleton
     fun provideOfficialDrawDataSource(client: OkHttpClient): OfficialDrawDataSource =
         OfficialFc3dDataSource(client)
+
+    @Provides
+    @Singleton
+    fun provideYunnanAnnouncementDataSource(client: OkHttpClient): YunnanOfficialDataSource =
+        YunnanAnnouncementDataSource(client)
 
     @Provides
     @Singleton
@@ -56,6 +63,12 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideDrawRepository(repository: DefaultDrawRepository): DrawRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideYunnanAnnouncementRepository(
+        repository: DefaultYunnanAnnouncementRepository,
+    ): YunnanAnnouncementRepository = repository
 
     @Provides
     @Singleton

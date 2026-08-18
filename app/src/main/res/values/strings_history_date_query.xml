@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_date_query_title">开奖详情</string>
+    <string name="history_header_subtitle">福彩3D · 期号数据</string>
+    <string name="history_issue_query_prompt">按期号查看</string>
+    <string name="history_issue_query_label">7位期号</string>
+    <string name="history_issue_query_placeholder">例如 2026213</string>
+    <string name="history_issue_query_action">查看</string>
+    <string name="history_issue_sheet_action">选择期号</string>
+    <string name="history_issue_sheet_title">选择期号</string>
+    <string name="history_issue_sheet_subtitle">按有效期号倒序 · 日期仅作信息展示</string>
+    <string name="history_issue_sheet_empty">本地暂无可选择的开奖记录。</string>
+    <string name="history_issue_query_invalid">请输入7位期号，例如2026213。</string>
+    <string name="history_issue_query_empty_title">没有找到该期开奖记录</string>
+    <string name="history_issue_query_empty_detail">请检查期号后重试。</string>
+    <string name="history_date_query_result_title">开奖结果</string>
+    <string name="history_date_query_issue_date">%1$s期 · %2$s</string>
+    <string name="history_date_query_analysis_title">数据分析</string>
+    <string name="history_yunnan_title">云南省开奖公告</string>
+    <string name="history_yunnan_sales_label">销售额</string>
+    <string name="history_yunnan_winning_total_label">中奖总额</string>
+    <string name="history_yunnan_prize_pool_balance_label">奖池资金余额</string>
+    <string name="history_yunnan_issue_date_label">公告期号与日期</string>
+    <string name="history_yunnan_redemption_deadline_label">兑奖截止日</string>
+    <string name="history_yunnan_prize_per_bet">%1$s元/注</string>
+    <string name="history_yunnan_winning_count">中奖 %1$s注</string>
+    <string name="history_yunnan_payout_per_bet">派奖每注%1$s元</string>
+    <string name="history_yunnan_payout_count">派奖 %1$s注</string>
+    <string name="history_yunnan_loading">正在加载云南开奖公告…</string>
+    <string name="history_yunnan_unavailable">暂无该期云南开奖公告</string>
+</resources>

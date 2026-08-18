@@ -2,8 +2,9 @@ package com.lucky3d.app.app
 
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import com.lucky3d.app.data.repository.DrawRepository
 import com.lucky3d.app.data.repository.LiveContentRepository
+import com.lucky3d.app.data.repository.OfficialDataSyncCoordinator
+import com.lucky3d.app.data.repository.OfficialDataSyncTrigger
 import com.lucky3d.app.domain.livecontent.LiveRefreshTrigger
 import com.lucky3d.app.domain.livecontent.LiveContentRefreshResult
 import com.lucky3d.app.domain.livecontent.SkipReason
@@ -25,18 +26,18 @@ import kotlinx.coroutines.launch
 
 @Singleton
 class LifecycleSyncObserver internal constructor(
-    private val repository: DrawRepository,
+    private val officialDataSyncCoordinator: OfficialDataSyncCoordinator,
     private val liveContentRepository: LiveContentRepository,
     private val scope: CoroutineScope,
     private val clock: Clock,
 ) : DefaultLifecycleObserver {
     @Inject
     constructor(
-        repository: DrawRepository,
+        officialDataSyncCoordinator: OfficialDataSyncCoordinator,
         liveContentRepository: LiveContentRepository,
         clock: Clock,
     ) : this(
-        repository,
+        officialDataSyncCoordinator,
         liveContentRepository,
         CoroutineScope(SupervisorJob() + Dispatchers.IO),
         clock,
@@ -45,7 +46,9 @@ class LifecycleSyncObserver internal constructor(
     private var trialScheduleJob: Job? = null
 
     override fun onStart(owner: LifecycleOwner) {
-        launchIsolated { repository.syncOnForeground() }
+        launchIsolated {
+            officialDataSyncCoordinator.sync(OfficialDataSyncTrigger.AUTO)
+        }
         if (trialScheduleJob?.isActive != true) {
             trialScheduleJob = scope.launch {
                 try {
@@ -69,8 +72,8 @@ class LifecycleSyncObserver internal constructor(
     private suspend fun runTrialSchedule() {
         while (currentCoroutineContext().isActive) {
             val now = clock.instant().atZone(BEIJING)
-            if (now.toLocalTime() < TRIAL_RELEASE_TIME) {
-                val release = now.toLocalDate().atTime(TRIAL_RELEASE_TIME).atZone(BEIJING)
+            if (now.toLocalTime() < TRIAL_REFRESH_TIME) {
+                val release = now.toLocalDate().atTime(TRIAL_REFRESH_TIME).atZone(BEIJING)
                 delay(
                     minOf(
                         Duration.between(now, release).toMillis().coerceAtLeast(1L),
@@ -115,7 +118,7 @@ class LifecycleSyncObserver internal constructor(
 
     private companion object {
         val BEIJING: ZoneId = ZoneId.of("Asia/Shanghai")
-        val TRIAL_RELEASE_TIME: LocalTime = LocalTime.of(18, 30)
+        val TRIAL_REFRESH_TIME: LocalTime = LocalTime.of(16, 30)
         const val TRIAL_RETRY_MILLIS = 30 * 60 * 1000L
     }
 }

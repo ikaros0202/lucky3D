@@ -19,6 +19,7 @@ data class DrawEntity(
     val ones: Int,
     val officialDetailUrl: String,
     val officialFingerprint: String,
+    val salesAmountYuan: Long? = null,
 )
 
 @Entity(tableName = "sync_metadata")

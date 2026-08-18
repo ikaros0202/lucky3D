@@ -11,6 +11,121 @@ import org.junit.Test
 
 class Lucky3dDatabaseMigrationTest {
     @Test
+    fun migrationSixToSevenPreservesAnnouncementsAndAddsNullablePrizePoolBalance() = runTest {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val databaseFile = File(context.cacheDir, "lucky3d-migration-6-to-7.db")
+        databaseFile.delete()
+        val helper = MigrationTestHelper(
+            instrumentation = InstrumentationRegistry.getInstrumentation(),
+            file = databaseFile,
+            driver = BundledSQLiteDriver(),
+            databaseClass = Lucky3dDatabase::class,
+        )
+        helper.createDatabase(6).use { connection ->
+            connection.execSQL(
+                """
+                INSERT INTO yunnan_announcements VALUES (
+                    '2026213', '2026-08-11', '872', 19051910, 18799307,
+                    '[]', '2026-10-10', '2026-08-11 21:48:32', 1, 'fingerprint'
+                )
+                """.trimIndent(),
+            )
+        }
+
+        helper.runMigrationsAndValidate(7, listOf(MIGRATION_6_7)).use { connection ->
+            connection.prepare(
+                "SELECT issue, salesAmountYuan, prizePoolBalanceFen FROM yunnan_announcements",
+            ).use { statement ->
+                assertThat(statement.step()).isTrue()
+                assertThat(statement.getText(0)).isEqualTo("2026213")
+                assertThat(statement.getLong(1)).isEqualTo(19_051_910L)
+                assertThat(statement.isNull(2)).isTrue()
+            }
+        }
+        databaseFile.delete()
+    }
+
+    @Test
+    fun migrationFiveToSixAddsIndependentYunnanAnnouncementTable() = runTest {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val databaseFile = File(context.cacheDir, "lucky3d-migration-5-to-6.db")
+        databaseFile.delete()
+        val helper = MigrationTestHelper(
+            instrumentation = InstrumentationRegistry.getInstrumentation(),
+            file = databaseFile,
+            driver = BundledSQLiteDriver(),
+            databaseClass = Lucky3dDatabase::class,
+        )
+        helper.createDatabase(5).use { connection ->
+            connection.execSQL(
+                """
+                INSERT INTO draws VALUES (
+                    '2026213', '2026-08-11', 8, 7, 2,
+                    'https://www.cwl.gov.cn/c/2026/08/11/663943.shtml', 'draw-fingerprint', 123
+                )
+                """.trimIndent(),
+            )
+        }
+
+        helper.runMigrationsAndValidate(6, listOf(MIGRATION_5_6)).use { connection ->
+            assertCount(connection, "yunnan_announcements", 0)
+            connection.prepare("SELECT salesAmountYuan FROM draws WHERE issue = '2026213'")
+                .use { statement ->
+                    assertThat(statement.step()).isTrue()
+                    assertThat(statement.getLong(0)).isEqualTo(123L)
+                }
+            assertThat(indexExists(connection, "yunnan_announcements", "index_yunnan_announcements_drawDate"))
+                .isTrue()
+        }
+        databaseFile.delete()
+    }
+
+    @Test
+    fun migrationFourToFivePreservesDrawsAndAddsNullableSalesAmount() = runTest {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val databaseFile = File(context.cacheDir, "lucky3d-migration-4-to-5.db")
+        databaseFile.delete()
+        val helper = MigrationTestHelper(
+            instrumentation = InstrumentationRegistry.getInstrumentation(),
+            file = databaseFile,
+            driver = BundledSQLiteDriver(),
+            databaseClass = Lucky3dDatabase::class,
+        )
+        helper.createDatabase(4).use { connection ->
+            connection.execSQL(
+                """
+                INSERT INTO draws VALUES (
+                    '2026213', '2026-08-11', 8, 7, 2,
+                    'https://www.cwl.gov.cn/c/2026/08/11/663943.shtml', 'draw-fingerprint'
+                )
+                """.trimIndent(),
+            )
+        }
+
+        helper.runMigrationsAndValidate(5, listOf(MIGRATION_4_5)).use { connection ->
+            connection.prepare(
+                "SELECT issue, salesAmountYuan FROM draws WHERE issue = '2026213'",
+            ).use { statement ->
+                assertThat(statement.step()).isTrue()
+                assertThat(statement.getText(0)).isEqualTo("2026213")
+                assertThat(statement.isNull(1)).isTrue()
+            }
+            var salesColumnFound = false
+            connection.prepare("PRAGMA table_info(`draws`)").use { statement ->
+                while (statement.step()) {
+                    if (statement.getText(1) == "salesAmountYuan") {
+                        salesColumnFound = true
+                        assertThat(statement.getText(2)).isEqualTo("INTEGER")
+                        assertThat(statement.getLong(3)).isEqualTo(0L)
+                    }
+                }
+            }
+            assertThat(salesColumnFound).isTrue()
+        }
+        databaseFile.delete()
+    }
+
+    @Test
     fun migrationThreeToFourPreservesExistingDataAndAddsEmptyLiveContentTables() = runTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val databaseFile = File(context.cacheDir, "lucky3d-migration-3-to-4.db")

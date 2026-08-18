@@ -10,4 +10,5 @@ fun DrawEntity.toRecord(): DrawRecord = DrawRecord(
     number = DrawNumber.of(hundreds, tens, ones),
     officialDetailUrl = officialDetailUrl,
     officialFingerprint = officialFingerprint,
+    salesAmountYuan = salesAmountYuan,
 )

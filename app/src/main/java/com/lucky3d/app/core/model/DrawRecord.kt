@@ -9,6 +9,7 @@ data class DrawRecord(
     val number: DrawNumber,
     val officialDetailUrl: String,
     val officialFingerprint: String,
+    val salesAmountYuan: Long? = null,
 ) {
     fun asHistoricalDraw(): HistoricalDraw = HistoricalDraw(
         issue = issue,

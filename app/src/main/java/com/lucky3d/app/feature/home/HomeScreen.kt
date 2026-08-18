@@ -88,7 +88,6 @@ fun HomeScreen(
     onRefresh: () -> Unit,
     onRefreshTrial: () -> Unit,
     onOpenIssue: (String) -> Unit,
-    onOpenDate: (String) -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -100,7 +99,6 @@ fun HomeScreen(
             onRefresh = onRefresh,
             onRefreshTrial = onRefreshTrial,
             onOpenIssue = onOpenIssue,
-            onOpenDate = onOpenDate,
             onOpenSettings = onOpenSettings,
             modifier = modifier,
         )
@@ -124,7 +122,6 @@ fun HomeScreen(
                 issue = latest?.issue,
                 date = latest?.drawDate,
                 onOpenIssue = onOpenIssue,
-                onOpenDate = onOpenDate,
             )
             if (latest == null) {
                 EmptyState(
@@ -216,7 +213,6 @@ private fun CompactHomeTopBar(
     issue: String?,
     date: String?,
     onOpenIssue: (String) -> Unit,
-    onOpenDate: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -253,44 +249,35 @@ private fun CompactHomeTopBar(
             HeaderCrystalMark()
         }
         if (issue != null && date != null) {
-            OutlinedButton(
-                onClick = { onOpenIssue(issue) },
+            Surface(
                 modifier = Modifier
-                    .weight(1.02f)
-                    .fillMaxHeight(),
-                contentPadding = PaddingValues(horizontal = 3.dp),
+                    .weight(2.27f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(50))
+                    .clickable(onClick = { onOpenIssue(issue) }),
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
-                Text(
-                    text = stringResource(R.string.home_issue, issue),
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                )
-                Icon(
-                    imageVector = Icons.Outlined.KeyboardArrowDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                )
-            }
-            FilledTonalButton(
-                onClick = { onOpenDate(date) },
-                modifier = Modifier
-                    .weight(1.25f)
-                    .fillMaxHeight(),
-                contentPadding = PaddingValues(horizontal = 3.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.CalendarMonth,
-                    contentDescription = null,
-                    modifier = Modifier.size(13.dp),
-                )
-                Text(
-                    text = date,
-                    modifier = Modifier.padding(start = 2.dp),
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.home_issue, issue),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = date,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 9.sp,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
@@ -1013,12 +1000,14 @@ private fun CompactTrialAndStatusPanel(
     onRefreshTrial: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    val syncLabel = when (state.syncState) {
-        HomeSyncState.LOCAL -> stringResource(R.string.sync_local)
-        HomeSyncState.UP_TO_DATE -> stringResource(R.string.sync_updated)
-        HomeSyncState.UPDATING -> stringResource(R.string.sync_updating)
-        HomeSyncState.ERROR -> stringResource(R.string.sync_failed)
-        HomeSyncState.CORRECTED -> stringResource(R.string.sync_corrected)
+    val hasSyncError = state.syncState == HomeSyncState.ERROR || state.announcementRefreshFailed
+    val syncLabel = when {
+        state.syncState == HomeSyncState.UPDATING -> stringResource(R.string.sync_updating)
+        hasSyncError -> stringResource(R.string.sync_failed)
+        state.syncState == HomeSyncState.LOCAL -> stringResource(R.string.sync_local)
+        state.syncState == HomeSyncState.UP_TO_DATE -> stringResource(R.string.sync_updated)
+        state.syncState == HomeSyncState.CORRECTED -> stringResource(R.string.sync_corrected)
+        else -> stringResource(R.string.sync_updated)
     }
     val refreshDescription = stringResource(R.string.home_refresh)
     CrystalGlassPanel(
@@ -1093,7 +1082,7 @@ private fun CompactTrialAndStatusPanel(
                     text = syncLabel,
                     fontSize = 9.sp,
                     lineHeight = 10.sp,
-                    color = if (state.syncState == HomeSyncState.ERROR) {
+                    color = if (hasSyncError) {
                         MaterialTheme.colorScheme.error
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant

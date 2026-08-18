@@ -10,9 +10,9 @@ import org.junit.Test
 
 class RefreshPolicyTest {
     @Test
-    fun `trial automatic refresh opens exactly at 18 30`() {
-        assertTrialSkip(at("2026-07-31T18:29:59"), SkipReason.BEFORE_RELEASE_WINDOW)
-        assertThat(trialDecision(at("2026-07-31T18:30:00"))).isEqualTo(RefreshDecision.Fetch)
+    fun `trial automatic refresh opens exactly at 16 30`() {
+        assertTrialSkip(at("2026-07-31T16:29:59"), SkipReason.BEFORE_RELEASE_WINDOW)
+        assertThat(trialDecision(at("2026-07-31T16:30:00"))).isEqualTo(RefreshDecision.Fetch)
     }
 
     @Test
@@ -31,7 +31,7 @@ class RefreshPolicyTest {
 
     @Test
     fun `trial automatic cooldown opens at exactly thirty minutes`() {
-        val attemptedAt = at("2026-07-31T18:30:00")
+        val attemptedAt = at("2026-07-31T16:30:00")
         val metadata = metadata(
             LiveContentType.TRIAL_NUMBER,
             nextAllowed = attemptedAt.plusSeconds(30 * 60),
@@ -61,7 +61,7 @@ class RefreshPolicyTest {
 
     @Test
     fun `trial automatic attempt count resets across Beijing date`() {
-        val now = at("2026-08-01T18:30:00")
+        val now = at("2026-08-01T16:30:00")
 
         assertThat(
             trialDecision(
