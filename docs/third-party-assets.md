@@ -1,5 +1,13 @@
 # Third-party assets
 
+## `home_crystal_content_shell_redesign.png`
+
+- Purpose: 首页无业务文字的柔光晶体底图；期号、开奖号、指标、云南公告、试机号和状态均由 Compose 实时绘制。
+- Creator: 项目设计流程中的 OpenAI 图像生成服务；PNG 保留 C2PA 内容凭证。
+- Source: `docs/prototypes/2026-08-12-yunnan-announcement/v2/home-crystal-redesign-raw.png`，与 APK 资源逐字节一致。
+- Approved use: 仅作为 Lucky3D 首页 UI 壳；不包含第三方彩报、固定开奖数据或用户内容。
+- SHA-256: `06F4927697A68B4C61E0936F5726B44699FA6EAB088EFA16B61DBF2F2D3139F8`。
+
 ## `trial/caiba-55125-trial-seed.json`
 
 - Purpose: APK 内置试机号历史基线，首次前台启动后幂等导入 Room，供走势图离线按期读取。

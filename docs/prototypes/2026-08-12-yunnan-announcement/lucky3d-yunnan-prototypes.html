@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lucky3D 云南奖情原型</title>
+  <style>
+    :root {
+      --red: #c90b2f;
+      --red-deep: #8f102b;
+      --red-soft: #fbe8ed;
+      --ink: #241f23;
+      --muted: #6b6268;
+      --line: #decfd3;
+      --paper: #fffaf8;
+      --page: #f6f1f1;
+      --green: #1d6d4d;
+      --scrim: rgba(35, 22, 29, .54);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #17131a; color: var(--ink); font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; }
+    body { display: grid; gap: 72px; justify-content: center; padding: 36px; }
+    button { font: inherit; }
+    .screen { width: 1080px; height: 2400px; position: relative; overflow: hidden; background: var(--page); }
+    .mono, .number, .money, .issue-main, .award-number { font-family: "Cascadia Mono", "Roboto Mono", monospace; font-variant-numeric: tabular-nums; }
+
+    /* The status bar is only device chrome. All product artwork below is supplied by the app. */
+    .statusbar { position: absolute; z-index: 20; top: 0; left: 0; right: 0; height: 76px; padding: 25px 70px 0; display: flex; justify-content: space-between; align-items: flex-start; font-size: 27px; font-weight: 650; letter-spacing: .3px; }
+    .status-icons { display: flex; align-items: center; gap: 13px; }
+    .signal { display: flex; align-items: end; gap: 5px; height: 24px; }
+    .signal i { display: block; width: 7px; background: currentColor; border-radius: 4px; }
+    .signal i:nth-child(1) { height: 8px; }.signal i:nth-child(2) { height: 13px; }.signal i:nth-child(3) { height: 19px; }.signal i:nth-child(4) { height: 24px; }
+    .wifi { width: 29px; height: 21px; border-top: 6px solid currentColor; border-radius: 50%; position: relative; }
+    .wifi::after { content: ""; position: absolute; width: 8px; height: 8px; border-radius: 50%; background: currentColor; left: 10px; top: 9px; }
+    .battery { width: 52px; height: 24px; border-radius: 6px; background: currentColor; position: relative; }
+    .battery::after { content: ""; position: absolute; right: -7px; top: 7px; width: 5px; height: 10px; background: currentColor; border-radius: 0 3px 3px 0; }
+
+    /* Home: the real Android shell is the only source for the balls, panels, dials, toolbar and nav. */
+    .home { background: #f8f6fa; }
+    .home-shell { position: absolute; z-index: 1; left: 0; top: 0; width: 1080px; height: 2078px; display: block; }
+    .home-nav { position: absolute; z-index: 3; left: 0; top: 2078px; width: 1080px; height: 200px; display: block; }
+    .home-gesture { position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; height: 122px; background: #faf7f5; display: flex; align-items: center; justify-content: center; }
+    .home-gesture::after { content: ""; width: 286px; height: 11px; border-radius: 8px; background: #555; }
+    .home-overlay { position: absolute; z-index: 6; inset: 0; pointer-events: none; }
+    .issue-hotspot { position: absolute; left: 516px; top: 81px; width: 242px; height: 104px; padding: 7px 12px 7px 17px; border: 0; border-radius: 52px; background: transparent; color: var(--red-deep); text-align: left; cursor: pointer; pointer-events: auto; }
+    .issue-main { display: block; width: 190px; font-size: 30px; line-height: 47px; font-weight: 700; letter-spacing: .5px; white-space: nowrap; }
+    .issue-hotspot::after { content: ""; position: absolute; inset: 0; border-radius: 52px; outline: 2px solid rgba(201, 11, 47, .08); }
+    .date-static { position: absolute; left: 795px; top: 112px; width: 250px; height: 48px; color: var(--muted); font-size: 25px; line-height: 42px; text-align: center; letter-spacing: .5px; }
+    .home-digit { position: absolute; top: 319px; width: 180px; height: 135px; color: #fff; text-align: center; font: 700 108px/135px "Cascadia Mono", monospace; text-shadow: 0 4px 7px rgba(62, 0, 16, .3); }
+    .home-digit.d1 { left: 170px; }.home-digit.d2 { left: 450px; }.home-digit.d3 { left: 730px; }
+    .metric-value { position: absolute; top: 768px; width: 176px; height: 78px; color: var(--red); text-align: center; font: 700 55px/78px "Cascadia Mono", monospace; }
+    .metric-value.m1 { left: 92px; }.metric-value.m2 { left: 327px; }.metric-value.m3 { left: 562px; }.metric-value.m4 { left: 797px; font-size: 43px; }
+    .ratio-value { position: absolute; top: 992px; width: 180px; height: 62px; color: var(--ink); text-align: center; font: 650 39px/62px "Cascadia Mono", monospace; }
+    .ratio-value.r1 { left: 84px; }.ratio-value.r2 { left: 329px; }.ratio-value.r3 { left: 574px; }.ratio-value.r4 { left: 819px; font-size: 33px; }
+    .announcement-mask { position: absolute; left: 217px; top: 1124px; width: 625px; height: 217px; padding: 0; text-align: center; }
+    .announcement-title { height: 31px; color: var(--red-deep); font-size: 24px; line-height: 31px; font-weight: 750; letter-spacing: .5px; }
+    .announcement-money { display: grid; grid-template-columns: 1fr 1fr; align-items: center; height: 59px; font-size: 20px; line-height: 24px; }
+    .announcement-money span { display: block; color: var(--muted); font-size: 18px; line-height: 22px; }
+    .announcement-money b { display: block; color: var(--ink); font: 700 23px/29px "Cascadia Mono", monospace; }
+    .announcement-wins { height: 47px; color: var(--ink); font-size: 20px; line-height: 47px; letter-spacing: 0; }
+    .payout-row { height: 48px; color: var(--red-deep); font-size: 21px; line-height: 48px; font-weight: 750; }
+    .payout-row[hidden] { display: none; }
+    .position-value { position: absolute; top: 1470px; width: 140px; height: 73px; color: var(--red); text-align: center; font: 700 52px/73px "Cascadia Mono", monospace; }
+    .position-value.p1 { left: 155px; }.position-value.p2 { left: 471px; }.position-value.p3 { left: 788px; }
+    .position-omission { position: absolute; top: 1551px; width: 180px; height: 45px; color: var(--muted); text-align: center; font-size: 19px; line-height: 45px; }
+    .position-omission.o1 { left: 135px; }.position-omission.o2 { left: 451px; }.position-omission.o3 { left: 768px; }
+    .heat-marker { position: absolute; left: 518px; top: 1662px; width: 48px; height: 48px; border: 3px solid var(--red); border-radius: 50%; background: rgba(255,255,255,.82); box-shadow: 0 0 0 4px rgba(255,255,255,.7); }
+    .trial-value { position: absolute; left: 217px; top: 1880px; width: 180px; height: 56px; color: var(--muted); text-align: center; font: 600 29px/56px "Cascadia Mono", monospace; letter-spacing: 0; }
+    .sync-value { position: absolute; left: 455px; top: 1880px; width: 180px; height: 56px; color: var(--muted); text-align: center; font-size: 22px; line-height: 56px; }
+    /* When no local Yunnan payout applies, keep the existing announcement panel geometry
+       and center the remaining three lines without inserting a blank placeholder row. */
+    .announcement-mask.no-payout { transform: translateY(22px); }
+
+    /* Detail and selector use the existing flowing cinnabar language: a shallow header and dividers, not card stacks. */
+    .detail { background: linear-gradient(180deg, #fffaf8 0, #f8f1f0 58%, #f4eded 100%); }
+    .detail .statusbar { color: #fff; }
+    .cinnabar-header { position: absolute; z-index: 2; left: 0; right: 0; top: 0; height: 248px; padding: 78px 50px 0; color: #fff; background: linear-gradient(104deg, #8f102b 0%, #c90b2f 55%, #a80c2e 100%); overflow: hidden; }
+    .cinnabar-header::after { content: ""; position: absolute; right: -70px; bottom: -135px; width: 740px; height: 310px; border: 2px solid rgba(255, 255, 255, .22); border-radius: 50%; box-shadow: 0 -16px 0 -1px rgba(255, 255, 255, .10), 0 -31px 0 -1px rgba(255, 255, 255, .08), 0 -46px 0 -1px rgba(255, 255, 255, .06); transform: rotate(-10deg); }
+    .cinnabar-header .back { position: absolute; left: 55px; top: 128px; width: 30px; height: 30px; border-left: 5px solid currentColor; border-bottom: 5px solid currentColor; transform: rotate(45deg); }
+    .header-copy { margin-left: 63px; }
+    .header-copy h1 { margin: 0; font-size: 40px; line-height: 48px; font-weight: 750; }
+    .header-copy p { margin: 7px 0 0; font-size: 22px; color: rgba(255, 255, 255, .82); }
+    .header-refresh { position: absolute; right: 60px; top: 132px; width: 40px; height: 40px; border: 5px solid #fff; border-left-color: transparent; border-radius: 50%; }
+    .header-refresh::after { content: ""; position: absolute; top: -5px; left: -3px; border: 9px solid transparent; border-right-color: #fff; transform: rotate(20deg); }
+    .detail-content { position: absolute; z-index: 3; left: 0; right: 0; top: 248px; bottom: 0; padding: 0 56px 90px; overflow: hidden; }
+    .issue-strip { height: 122px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+    .issue-strip-main { color: var(--red-deep); font: 750 39px/46px "Cascadia Mono", monospace; }
+    .issue-strip-date { display: block; color: var(--muted); font: 23px/32px "Microsoft YaHei", sans-serif; }
+    .issue-select-link { min-width: 48px; min-height: 48px; padding: 12px 0 12px 18px; border: 0; background: transparent; color: var(--red-deep); font-size: 22px; cursor: pointer; }
+    .tiny-chevron { display: inline-block; width: 15px; height: 15px; margin-left: 8px; border-right: 4px solid currentColor; border-bottom: 4px solid currentColor; transform: rotate(45deg) translateY(-4px); }
+    .flow-section { padding: 23px 0 25px; border-bottom: 1px solid var(--line); }
+    .flow-title { margin: 0 0 18px; display: flex; align-items: center; gap: 12px; color: var(--red-deep); font-size: 28px; line-height: 36px; font-weight: 750; }
+    .flow-title::before { content: ""; width: 7px; height: 30px; border-radius: 4px; background: var(--red); }
+    .result-meta { color: var(--muted); font-size: 22px; }
+    .result-number { display: flex; justify-content: center; gap: 38px; padding: 22px 0 5px; }
+    .mini-digit { width: 102px; height: 102px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--red); border: 5px solid rgba(143, 16, 43, .25); box-shadow: inset 0 0 0 3px rgba(255,255,255,.34); font: 750 54px/1 "Cascadia Mono", monospace; }
+    .announce-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; row-gap: 13px; }
+    .announce-field { min-height: 58px; padding-bottom: 8px; border-bottom: 1px solid #eadde0; }
+    .announce-field span { display: block; color: var(--muted); font-size: 21px; line-height: 27px; }
+    .announce-field b { display: block; color: var(--ink); font: 650 28px/35px "Cascadia Mono", monospace; }
+    .award-columns { display: block; }
+    .award-block { min-height: 220px; }
+    .award-block h3 { margin: 0 0 8px; color: var(--red-deep); font-size: 24px; line-height: 34px; }
+    .award-line { display: grid; grid-template-columns: 1fr auto; min-height: 59px; align-items: center; border-bottom: 1px solid #eadde0; font-size: 22px; }
+    .award-line b { color: var(--ink); font: 700 27px/32px "Cascadia Mono", monospace; }
+    .award-summary { margin-top: 18px; min-height: 52px; padding: 9px 14px; border-left: 5px solid var(--red); background: var(--red-soft); color: var(--red-deep); font-size: 24px; line-height: 34px; font-weight: 750; }
+    .analysis-line { display: flex; flex-wrap: wrap; gap: 12px; }
+    .analysis-token { min-height: 48px; padding: 10px 17px; border: 1px solid var(--line); border-radius: 24px; background: rgba(255,255,255,.58); font-size: 21px; line-height: 26px; }
+    .pair-line { margin-top: 17px; color: var(--muted); font-size: 21px; line-height: 34px; }
+
+    /* Period selection panel: six rows stay in view and each row is a 48dp+ target. */
+    .scrim { position: absolute; z-index: 10; inset: 0; background: var(--scrim); }
+    .sheet { position: absolute; z-index: 11; left: 0; right: 0; bottom: 0; height: 1610px; border-radius: 42px 42px 0 0; background: var(--paper); box-shadow: 0 -24px 60px rgba(35, 22, 29, .24); padding: 24px 55px 86px; }
+    .handle { width: 120px; height: 10px; margin: 0 auto 28px; border-radius: 8px; background: #c7b7bb; }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; }
+    .sheet-head h2 { margin: 0; color: var(--ink); font-size: 38px; line-height: 48px; }
+    .close { width: 48px; height: 48px; position: relative; }
+    .close::before, .close::after { content: ""; position: absolute; left: 3px; top: 22px; width: 42px; height: 4px; border-radius: 4px; background: var(--ink); }
+    .close::before { transform: rotate(45deg); }.close::after { transform: rotate(-45deg); }
+    .sheet-hint { margin: 20px 0 12px; color: var(--muted); font-size: 21px; }
+    .issue-list { border-top: 1px solid var(--line); }
+    .issue-row { height: 174px; display: grid; grid-template-columns: 1fr 190px 58px; align-items: center; padding: 0 10px; border-bottom: 1px solid var(--line); }
+    .issue-row strong { display: block; color: var(--ink); font: 700 31px/40px "Cascadia Mono", monospace; }
+    .issue-row small { display: block; margin-top: 6px; color: var(--muted); font-size: 22px; line-height: 30px; }
+    .draw-num { color: var(--red); font: 700 31px/40px "Cascadia Mono", monospace; letter-spacing: 5px; }
+    .check { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #d5c6ca; position: relative; }
+    .issue-row.selected { margin: 0 -16px; padding: 0 26px; border-radius: 18px; background: #fff0f4; border-bottom-color: transparent; }
+    .issue-row.selected .check { border-color: var(--red); background: var(--red); }
+    .issue-row.selected .check::after { content: ""; position: absolute; left: 9px; top: 10px; width: 14px; height: 8px; border-left: 4px solid #fff; border-bottom: 4px solid #fff; transform: rotate(-45deg); }
+
+    .prototype-note { position: absolute; z-index: 50; left: 36px; bottom: 132px; color: rgba(36,31,35,.56); font-size: 15px; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <section class="screen home" id="home-payout" aria-label="首页，有云南派奖">
+    <img class="home-shell" src="06-home-yunnan-announcement-shell.png" alt="">
+    <img class="home-nav" src="../../../app/src/main/res/drawable-nodpi/home_crystal_navigation_shell.png" alt="">
+    <div class="statusbar"><span>19:22</span><div class="status-icons"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="battery"></span></div></div>
+    <div class="home-overlay">
+      <button class="issue-hotspot" aria-label="按期号查看2026213期"><span class="issue-main">2026213期</span></button>
+      <div class="date-static" aria-label="开奖日期2026-08-11，仅作信息展示">2026-08-11</div>
+      <span class="home-digit d1">8</span><span class="home-digit d2">7</span><span class="home-digit d3">2</span>
+      <span class="metric-value m1">17</span><span class="metric-value m2">7</span><span class="metric-value m3">6</span><span class="metric-value m4">组六</span>
+      <span class="ratio-value r1">1:2</span><span class="ratio-value r2">2:1</span><span class="ratio-value r3">2:1</span><span class="ratio-value r4">0:1:2</span>
+      <span class="position-value p1">8</span><span class="position-value p2">7</span><span class="position-value p3">2</span>
+      <span class="position-omission o1">遗漏7</span><span class="position-omission o2">遗漏8</span><span class="position-omission o3">遗漏4</span>
+      <span class="heat-marker" aria-label="当前冷热标记"></span>
+      <span class="trial-value">---</span><span class="sync-value">已更新</span>
+      <div class="announcement-mask">
+        <div class="announcement-title">云南省开奖公告</div>
+        <div class="announcement-money"><div><span>销售额</span><b>19,051,910元</b></div><div><span>中奖总额</span><b>18,799,307元</b></div></div>
+        <div class="announcement-wins">单选中奖 12,155注　·　组六中奖 15,216注</div>
+        <div class="payout-row">【派奖】单选11,029注 组六13,214注</div>
+      </div>
+    </div>
+    <div class="home-gesture"></div>
+  </section>
+
+  <section class="screen home" id="home-no-payout" aria-label="首页，无云南派奖">
+    <img class="home-shell" src="06-home-yunnan-announcement-shell.png" alt="">
+    <img class="home-nav" src="../../../app/src/main/res/drawable-nodpi/home_crystal_navigation_shell.png" alt="">
+    <div class="statusbar"><span>19:22</span><div class="status-icons"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="battery"></span></div></div>
+    <div class="home-overlay">
+      <button class="issue-hotspot" aria-label="按期号查看2026213期"><span class="issue-main">2026213期</span></button>
+      <div class="date-static" aria-label="开奖日期2026-08-11，仅作信息展示">2026-08-11</div>
+      <span class="home-digit d1">8</span><span class="home-digit d2">7</span><span class="home-digit d3">2</span>
+      <span class="metric-value m1">17</span><span class="metric-value m2">7</span><span class="metric-value m3">6</span><span class="metric-value m4">组六</span>
+      <span class="ratio-value r1">1:2</span><span class="ratio-value r2">2:1</span><span class="ratio-value r3">2:1</span><span class="ratio-value r4">0:1:2</span>
+      <span class="position-value p1">8</span><span class="position-value p2">7</span><span class="position-value p3">2</span>
+      <span class="position-omission o1">遗漏7</span><span class="position-omission o2">遗漏8</span><span class="position-omission o3">遗漏4</span>
+      <span class="heat-marker" aria-label="当前冷热标记"></span>
+      <span class="trial-value">---</span><span class="sync-value">已更新</span>
+      <div class="announcement-mask no-payout">
+        <div class="announcement-title">云南省开奖公告</div>
+        <div class="announcement-money"><div><span>销售额</span><b>19,051,910元</b></div><div><span>中奖总额</span><b>18,799,307元</b></div></div>
+        <div class="announcement-wins">单选中奖 12,155注　·　组六中奖 15,216注</div>
+      </div>
+    </div>
+    <div class="home-gesture"></div>
+  </section>
+
+  <section class="screen detail" id="issue-detail" aria-label="期号详情，云南奖情内联">
+    <div class="statusbar"><span>19:23</span><div class="status-icons"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="battery"></span></div></div>
+    <header class="cinnabar-header"><span class="back" aria-hidden="true"></span><div class="header-copy"><h1>开奖详情</h1><p>福彩3D · 期号数据</p></div><span class="header-refresh" aria-hidden="true"></span></header>
+    <main class="detail-content">
+      <div class="issue-strip"><div><span class="issue-strip-main">2026213期</span><span class="issue-strip-date">2026-08-11</span></div><button class="issue-select-link" aria-label="选择期号">选择期号 <span class="tiny-chevron"></span></button></div>
+      <section class="flow-section"><h2 class="flow-title">开奖结果</h2><div class="result-meta">第2026213期 · 2026-08-11</div><div class="result-number"><span class="mini-digit">8</span><span class="mini-digit">7</span><span class="mini-digit">2</span></div></section>
+      <section class="flow-section"><h2 class="flow-title">云南省开奖公告</h2><div class="announce-grid"><div class="announce-field"><span>销售额</span><b>19,051,910元</b></div><div class="announce-field"><span>中奖总额</span><b>18,799,307元</b></div><div class="announce-field"><span>公告期号</span><b>2026213</b></div><div class="announce-field"><span>开奖日期</span><b>2026-08-11</b></div><div class="announce-field"><span>兑奖截止日</span><b>2026-10-10</b></div></div></section>
+      <section class="flow-section"><h2 class="flow-title">玩法奖情</h2><div class="award-columns"><div class="award-block"><h3>基础中奖</h3><div class="award-line"><span>单选　基础单注奖金 1,040元/注</span><b>12,155注</b></div><div class="award-line"><span>组选3　基础单注奖金 346元/注</span><b>0注</b></div><div class="award-line"><span>组六　基础单注奖金 173元/注</span><b>15,216注</b></div></div><div class="award-block"><h3>实际派奖</h3><div class="award-line"><span>单选　每注246元</span><b>11,029注</b></div><div class="award-line"><span>组六　每注60元</span><b>13,214注</b></div></div></div><div class="award-summary">【派奖】单选11,029注 组六13,214注</div></section>
+      <section class="flow-section"><h2 class="flow-title">数据分析</h2><div class="analysis-line"><span class="analysis-token">和值17</span><span class="analysis-token">和尾7</span><span class="analysis-token">跨度6</span><span class="analysis-token">组六</span><span class="analysis-token">奇偶1:2</span><span class="analysis-token">大小2:1</span><span class="analysis-token">质合2:1</span><span class="analysis-token">012路0:1:2</span></div><div class="pair-line">连号：7-8　两码和：15 / 9 / 10<br>两码差：1 / 5 / 6</div></section>
+    </main>
+  </section>
+
+  <section class="screen detail selector-screen" id="issue-selector" aria-label="期号选择面板打开">
+    <div class="statusbar"><span>19:23</span><div class="status-icons"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="battery"></span></div></div>
+    <header class="cinnabar-header"><span class="back" aria-hidden="true"></span><div class="header-copy"><h1>开奖详情</h1><p>福彩3D · 期号数据</p></div><span class="header-refresh" aria-hidden="true"></span></header>
+    <main class="detail-content"><div class="issue-strip"><div><span class="issue-strip-main">2026213期</span><span class="issue-strip-date">2026-08-11</span></div><button class="issue-select-link" aria-label="关闭期号选择">选择期号 <span class="tiny-chevron"></span></button></div><section class="flow-section"><h2 class="flow-title">开奖结果</h2><div class="result-number"><span class="mini-digit">8</span><span class="mini-digit">7</span><span class="mini-digit">2</span></div></section></main>
+    <div class="scrim"></div>
+    <aside class="sheet" aria-label="选择期号面板"><div class="handle"></div><div class="sheet-head"><h2>选择期号</h2><span class="close" aria-hidden="true"></span></div><div class="sheet-hint">按有效期号倒序 · 日期仅作信息展示</div><div class="issue-list"><div class="issue-row selected"><div><strong>2026213期</strong><small>2026-08-11</small></div><div class="draw-num">872</div><span class="check"></span></div><div class="issue-row"><div><strong>2026212期</strong><small>2026-08-10</small></div><div class="draw-num">561</div><span class="check"></span></div><div class="issue-row"><div><strong>2026211期</strong><small>2026-08-09</small></div><div class="draw-num">708</div><span class="check"></span></div><div class="issue-row"><div><strong>2026210期</strong><small>2026-08-08</small></div><div class="draw-num">755</div><span class="check"></span></div><div class="issue-row"><div><strong>2026209期</strong><small>2026-08-07</small></div><div class="draw-num">289</div><span class="check"></span></div><div class="issue-row"><div><strong>2026208期</strong><small>2026-08-06</small></div><div class="draw-num">632</div><span class="check"></span></div></div></aside>
+  </section>
+</body>
+</html>

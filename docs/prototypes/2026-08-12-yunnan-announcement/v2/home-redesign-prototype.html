@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lucky3D 首页重绘原型 v2</title>
+  <style>
+    @font-face {
+      font-family: "Lucky Sans";
+      src: local("Noto Sans CJK SC"), local("Noto Sans SC");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: block;
+    }
+    :root {
+      --cinnabar: #c90b2f;
+      --cinnabar-deep: #8f102b;
+      --ink: #271f23;
+      --ink-soft: #6c6066;
+      --crystal-highlight: rgba(255,255,255,.78);
+      --rose-divider: rgba(180,83,110,.23);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #17131a; font-family: "Lucky Sans", "Microsoft YaHei UI", sans-serif; }
+    body { display: grid; justify-content: center; gap: 72px; padding: 36px; }
+    .screen {
+      position: relative;
+      width: 1080px;
+      height: 2400px;
+      overflow: hidden;
+      color: var(--ink);
+      background: #f8f6fa;
+      font-variant-numeric: tabular-nums;
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+    }
+    .content-shell { position: absolute; inset: 0 auto auto 0; width: 1080px; height: 2078px; display: block; }
+    .nav-shell { position: absolute; left: 0; top: 2078px; width: 1080px; height: 200px; display: block; }
+    .gesture { position: absolute; left: 0; right: 0; bottom: 0; height: 122px; background: #faf7f5; display: grid; place-items: center; }
+    .gesture::after { content: ""; width: 286px; height: 11px; border-radius: 8px; background: #555; }
+
+    .statusbar { position: absolute; z-index: 20; left: 0; right: 0; top: 0; height: 76px; padding: 25px 70px 0; display: flex; justify-content: space-between; font-size: 27px; line-height: 32px; font-weight: 650; }
+    .status-icons { display: flex; gap: 13px; align-items: center; }
+    .signal { height: 24px; display: flex; align-items: end; gap: 5px; }
+    .signal i { display: block; width: 7px; border-radius: 4px; background: #111; }
+    .signal i:nth-child(1) { height: 8px; }.signal i:nth-child(2) { height: 13px; }.signal i:nth-child(3) { height: 19px; }.signal i:nth-child(4) { height: 24px; }
+    .wifi { position: relative; width: 29px; height: 21px; border-top: 6px solid #111; border-radius: 50%; }
+    .wifi::after { content: ""; position: absolute; left: 10px; top: 9px; width: 8px; height: 8px; border-radius: 50%; background: #111; }
+    .battery { position: relative; width: 52px; height: 24px; border-radius: 6px; background: #111; }
+    .battery::after { content: ""; position: absolute; right: -7px; top: 7px; width: 5px; height: 10px; border-radius: 0 3px 3px 0; background: #111; }
+
+    .brand { position: absolute; z-index: 4; left: 135px; top: 78px; color: #e31522; text-shadow: 0 2px 4px rgba(120,0,25,.10); }
+    .brand strong { display: block; font-family: Arial, sans-serif; font-size: 53px; line-height: 57px; font-weight: 750; letter-spacing: -2px; }
+    .brand span { display: block; margin-top: 5px; font-size: 25px; line-height: 34px; font-weight: 600; letter-spacing: 15px; }
+
+    .issue-entry { position: absolute; z-index: 5; left: 465px; top: 82px; width: 560px; height: 110px; padding: 18px 82px 15px 35px; color: var(--cinnabar-deep); }
+    .issue-entry strong { display: block; font-size: 35px; line-height: 43px; font-weight: 760; letter-spacing: .2px; }
+    .issue-entry small { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 21px; line-height: 28px; font-weight: 450; }
+    .issue-entry::after { content: ""; position: absolute; right: 38px; top: 43px; width: 16px; height: 16px; border-right: 4px solid var(--cinnabar); border-bottom: 4px solid var(--cinnabar); transform: rotate(45deg); }
+
+    .draw-digit { position: absolute; z-index: 4; top: 300px; width: 170px; height: 145px; color: white; text-align: center; font-size: 91px; line-height: 145px; font-weight: 730; text-shadow: 0 4px 4px rgba(72,0,21,.32), 0 -1px 0 rgba(255,255,255,.35); }
+    .draw-digit.d1 { left: 232px; }.draw-digit.d2 { left: 455px; }.draw-digit.d3 { left: 678px; }
+
+    .metric-label, .ratio-label { position: absolute; z-index: 4; color: var(--ink); text-align: center; font-weight: 560; text-shadow: 0 1px 0 var(--crystal-highlight); }
+    .metric-label { top: 578px; width: 206px; font-size: 23px; line-height: 32px; }
+    .metric-value { position: absolute; z-index: 4; top: 633px; width: 206px; color: var(--cinnabar); text-align: center; font-size: 43px; line-height: 54px; font-weight: 730; text-shadow: 0 1px 0 var(--crystal-highlight), 0 2px 5px rgba(143,16,43,.08); }
+    .col1 { left: 112px; }.col2 { left: 328px; }.col3 { left: 544px; }.col4 { left: 760px; }
+    .metric-value.col4 { font-size: 38px; }
+
+    .ratio-label { top: 758px; width: 206px; font-size: 20px; line-height: 29px; }
+    .ratio-value { position: absolute; z-index: 4; top: 810px; width: 206px; color: var(--ink); text-align: center; font-size: 29px; line-height: 38px; font-weight: 650; text-shadow: 0 1px 0 var(--crystal-highlight); }
+    .ratio-value.col4 { font-size: 26px; }
+
+    .announcement { position: absolute; z-index: 4; left: 78px; top: 934px; width: 924px; height: 558px; padding: 35px 48px 31px; }
+    .announcement h2 { margin: 0; color: var(--cinnabar-deep); font-size: 40px; line-height: 55px; font-weight: 760; text-align: left; letter-spacing: 0; text-shadow: 0 1px 0 var(--crystal-highlight); }
+    .announcement .issue-meta { position: absolute; right: 50px; top: 43px; color: var(--ink-soft); font-size: 21px; line-height: 30px; font-weight: 450; }
+    .summary { display: grid; grid-template-columns: 1fr 1fr; margin-top: 27px; border-top: 1px solid var(--rose-divider); border-bottom: 1px solid var(--rose-divider); }
+    .summary-item { min-height: 104px; padding: 17px 16px 15px; }
+    .summary-item + .summary-item { border-left: 1px solid var(--rose-divider); }
+    .field-label { display: block; color: var(--ink-soft); font-size: 23px; line-height: 32px; font-weight: 480; }
+    .field-number { display: block; margin-top: 4px; color: var(--ink); font-size: 36px; line-height: 45px; font-weight: 730; letter-spacing: .1px; text-shadow: 0 1px 0 var(--crystal-highlight); }
+    .play-grid { display: grid; grid-template-columns: repeat(3,1fr); margin-top: 29px; }
+    .play { min-height: 120px; padding: 5px 22px 7px; text-align: center; }
+    .play + .play { border-left: 1px solid var(--rose-divider); }
+    .play strong { display: block; color: var(--ink); font-size: 27px; line-height: 38px; font-weight: 650; }
+    .play b { display: block; margin-top: 3px; color: var(--cinnabar); font-size: 32px; line-height: 42px; font-weight: 740; }
+    .play small { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 19px; line-height: 28px; font-weight: 450; }
+    .payout { margin-top: 17px; padding-top: 19px; border-top: 1px solid var(--rose-divider); color: var(--cinnabar-deep); font-size: 29px; line-height: 42px; font-weight: 760; text-align: center; }
+    .no-payout .summary { margin-top: 42px; }
+    .no-payout .play-grid { margin-top: 55px; }
+
+    .position-label { position: absolute; z-index: 4; top: 1572px; width: 180px; color: var(--ink); text-align: center; font-size: 21px; line-height: 30px; font-weight: 560; text-shadow: 0 1px 0 var(--crystal-highlight); }
+    .position-value { position: absolute; z-index: 4; top: 1617px; width: 180px; color: var(--cinnabar); text-align: center; font-size: 38px; line-height: 48px; font-weight: 730; }
+    .position-omit { position: absolute; z-index: 4; top: 1670px; width: 180px; color: var(--ink-soft); text-align: center; font-size: 18px; line-height: 28px; font-weight: 450; }
+    .pos1 { left: 143px; }.pos2 { left: 450px; }.pos3 { left: 757px; }
+    .heat-label { position: absolute; z-index: 4; top: 1781px; font-size: 21px; line-height: 32px; font-weight: 650; }
+    .cold { left: 52px; color: #125ab6; }.hot { right: 52px; color: #e51b2c; }
+    .heat-marker { position: absolute; z-index: 4; left: 523px; top: 1781px; width: 36px; height: 36px; border: 3px solid var(--cinnabar); border-radius: 50%; background: rgba(255,255,255,.88); box-shadow: 0 0 0 3px rgba(255,255,255,.7); }
+
+    .utility-label { position: absolute; z-index: 4; top: 1882px; color: var(--ink); font-size: 22px; line-height: 32px; font-weight: 580; }
+    .trial-label { left: 104px; }.sync-label { left: 474px; }.settings-label { right: 92px; }
+    .trial-value { position: absolute; z-index: 4; left: 233px; top: 1880px; color: var(--ink-soft); font-size: 27px; line-height: 36px; font-weight: 520; letter-spacing: 2px; }
+
+  </style>
+</head>
+<body>
+  <section class="screen" id="home-with-payout" aria-label="首页，有云南派奖">
+    <img class="content-shell" src="home-crystal-redesign-raw.png" alt="">
+    <img class="nav-shell" src="../../../../app/src/main/res/drawable-nodpi/home_crystal_navigation_shell.png" alt="">
+    <div class="statusbar"><span>19:22</span><span class="status-icons"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="battery"></span></span></div>
+    <div class="brand"><strong>Lucky3D</strong><span>柔光晶体</span></div>
+    <div class="issue-entry"><strong>2026213期</strong><small>2026-08-11</small></div>
+    <span class="draw-digit d1">8</span><span class="draw-digit d2">7</span><span class="draw-digit d3">2</span>
+    <span class="metric-label col1">和值</span><span class="metric-value col1">17</span>
+    <span class="metric-label col2">和尾</span><span class="metric-value col2">7</span>
+    <span class="metric-label col3">跨度</span><span class="metric-value col3">6</span>
+    <span class="metric-label col4">组选</span><span class="metric-value col4">组六</span>
+    <span class="ratio-label col1">奇偶</span><span class="ratio-value col1">1:2</span>
+    <span class="ratio-label col2">大小</span><span class="ratio-value col2">2:1</span>
+    <span class="ratio-label col3">质合</span><span class="ratio-value col3">2:1</span>
+    <span class="ratio-label col4">012路</span><span class="ratio-value col4">0:1:2</span>
+    <section class="announcement">
+      <h2>云南省开奖公告</h2><span class="issue-meta">第2026213期</span>
+      <div class="summary"><div class="summary-item"><span class="field-label">销售额</span><b class="field-number">19,051,910元</b></div><div class="summary-item"><span class="field-label">中奖总额</span><b class="field-number">18,799,307元</b></div></div>
+      <div class="play-grid">
+        <div class="play"><strong>单选</strong><b>12,155注</b><small>1,040元/注</small></div>
+        <div class="play"><strong>组三</strong><b>0注</b><small>346元/注</small></div>
+        <div class="play"><strong>组六</strong><b>15,216注</b><small>173元/注</small></div>
+      </div>
+      <div class="payout">【派奖】单选11,029注　组六13,214注</div>
+    </section>
+    <span class="position-label pos1">百位</span><span class="position-value pos1">8</span><span class="position-omit pos1">遗漏7</span>
+    <span class="position-label pos2">十位</span><span class="position-value pos2">7</span><span class="position-omit pos2">遗漏8</span>
+    <span class="position-label pos3">个位</span><span class="position-value pos3">2</span><span class="position-omit pos3">遗漏4</span>
+    <span class="heat-label cold">冷态</span><span class="heat-label hot">热态</span><span class="heat-marker"></span>
+    <span class="utility-label trial-label">试机号</span><span class="trial-value">---</span><span class="utility-label sync-label">已更新</span><span class="utility-label settings-label">设置</span>
+    <div class="gesture"></div>
+  </section>
+
+  <section class="screen" id="home-without-payout" aria-label="首页，无云南派奖">
+    <img class="content-shell" src="home-crystal-redesign-raw.png" alt="">
+    <div class="statusbar"><span>19:22</span><span class="status-icons"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="battery"></span></span></div>
+    <div class="brand"><strong>Lucky3D</strong><span>柔光晶体</span></div>
+    <div class="issue-entry"><strong>2024291期</strong><small>2024-10-31</small></div>
+    <span class="draw-digit d1">4</span><span class="draw-digit d2">2</span><span class="draw-digit d3">6</span>
+    <span class="metric-label col1">和值</span><span class="metric-value col1">12</span>
+    <span class="metric-label col2">和尾</span><span class="metric-value col2">2</span>
+    <span class="metric-label col3">跨度</span><span class="metric-value col3">4</span>
+    <span class="metric-label col4">组选</span><span class="metric-value col4">组六</span>
+    <span class="ratio-label col1">奇偶</span><span class="ratio-value col1">0:3</span>
+    <span class="ratio-label col2">大小</span><span class="ratio-value col2">1:2</span>
+    <span class="ratio-label col3">质合</span><span class="ratio-value col3">2:1</span>
+    <span class="ratio-label col4">012路</span><span class="ratio-value col4">1:1:1</span>
+    <section class="announcement no-payout">
+      <h2>云南省开奖公告</h2><span class="issue-meta">第2024291期</span>
+      <div class="summary"><div class="summary-item"><span class="field-label">销售额</span><b class="field-number">11,888,140元</b></div><div class="summary-item"><span class="field-label">中奖总额</span><b class="field-number">6,167,545元</b></div></div>
+      <div class="play-grid">
+        <div class="play"><strong>单选</strong><b>4,617注</b><small>1,040元/注</small></div>
+        <div class="play"><strong>组三</strong><b>0注</b><small>346元/注</small></div>
+        <div class="play"><strong>组六</strong><b>7,834注</b><small>173元/注</small></div>
+      </div>
+    </section>
+    <span class="position-label pos1">百位</span><span class="position-value pos1">4</span><span class="position-omit pos1">遗漏3</span>
+    <span class="position-label pos2">十位</span><span class="position-value pos2">2</span><span class="position-omit pos2">遗漏6</span>
+    <span class="position-label pos3">个位</span><span class="position-value pos3">6</span><span class="position-omit pos3">遗漏9</span>
+    <span class="heat-label cold">冷态</span><span class="heat-label hot">热态</span><span class="heat-marker"></span>
+    <span class="utility-label trial-label">试机号</span><span class="trial-value">---</span><span class="utility-label sync-label">已更新</span><span class="utility-label settings-label">设置</span>
+    <img class="nav-shell" src="../../../../app/src/main/res/drawable-nodpi/home_crystal_navigation_shell.png" alt="">
+    <div class="gesture"></div>
+  </section>
+</body>
+</html>
