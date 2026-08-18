@@ -20,6 +20,13 @@
 
 涉及 UI、交互或图表时，还要读取 `docs/ui-design-skill-research.md`。只读取与当前任务有关的章节和文件；如果用户点名了文件，先从点名文件开始。
 
+### Skill 可用性
+
+- 当前个人直装 Skill 基线见 `docs/codex-skill-inventory.md`；历史调研、旧实施计划、备份目录和插件缓存不代表当前可调用。
+- 调用任何 Skill 前必须同时确认：它出现在当前基线中，并且当前会话实际暴露了该 Skill。任一条件不满足都不得调用，也不得因为旧文档写了 `REQUIRED` 就尝试恢复或安装。
+- `docs/superpowers/` 是历史规格与计划目录名，不表示本机仍安装 Superpowers Skill。
+- 本机安装、删除或修改 Skill 后，应在同一轮维护中更新 `docs/codex-skill-inventory.md` 和受影响的调用规范。
+
 发生冲突时：
 
 - 用户当前明确指示优先于项目文档。
@@ -118,6 +125,12 @@ powershell -ExecutionPolicy Bypass -File tools/validate-predevelopment-data.ps1
 
 只有在命令本轮实际执行成功后，才能声称构建、测试或验收通过。交付说明必须列出修改文件、验证命令、结果和仍存在的风险。
 
+任务结束并准备交付时，除非用户明确要求继续保留运行环境，否则必须完成资源收尾：
+
+- 执行 `.\gradlew.bat --stop`，停止本任务使用的 Gradle Daemon 和 Kotlin 编译后台进程；若仍有残留，只能终止能够明确归属于本仓库、本任务的进程，不得强杀 Android Studio、其他项目或无关 Java 进程。
+- 先通过 `adb devices` 确认本任务使用的 Android 模拟器序列号，再执行 `adb -s <模拟器序列号> emu kill`；不得关闭物理真机或其他任务正在使用的模拟器。
+- 关闭后再次检查相关编译进程和目标模拟器均已退出；若无法关闭，必须在交付说明中如实记录原因和仍在运行的对象。
+
 ## UI 设计原则
 
 - 产品气质是可信、克制的专业数据工具，不使用赌场式霓虹、金币、中奖庆祝或诱导性视觉。
@@ -132,7 +145,7 @@ powershell -ExecutionPolicy Bypass -File tools/validate-predevelopment-data.ps1
 - 本项目不把无障碍模式或系统字体缩放作为设计、实现和验收范围；仍需覆盖基准手机、深浅色模式、前导零和真实长文本。
 - 不在界面使用“预测”“推荐号码”“必中”“提高中奖率”等无法证明的措辞。
 
-## 五个 UI 技能的使用规则
+## 当前已安装的五个 UI 技能使用规则
 
 只使用与当前任务直接相关的最小技能集合。使用技能前读取其完整 `SKILL.md`，并在工作更新中简短说明使用了哪个技能以及原因。技能建议不能覆盖产品需求、用户决定或 Android 官方规范。
 

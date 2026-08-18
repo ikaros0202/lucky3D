@@ -1,6 +1,6 @@
 # Static Caibao Page Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **历史执行说明（2026-08-12 更新）：** 原 Superpowers 子技能依赖已退役。本文仅作为历史实施计划保留；复用时遵循仓库根 `AGENTS.md`、当前 Skill 基线和任务状态，不调用未安装 Skill。
 
 **Goal:** Add “彩报” as the fifth bottom-navigation destination and display one bundled, read-only newspaper placeholder image without any update or action capability.
 

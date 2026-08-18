@@ -1,6 +1,6 @@
 # Lucky3D 首页统一刷新与试机号失败状态实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **历史执行说明（2026-08-12 更新）：** 原 Superpowers 子技能依赖已退役。本文仅作为历史实施计划保留；复用时遵循仓库根 `AGENTS.md`、当前 Skill 基线和任务状态，不调用未安装 Skill。
 
 **Goal:** 修复首页可见刷新入口不刷新试机号的问题，并按北京时间 18:30 与用户主动刷新结果区分 `---` 和“失败”。
 

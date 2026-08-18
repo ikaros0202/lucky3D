@@ -39,14 +39,13 @@ for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
 @rem Find java.exe
-if defined JAVA_HOME goto findJavaFromJavaHome
+if defined JAVA_HOME if exist "%JAVA_HOME%\bin\java.exe" goto findJavaFromJavaHome
 
-@rem NewMyBook fallback for Codex account switches on the shared Windows profile.
-@rem The user-level JAVA_HOME remains the primary configuration; this fallback lets
-@rem an already-running Codex process build before it inherits the updated setting.
-set "XINYUE_JAVA_HOME=%USERPROFILE%\.cache\xinyue-jdk\runtime\jdk-17.0.19+10"
-if exist "%XINYUE_JAVA_HOME%\bin\java.exe" (
-    set "JAVA_HOME=%XINYUE_JAVA_HOME%"
+@rem Shared public Android toolchain fallback for already-running processes.
+@rem A valid user-level JAVA_HOME remains the primary configuration.
+set "PUBLIC_ANDROID_JAVA_HOME=C:\Users\Public\Android\Jdk\jdk-17.0.19+10"
+if exist "%PUBLIC_ANDROID_JAVA_HOME%\bin\java.exe" (
+    set "JAVA_HOME=%PUBLIC_ANDROID_JAVA_HOME%"
     goto findJavaFromJavaHome
 )
 
