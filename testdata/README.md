@@ -1,1 +1,1 @@
-黄金样例统一维护于相邻仓库 `../fc3d-resources/testdata/fc3d-golden-cases.json`。运行 `tools/setup-shared-resources.ps1` 获取固定版本。
+黄金样例由 SanXu 的 `shared/fc3d-tools/testdata` 唯一维护，作为版本化资源包分发。运行 `tools/setup-shared-resources.ps1` 获取并校验用户缓存中的固定版本。项目不保存样例副本。

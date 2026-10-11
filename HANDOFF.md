@@ -73,7 +73,7 @@ Remove-Item -LiteralPath 'D:\codexproject\lucky3D\app\build' -Recurse -Force
 - `app/schemas/com.lucky3d.app.data.local.Lucky3dDatabase/1.json` 至 `7.json`。
 - `DatabaseMigrations.kt`、`Lucky3dDatabaseMigrationTest.kt` 和全部其他 Kotlin 源码/测试。
 - `data/fc3d-seed.json`、`app/src/main/assets/database/lucky3d.db`、`app/src/main/assets/trial/caiba-55125-trial-seed.json`。
-- 相邻共享仓库中的 `fc3d-resources/testdata/fc3d-golden-cases.json` 及 `tools/` 下确定性生成/校验脚本。
+- SanXu 公共工具包中的 `testdata/fc3d-golden-cases.json` 及 `tools/` 下确定性生成/校验脚本。
 - `home_crystal_navigation_shell.png`、`ic_launcher.xml` 和其余当前引用资源。
 - `local.properties`，Git 历史/标签，以及当前源码、规格、发布与任务文档。
 
@@ -88,3 +88,8 @@ Remove-Item -LiteralPath 'D:\codexproject\lucky3D\app\build' -Recurse -Force
 ## 正式发行仍未完成
 
 本轮未新增模拟器或真机验收。第三方彩报展示授权、选号/彩报最终设计验收、生产签名、物理设备测试、剩余 lint 处理和公开发布确认继续按 `tasks/todo.md` 保持待办。
+
+
+## 2026-10-11 仓库与公共工具迁移
+
+默认开发项目为 SanXu，Lucky3D 只在用户明确指定时修改。两个应用已分别提交到 GitHub；SanXu 现为公开仓库。公共工具唯一源码在 SanXu shared/fc3d-tools，通过固定版本 ZIP 与用户缓存分发，不再依赖相邻共享仓库。见 [当前方案](docs/shared-resource-packages.md)。这些变更取代上文历史仓库状态，不代表新 UI 通过 Android 编译或验收。

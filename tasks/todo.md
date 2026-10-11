@@ -43,6 +43,13 @@
 
 ## 2026-10-11 独立仓库与共享资源
 
-仓库身份与共享资源位置见 [拆分决策](../docs/repository-separation.md)。共用工具与黄金样例由相邻 fc3d-resources 唯一维护；先运行 tools/setup-shared-resources.ps1。各应用数据快照、数据库及未完成验收状态保持独立。
+仓库身份与共享资源位置见 [拆分决策](../docs/repository-separation.md)。共用工具和黄金样例由 SanXu 的 `shared/fc3d-tools` 唯一维护，通过公开版本化资源包与用户缓存复用；不再依赖相邻 fc3d-resources 仓库。运行 tools/setup-shared-resources.ps1 可获取并校验当前项目固定版本。
 
 - [x] 独立 Git/GitHub 仓库与共享资源提取；两个项目数据校验及试机号确定性校验通过，记录见 `docs/repository-separation-verification.json`。本次未进行 Android 构建或 UI 验收。
+
+
+## 当前公共资源方式（2026-10-11）
+
+共用工具和黄金样例由 SanXu 的 `shared/fc3d-tools` 唯一维护，通过公开版本化资源包与用户缓存复用；不再依赖相邻 fc3d-resources 仓库。运行 tools/setup-shared-resources.ps1 可获取并校验当前项目固定版本。 具体流程见[版本化工具包方案](../docs/shared-resource-packages.md)。
+
+- [x] 公共资源改为 SanXu 唯一源码＋公开 tools-v1.0.1 资源包＋用户缓存；旧共享仓库已归档。匿名下载、离线共用缓存、全新克隆重建及各自数据校验通过，见 `docs/resource-package-verification.json`。新 UI 的 Android 编译和验收未在本轮执行。

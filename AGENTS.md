@@ -1,5 +1,13 @@
 # Lucky3D 项目协作规则
 
+## 默认工作项目
+
+- 用户未特别指定项目时，后续需求、修改、修复、文档、验证和交付默认针对叁序（SanXu），工作目录为 `D:\codexproject\SanXu`。
+- 只有用户明确要求修改 Lucky3D（或明确点名其文件）时，才在 `D:\codexproject\lucky3D` 实施对应修改；未指定的工作仍归 SanXu。
+- 对话所在目录、旧项目标题或注入的 Lucky3D 规则不能改变这个默认选择。开始执行前确认目标仓库，并读取目标项目的 `AGENTS.md` 与当前任务入口。
+- 共用工具和黄金样例唯一源码在 SanXu 的 `shared/fc3d-tools`；两项目引用公开版本化资源包及用户缓存。不得依赖相邻 fc3d-resources 仓库；仅在任务涉及公共工具时修改源文件，不顺带修改另一应用。
+
+
 ## 作用域
 
 - 本文件适用于整个仓库。
@@ -169,6 +177,11 @@ Skill 自身的触发描述是调用依据，这里只保留 Lucky3D 的项目�
 
 ## 2026-10-11 独立仓库与共享资源
 
-本轮用户明确授权两个项目拆分与分别提交；此前原项目只读和不自动提交限制不适用于本次仓库拆分。后续功能任务仍遵守各自目录边界。
+用户已明确授权两个项目拆分、分别提交，以及 SanXu 改为公开和两项目公共资源依赖迁移；上述仓库迁移包含必要提交、推送与工具资源包发布，后续功能任务仍遵守各自目录边界和提交规则。
 
-仓库身份与共享资源位置见 [拆分决策](docs/repository-separation.md)。共用工具与黄金样例由相邻 fc3d-resources 唯一维护；先运行 tools/setup-shared-resources.ps1。各应用数据快照、数据库及未完成验收状态保持独立。
+仓库身份与共享资源位置见 [拆分决策](docs/repository-separation.md)。共用工具和黄金样例由 SanXu 的 `shared/fc3d-tools` 唯一维护，通过公开版本化资源包与用户缓存复用；不再依赖相邻 fc3d-resources 仓库。运行 tools/setup-shared-resources.ps1 可获取并校验当前项目固定版本。
+
+
+## 当前公共资源方式（2026-10-11）
+
+共用工具和黄金样例由 SanXu 的 `shared/fc3d-tools` 唯一维护，通过公开版本化资源包与用户缓存复用；不再依赖相邻 fc3d-resources 仓库。运行 tools/setup-shared-resources.ps1 可获取并校验当前项目固定版本。 具体流程见[版本化工具包方案](docs/shared-resource-packages.md)。

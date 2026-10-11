@@ -78,4 +78,9 @@ Debug APK 默认生成在 `app/build/outputs/apk/debug/app-debug.apk`。已核�
 
 ## 2026-10-11 独立仓库与共享资源
 
-仓库身份与共享资源位置见 [拆分决策](docs/repository-separation.md)。共用工具与黄金样例由相邻 fc3d-resources 唯一维护；先运行 tools/setup-shared-resources.ps1。各应用数据快照、数据库及未完成验收状态保持独立。
+仓库身份与共享资源位置见 [拆分决策](docs/repository-separation.md)。共用工具和黄金样例由 SanXu 的 `shared/fc3d-tools` 唯一维护，通过公开版本化资源包与用户缓存复用；不再依赖相邻 fc3d-resources 仓库。运行 tools/setup-shared-resources.ps1 可获取并校验当前项目固定版本。
+
+
+## 当前公共资源方式（2026-10-11）
+
+共用工具和黄金样例由 SanXu 的 `shared/fc3d-tools` 唯一维护，通过公开版本化资源包与用户缓存复用；不再依赖相邻 fc3d-resources 仓库。运行 tools/setup-shared-resources.ps1 可获取并校验当前项目固定版本。 具体流程见[版本化工具包方案](docs/shared-resource-packages.md)。

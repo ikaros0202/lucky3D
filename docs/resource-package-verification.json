@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-11",
+  "project": "lucky3D",
+  "distribution": "public SanXu tools release and shared user cache",
+  "packageVersion": "1.0.1",
+  "packageSha256": "e80526f6bad7682e73ccd3e5ce67e972c7aa40f05e638f83d68f1dde48ecaaba",
+  "resourceRelease": "https://github.com/ikaros0202/SanXu/releases/tag/tools-v1.0.1",
+  "cacheRoot": "%USERPROFILE%/.cache/fc3d-tools",
+  "checks": {
+    "shared-resource-installer": "passed",
+    "data-validation": "passed",
+    "seedRecords": 3334,
+    "trial-validation": "passed",
+    "trialRecords": 555,
+    "anonymousColdDownload": "passed",
+    "offlineCacheReuseBetweenProjects": "passed",
+    "freshAnonymousClonePackageReproduction": "passed",
+    "LFAndCRLFPackagingEquality": "passed",
+    "retiredRepositoryIndependent": "passed"
+  },
+  "publicAudit": {
+    "repository": "SanXu",
+    "historicalBlobsChecked": 748,
+    "checkedCredentialPatternsFound": 0,
+    "restrictedFilesFound": 0,
+    "actionsRuns": 0
+  },
+  "oldResourceRepository": "archived, private; resource files removed from current tree; history preserved",
+  "androidBuildRun": false,
+  "androidUiAcceptanceRun": false,
+  "notes": [
+    "Transient TLS download failure was reproduced; downloader now retries temporary failures up to three times; subsequent anonymous cold download passed.",
+    "Public tools release contains no APK, application database or third-party report images."
+  ]
+}

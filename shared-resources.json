@@ -1,4 +1,12 @@
 {
-  "repository": "https://github.com/ikaros0202/fc3d-resources.git",
-  "revision": "4f5e1c65427f5c7c3301da10fe62557d641f66d4"
+  "version": "1.0.1",
+  "url": "https://github.com/ikaros0202/SanXu/releases/download/tools-v1.0.1/fc3d-tools-1.0.1.zip",
+  "sha256": "e80526f6bad7682e73ccd3e5ce67e972c7aa40f05e638f83d68f1dde48ecaaba",
+  "files": {
+    "manifest.json": "57b6d96da9a84b1a066cae4d2f1b9c99c1843e6471fb3f9f44aed02b373f6a9a",
+    "testdata/fc3d-golden-cases.json": "341edfb9f684e09c60367a815995fbdf3670aab6e83dd05000bbc570da554d9f",
+    "tools/fetch-caiba-trial-seed.py": "0da43cc3e3717c34ddb641311ff7369f94761cfca4e28736ba79845d48374c0a",
+    "tools/fetch-fc3d-seed.ps1": "1988c2f9ac240c3fb138f4e1f1fedd67d3808b8893ade44abbf03d4ee06a86cd",
+    "tools/validate-predevelopment-data.ps1": "8ba6840e9eb1b65b1f30d33171799ad2adfd7cc0a67b67511d68aae4b9f677cf"
+  }
 }
