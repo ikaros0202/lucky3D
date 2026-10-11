@@ -10,6 +10,8 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -168,6 +170,23 @@ internal fun constrainTrendViewport(
     )
 }
 
+internal fun latestTrendViewport(
+    bounds: TrendViewportBounds,
+    scale: Float,
+    rowHeight: Float,
+    drawCount: Int,
+): TrendViewport {
+    val boundedScale = scale.coerceIn(bounds.fitScale, 2.5f)
+    val bodyHeight = (bounds.viewportHeight - bounds.baseHeaderHeight * boundedScale).coerceAtLeast(0f)
+    return constrainTrendViewport(
+        TrendViewport(
+            scale = boundedScale,
+            offsetY = drawCount * rowHeight * boundedScale - bodyHeight,
+        ),
+        bounds,
+    )
+}
+
 internal fun transformTrendViewport(
     viewport: TrendViewport,
     zoomChange: Float,
@@ -261,7 +280,7 @@ fun TrendChart(
             val baseHeaderHeight = TrendGroupHeight + TrendRowHeight
             val baseBodyHeight = TrendRowHeight * bodyRowCount
             val viewportWidthPx = with(density) { maxWidth.toPx() }
-            val viewportHeightPx = with(density) { maxHeight.toPx() }
+            val viewportHeightPx = with(density) { (maxHeight - 48.dp).toPx().coerceAtLeast(1f) }
             val contentWidthPx = with(density) { logicalTableWidth.toPx() }
             val baseHeaderHeightPx = with(density) { baseHeaderHeight.toPx() }
             val bodyContentHeightPx = with(density) { baseBodyHeight.toPx() }
@@ -279,25 +298,44 @@ fun TrendChart(
             )
             var viewport by remember(
                 state.window,
+                state.tableRows.lastOrNull()?.issue,
                 fitScale,
                 viewportWidthPx,
                 viewportHeightPx,
                 bodyContentHeightPx,
             ) {
                 mutableStateOf(
-                    constrainTrendViewport(
-                        TrendViewport(scale = state.scale),
-                        bounds,
-                    ),
+                    latestTrendViewport(bounds, state.scale, with(density) { TrendRowHeight.toPx() }, state.tableRows.size),
                 )
             }
             val currentOnSetScale by rememberUpdatedState(onSetScale)
             val currentOnSelectPoint by rememberUpdatedState(onSelectPoint)
             val renderedViewport = constrainTrendViewport(viewport, bounds)
             val touchRadiusPx = with(density) { 24.dp.toPx() }
+            Column(Modifier.fillMaxSize()) {
+                Row(Modifier.fillMaxWidth().height(48.dp)) {
+                    val starts = listOf(
+                        "期号" to 0.dp,
+                        "百位" to baseIssueWidth + TrendPrefixWidth * 2,
+                        "十位" to baseIssueWidth + TrendPrefixWidth * 2 + TrendCellWidth * 10,
+                        "个位" to baseIssueWidth + TrendPrefixWidth * 2 + TrendCellWidth * 20,
+                        "和值" to baseIssueWidth + TrendPrefixWidth * 2 + TrendCellWidth * 30,
+                    )
+                    starts.forEach { (label, start) ->
+                        TextButton(modifier = Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp), onClick = {
+                            viewport = constrainTrendViewport(
+                                viewport.copy(offsetX = with(density) { start.toPx() } * viewport.scale), bounds,
+                            )
+                        }) { Text(label) }
+                    }
+                    TextButton(modifier = Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp), onClick = {
+                        viewport = latestTrendViewport(bounds, viewport.scale, with(density) { TrendRowHeight.toPx() }, state.tableRows.size)
+                            .copy(offsetX = viewport.offsetX)
+                    }) { Text("最新") }
+                }
             Canvas(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth().weight(1f)
                     .semantics {
                         contentDescription = buildTrendAccessibilitySummary(
                             accessibilitySummary,
@@ -419,6 +457,7 @@ fun TrendChart(
                     background = colors.background,
                     surfaceVariant = colors.surfaceVariant,
                 )
+            }
             }
     }
 }

@@ -45,7 +45,7 @@ powershell -ExecutionPolicy Bypass -File tools/validate-predevelopment-data.ps1
 .\gradlew.bat connectedDebugAndroidTest
 ```
 
-Debug APK 默认生成在 `app/build/outputs/apk/debug/app-debug.apk`；当前已核验交付文件为 `app/build/outputs/apk/debug/Lucky3D-1.4.0-test-debug.apk`。完整身份、哈希和验证结果见 [V1.4.0 草稿测试版发布记录](docs/releases/v1.4.0.md)。
+Debug APK 默认生成在 `app/build/outputs/apk/debug/app-debug.apk`。已核验的 V1.4.0 测试包保存在 GitHub Draft Release；本地构建目录属于可再生产物，不长期保留。完整身份、哈希和验证结果见 [V1.4.0 草稿测试版发布记录](docs/releases/v1.4.0.md)。
 
 ## GitHub Release
 
@@ -61,11 +61,10 @@ Debug APK 默认生成在 `app/build/outputs/apk/debug/app-debug.apk`；当前�
 - [版本映射](docs/versioning.md)
 - [V1.4 变更记录](CHANGELOG.md)
 - [V1.4.0 草稿测试版发布记录](docs/releases/v1.4.0.md)
-- [V1.2 阶段发布记录](docs/releases/v1.2.0.md)
+- [当前架构](docs/architecture.md)
 - [数据来源与同步](docs/data-source-and-sync.md)
 - [计算规则](docs/calculation-rules.md)
 - [当前 UI 设计规格](docs/design-spec.md)
-- [V1.4 展示时序与页面导航规格](docs/superpowers/specs/2026-08-09-lucky3d-v1.4-display-and-navigation.md)
 - [首页期号入口与云南省奖情规格](docs/specs/2026-08-12-home-official-announcement-and-date-query.md)
 - [任务计划](tasks/plan.md)与[任务状态](tasks/todo.md)
 
@@ -75,3 +74,8 @@ Debug APK 默认生成在 `app/build/outputs/apk/debug/app-debug.apk`；当前�
 - V1.4 展示行为有 API 26/API 37 历史模拟器证据；本次完整发布回归在 API 37 模拟器执行，不代表物理真机验收。
 - 第三方彩报完整图片的公开展示仍需来源授权确认；因此当前 GitHub Release 保持草稿状态。
 - 选号与彩报的既有功能可用，但任务清单中的最终独立设计图验收仍未关闭。
+
+
+## 2026-10-11 独立仓库与共享资源
+
+仓库身份与共享资源位置见 [拆分决策](docs/repository-separation.md)。共用工具与黄金样例由相邻 fc3d-resources 唯一维护；先运行 tools/setup-shared-resources.ps1。各应用数据快照、数据库及未完成验收状态保持独立。

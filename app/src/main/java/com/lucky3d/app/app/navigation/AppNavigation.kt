@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -104,11 +105,12 @@ fun AppNavigation() {
     val context = LocalContext.current
     val view = LocalView.current
     val topDestination = backStack.lastOrNull()
+    val darkTheme = isSystemInDarkTheme()
     SideEffect {
         val window = (context as? Activity)?.window
         window?.let { currentWindow ->
             WindowCompat.getInsetsController(currentWindow, view).isAppearanceLightStatusBars =
-                topDestination !is HistoryDestination
+                !darkTheme && topDestination !is HistoryDestination
         }
     }
 
@@ -164,16 +166,10 @@ private fun MainShell(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (!(selectedTab == MainTab.PLANS && schemeDetailVisible)) {
-                if (selectedTab == MainTab.HOME) {
-                    ApprovedHomeNavigationBar(
-                        onSelect = { selectedTabName = it.name },
-                    )
-                } else {
                     StandardNavigationBar(
                         selectedTab = selectedTab,
                         onSelect = { selectedTabName = it.name },
                     )
-                }
             }
         },
     ) { innerPadding ->
@@ -277,9 +273,6 @@ private fun StandardNavigationBar(
                         Alignment.CenterVertically,
                     ),
                 ) {
-                    if (selected && tab == MainTab.HOME) {
-                        CrystalHomeIcon()
-                    } else {
                         Icon(
                             imageVector = tab.icon(),
                             contentDescription = null,
@@ -290,7 +283,6 @@ private fun StandardNavigationBar(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
                         )
-                    }
                     Text(
                         text = tabLabel,
                         fontWeight = if (selected) {

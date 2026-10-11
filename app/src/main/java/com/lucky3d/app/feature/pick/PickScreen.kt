@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.lazy.rememberLazyListState
+
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -37,6 +41,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -105,19 +112,17 @@ fun PickScreen(
     var saveTemplateDialogOpen by rememberSaveable { mutableStateOf(false) }
     var saveSchemeDialogOpen by rememberSaveable { mutableStateOf(false) }
     var moreMethodsExpanded by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     val editingCondition = state.conditions
         .firstOrNull { it.id == editingConditionId }
         ?.condition
 
-    LazyColumn(
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .testTag("pick_list")
-            .padding(horizontal = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 10.dp),
+            .statusBarsPadding(),
     ) {
-        item {
             FlowingCinnabarHeader(
                 title = stringResource(R.string.pick_title),
                 subtitle = state.targetIssue.takeIf(String::isNotBlank)?.let { "第 $it 期" },
@@ -132,10 +137,29 @@ fun PickScreen(
                                 color = Color.White,
                             )
                         }
+                    } else {
+                        TextButton(onClick = { scope.launch { listState.animateScrollToItem(0) } }) {
+                            Text("编辑条件", color = Color.White)
+                        }
                     }
                 },
             )
+        if (saveStatus == PickSaveStatus.SAVED || saveStatus == PickSaveStatus.FAILED) {
+            InlineStatusBanner(
+                message = InlineMessage(
+                    kind = if (saveStatus == PickSaveStatus.SAVED) MessageKind.SUCCESS else MessageKind.ERROR,
+                    title = if (saveStatus == PickSaveStatus.SAVED) "已保存，可在方案页查看" else "保存失败，请重试",
+                    actionLabel = stringResource(R.string.dismiss),
+                ),
+                onAction = onDismissSaveStatus,
+            )
         }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(1f).testTag("pick_list").padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp),
+        ) {
         item {
             PickContextControls(
                 state = state,
@@ -146,28 +170,6 @@ fun PickScreen(
                 moreMethodsExpanded = moreMethodsExpanded,
                 onToggleMoreMethods = { moreMethodsExpanded = !moreMethodsExpanded },
             )
-        }
-        if (saveStatus == PickSaveStatus.SAVED || saveStatus == PickSaveStatus.FAILED) {
-            item {
-                InlineStatusBanner(
-                    message = InlineMessage(
-                        kind = if (saveStatus == PickSaveStatus.SAVED) {
-                            MessageKind.SUCCESS
-                        } else {
-                            MessageKind.ERROR
-                        },
-                        title = stringResource(
-                            if (saveStatus == PickSaveStatus.SAVED) {
-                                R.string.operation_success
-                            } else {
-                                R.string.operation_failed
-                            },
-                        ),
-                        actionLabel = stringResource(R.string.dismiss),
-                    ),
-                    onAction = onDismissSaveStatus,
-                )
-            }
         }
         if (state.mode == PickMode.MANUAL) {
             item {
@@ -291,6 +293,20 @@ fun PickScreen(
                     )
                 }
             }
+        } else if (state.mode != PickMode.MANUAL && state.playType == PlayType.STRAIGHT) {
+            items(state.candidates.chunked(5), key = { it.first().value }) { row ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    row.forEach { candidate ->
+                        Text(
+                            candidate.value,
+                            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                    repeat(5 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
         } else {
             itemsIndexed(
                 items = state.candidates,
@@ -308,12 +324,14 @@ fun PickScreen(
                 )
             }
         }
-        item {
+        }
+        Surface(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
             PickSummary(
                 state = state,
                 onSetMultiplier = onSetMultiplier,
                 onSaveTemplate = { saveTemplateDialogOpen = true },
                 onSaveScheme = { saveSchemeDialogOpen = true },
+                isSaving = saveStatus == PickSaveStatus.SAVING,
             )
         }
     }
@@ -620,6 +638,7 @@ private fun PickSummary(
     onSetMultiplier: (Int) -> Unit,
     onSaveTemplate: () -> Unit,
     onSaveScheme: () -> Unit,
+    isSaving: Boolean,
 ) {
     Surface(
         modifier = Modifier
@@ -645,7 +664,8 @@ private fun PickSummary(
                         state.multiplier,
                         state.amountYuan,
                     ),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -677,7 +697,7 @@ private fun PickSummary(
                 if (state.mode == PickMode.FILTER) {
                     OutlinedButton(
                         onClick = onSaveTemplate,
-                        enabled = state.conditions.isNotEmpty(),
+                        enabled = state.conditions.isNotEmpty() && !isSaving,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text(stringResource(R.string.pick_save_template))
@@ -685,14 +705,14 @@ private fun PickSummary(
                 }
                 Button(
                     onClick = onSaveScheme,
-                    enabled = state.candidates.isNotEmpty() && state.targetIssue.length == 7,
+                    enabled = state.candidates.isNotEmpty() && state.targetIssue.length == 7 && !isSaving,
                     modifier = Modifier
                         .weight(1f)
                         .testTag("save_scheme_button"),
                 ) {
                     Icon(Icons.Outlined.Save, contentDescription = null)
                     Text(
-                        stringResource(R.string.pick_save_scheme),
+                        if (isSaving) "保存中…" else stringResource(R.string.pick_save_scheme),
                         modifier = Modifier.padding(start = 6.dp),
                     )
                 }

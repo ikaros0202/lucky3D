@@ -22,6 +22,20 @@ class PickScreenTest {
     val composeRule = createComposeRule()
 
     @Test
+    fun saveStaysVisibleWhileBrowsingAllCandidates() {
+        val state = PickViewModel().apply {
+            setMode(PickMode.FILTER)
+            setTargetIssue("2026240")
+        }.uiState.value
+        composeRule.setContent { Lucky3DTheme { TestPickScreen(state) } }
+        composeRule.onNodeWithTag("save_scheme_button").assertIsDisplayed()
+        composeRule.onNodeWithTag("pick_list").performScrollToNode(hasText("995"))
+        composeRule.onNodeWithTag("save_scheme_button").assertIsDisplayed()
+        composeRule.onNodeWithText("编辑条件").performClick()
+        composeRule.onNodeWithText("目标期号").assertIsDisplayed()
+    }
+
+    @Test
     fun manualPickIsTheCompactDefaultAndMoreMethodsAreProgressive() {
         val state = PickUiState(targetIssue = "2026199")
 
@@ -113,8 +127,7 @@ class PickScreenTest {
         composeRule.onNodeWithTag("pick_list").performScrollToNode(hasText("跨度"))
         composeRule.onNodeWithText("跨度").assertIsDisplayed()
         val summary = "${state.betCount} 注 · ${state.multiplier} 倍 · ¥${state.amountYuan}"
-        composeRule.onNodeWithTag("pick_list").performScrollToNode(hasText(summary))
-        composeRule.onNodeWithText(summary).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText(summary).assertIsDisplayed()
     }
 
     @Composable

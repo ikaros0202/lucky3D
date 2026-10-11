@@ -1,8 +1,8 @@
 # Lucky3D Codex Skill 可用性基线
 
-> 核对日期：2026-08-12
+> 核对日期：2026-09-14
 > 口径：`%USERPROFILE%\.codex\skills` 下包含 `SKILL.md`、且不是 `.system` 的直接子目录
-> 状态：当前本机个人直装 Skill 快照；安装、删除或修改后必须重新核对
+> 状态：当前本机个人直装 Skill 快照；本轮已按 GPT-6 Astra 指南精简触发描述，目录数量不变
 
 ## 调用规则
 

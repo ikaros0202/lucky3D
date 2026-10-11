@@ -23,6 +23,18 @@ class TrendViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
+    fun `initial viewport shows latest draw without scrolling to future statistics`() {
+        val bounds = TrendViewportBounds(400f, 600f, 76f, 2458f, 1152f, 0.16f)
+        val viewport = latestTrendViewport(bounds, 1f, 32f, 30)
+        assertThat(viewport.offsetY).isEqualTo(436f)
+        assertThat(30 * 32f - viewport.offsetY).isEqualTo(600f - 76f)
+        assertThat(latestTrendViewport(bounds, 1f, 32f, 10).offsetY).isEqualTo(0f)
+        val zoomed = latestTrendViewport(bounds, 2f, 32f, 30)
+        assertThat(30 * 32f * zoomed.scale - zoomed.offsetY)
+            .isEqualTo(600f - 76f * zoomed.scale)
+    }
+
+    @Test
     fun `fit scale is bounded by one and uses complete logical width`() {
         assertThat(calculateTrendFitScale(360f, 2_450f)).isWithin(0.0001f).of(360f / 2_450f)
         assertThat(calculateTrendFitScale(2_000f, 1_488f)).isEqualTo(1f)

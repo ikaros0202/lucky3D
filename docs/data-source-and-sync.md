@@ -246,7 +246,7 @@ UI状态：
 
 当前两项受控第三方内容是：首页的 55125.cn 福彩 3D 试机号，以及彩报页的牛彩网 A11 彩吧彩报第三版。它们不是官方开奖结果，不写入 `draws`，不参与指标、筛选、回测或复盘；Room 仍是其元数据和界面状态的唯一事实来源。
 
-试机号来源、内置年度种子和运行时校验见 [V1.2 试机号来源与种子规格](superpowers/specs/2026-08-03-lucky3d-caiba-trial-source-and-seed.md)；V1.4 的 `16:30` 前台刷新与跨日显示规则见 [V1.4 展示时序与页面导航规格](superpowers/specs/2026-08-09-lucky3d-v1.4-display-and-navigation.md)；Room v4 契约、彩报私有文件缓存和30天清理规则见 [V1.2 试机号与彩报联网设计](superpowers/specs/2026-07-30-lucky3d-live-content-design.md)。
+试机号来源、内置年度种子、`16:30` 前台刷新与跨日显示规则以本章 9.1—9.2 为准；Room 契约以当前 `app/schemas`、`LiveContentDao`、`DefaultLiveContentRepository` 及其迁移/边界测试为准。历史阶段规格已从当前工作树清理，需要时通过 Git 历史查看。
 
 ### 9.1 来源与请求边界
 

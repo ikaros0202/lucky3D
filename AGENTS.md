@@ -8,24 +8,18 @@
 
 ## 开始工作前
 
-按以下顺序读取与任务相关的资料：
+先读本文件和 `tasks/todo.md` 中与当前任务相关的部分；用户点名文件时先从该文件开始。其余资料按任务路由，不做全量启动读取：
 
-1. `AGENTS.md`
-2. `PRD-lucky3D.md`
-3. `docs/data-source-and-sync.md`
-4. `docs/calculation-rules.md`
-5. `docs/superpowers/specs/2026-07-28-lucky3d-predevelopment-design.md`
-6. `tasks/plan.md`
-7. `tasks/todo.md`
-
-涉及 UI、交互或图表时，还要读取 `docs/ui-design-skill-research.md`。只读取与当前任务有关的章节和文件；如果用户点名了文件，先从点名文件开始。
+- 产品范围或用户流程：`PRD-lucky3D.md`
+- 模块、依赖或数据所有权：`docs/architecture.md`
+- 数据源或同步：`docs/data-source-and-sync.md`
+- 指标、筛选、回测或金额：`docs/calculation-rules.md`
+- UI、交互或图表：`docs/design-spec.md`
+- 当前执行顺序和证据：`tasks/plan.md`、`tasks/todo.md`
 
 ### Skill 可用性
 
-- 当前个人直装 Skill 基线见 `docs/codex-skill-inventory.md`；历史调研、旧实施计划、备份目录和插件缓存不代表当前可调用。
-- 调用任何 Skill 前必须同时确认：它出现在当前基线中，并且当前会话实际暴露了该 Skill。任一条件不满足都不得调用，也不得因为旧文档写了 `REQUIRED` 就尝试恢复或安装。
-- `docs/superpowers/` 是历史规格与计划目录名，不表示本机仍安装 Superpowers Skill。
-- 本机安装、删除或修改 Skill 后，应在同一轮维护中更新 `docs/codex-skill-inventory.md` 和受影响的调用规范。
+当前个人直装 Skill 基线见 `docs/codex-skill-inventory.md`。只调用当前会话实际暴露且与任务直接相关的 Skill；历史文档、备份和插件缓存中的名称不构成安装或调用要求。Skill 安装、删除或修改后更新该基线。
 
 发生冲突时：
 
@@ -33,7 +27,7 @@
 - 产品范围以 `PRD-lucky3D.md` 为准。
 - 数据来源与同步行为以 `docs/data-source-and-sync.md` 为准。
 - 指标、筛选、回测和金额公式以 `docs/calculation-rules.md` 为准。
-- 技术结构以开发前技术设计为准。
+- 技术结构以 `docs/architecture.md` 为准。
 - 执行顺序和当前状态以 `tasks/plan.md`、`tasks/todo.md` 为准。
 - 已确认决策发生变化时，同步更新受影响的文档，避免代码与文档分叉。
 
@@ -109,7 +103,7 @@ Lucky3D 是只服务于中国福利彩票“3D”玩法的 Android 本地数据�
 - 用户要求诊断或评审时，只调查和报告；只有用户同时要求修改时才实施。
 - 改变用户可见行为、数据契约或架构决策时，同步更新相关 PRD、设计、任务或 ADR。
 
-Android 工程创建后，至少使用 Gradle Wrapper 运行与修改范围相称的检查：
+使用 Gradle Wrapper 运行与修改风险相称的检查。例如：
 
 ```powershell
 .\gradlew test
@@ -117,7 +111,7 @@ Android 工程创建后，至少使用 Gradle Wrapper 运行与修改范围相�
 .\gradlew assembleDebug
 ```
 
-发布前还要完成相关 UI/端到端测试、Release 构建和真机或模拟器主流程验收。数据相关改动应同时运行：
+不要把这三条机械地用于每个窄改动；领域逻辑跑相关单元测试，Android/UI 或资源改动再增加 lint/构建。发布前完成相关 UI/端到端测试、Release 构建和目标模拟器主流程验收。数据相关改动同时运行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/validate-predevelopment-data.ps1
@@ -125,10 +119,10 @@ powershell -ExecutionPolicy Bypass -File tools/validate-predevelopment-data.ps1
 
 只有在命令本轮实际执行成功后，才能声称构建、测试或验收通过。交付说明必须列出修改文件、验证命令、结果和仍存在的风险。
 
-任务结束并准备交付时，除非用户明确要求继续保留运行环境，否则必须完成资源收尾：
+任务确实启动了以下资源时，交付前完成对应收尾：
 
-- 执行 `.\gradlew.bat --stop`，停止本任务使用的 Gradle Daemon 和 Kotlin 编译后台进程；若仍有残留，只能终止能够明确归属于本仓库、本任务的进程，不得强杀 Android Studio、其他项目或无关 Java 进程。
-- 先通过 `adb devices` 确认本任务使用的 Android 模拟器序列号，再执行 `adb -s <模拟器序列号> emu kill`；不得关闭物理真机或其他任务正在使用的模拟器。
+- 如果本任务启动了 Gradle/Kotlin 后台进程，执行 `.\gradlew.bat --stop`；若仍有残留，只能终止明确归属于本仓库、本任务的进程。
+- 如果本任务启动了模拟器，先用 `adb devices` 核对序列号，再执行 `adb -s <模拟器序列号> emu kill`；不得关闭物理真机或其他任务的模拟器。
 - 关闭后再次检查相关编译进程和目标模拟器均已退出；若无法关闭，必须在交付说明中如实记录原因和仍在运行的对象。
 
 ## UI 设计原则
@@ -145,84 +139,17 @@ powershell -ExecutionPolicy Bypass -File tools/validate-predevelopment-data.ps1
 - 本项目不把无障碍模式或系统字体缩放作为设计、实现和验收范围；仍需覆盖基准手机、深浅色模式、前导零和真实长文本。
 - 不在界面使用“预测”“推荐号码”“必中”“提高中奖率”等无法证明的措辞。
 
-## 当前已安装的五个 UI 技能使用规则
+## UI Skill 路由
 
-只使用与当前任务直接相关的最小技能集合。使用技能前读取其完整 `SKILL.md`，并在工作更新中简短说明使用了哪个技能以及原因。技能建议不能覆盖产品需求、用户决定或 Android 官方规范。
+Skill 自身的触发描述是调用依据，这里只保留 Lucky3D 的项目适配：
 
-### `oiloil-ui-ux-guide`
+- 设计系统或完整 UI/UX 评审：`oiloil-ui-ux-guide`
+- 页面结构、信息层级或重要弹窗：`wireframe-spec`
+- Compose 视觉样式和交互实现：`ui-ux-pro-max`，平台限定 Android 手机和 `jetpack-compose`
+- 走势图、遗漏、冷热、分布或回测图表：`data-visualization`，使用真实 `data/fc3d-seed.json` 数据并提供非颜色编码
+- UI 实现与设计稿验收：`design-qa-checklist`，以当前截图、`docs/design-spec.md` 和目标模拟器为证据
 
-以下情况使用：
-
-- 为新项目或多个页面建立、重定向或统一设计系统。
-- 设计首页、走势、选号、方案等新页面族。
-- 需要生成或更新项目级 `design-spec.md`。
-- 用户要求对现有界面、截图或实现做完整 UI/UX 评审。
-
-新建设计默认使用 `design` 模式；只需要某类页面规则时使用 `guide`；评审现有界面时使用 `review`。单个颜色、按钮大小或一句文案等窄问题不启动完整咨询流程。
-
-### `wireframe-spec`
-
-以下情况使用：
-
-- 新增页面、主流程或重要弹窗。
-- 导航、信息架构、内容优先级或页面布局发生显著变化。
-- 复杂筛选区、走势图控制区、方案详情等需要先确认空间关系。
-
-在线框阶段只确定层级、位置、交互和状态，不提前决定视觉风格。线框必须覆盖加载、空、正常、错误和必要的窄屏状态。
-
-### `ui-ux-pro-max`
-
-以下情况使用：
-
-- 选择或调整颜色、字体、间距、圆角、图标、动效和组件样式。
-- 新建或重构 Compose 页面和可复用 UI 组件。
-- 检查触控、导航、反馈、一致性和视觉完成度。
-
-必须将平台明确限定为 Android 手机、技术栈明确限定为 `jetpack-compose`。新页面或新设计系统先查询完整设计系统，再按需查询具体领域；不得照搬 Web、GSAP、ARIA、CSS 或浏览器断点建议，应转换为 Material 3、Compose semantics、系统栏和 Android 窗口规则。
-
-### `data-visualization`
-
-以下情况必须使用：
-
-- 走势图、遗漏、冷热、次数、分布、排行、回测或任何统计图表。
-- 图表类型、坐标、图例、标签、缩放、滚动、触摸详情或颜色编码发生变化。
-- 需要在图表和表格之间选择移动端呈现方式。
-
-优先采用能表达任务的最简单图表，使用真实 `data/fc3d-seed.json` 数据验证。图表必须提供非颜色编码、清晰上下文和可访问的文字替代。
-
-### `design-qa-checklist`
-
-以下情况必须使用：
-
-- UI 已实现，准备声明页面或 UI 任务完成。
-- 设计稿、截图或 `design-spec.md` 与实现需要对比。
-- UI 相关代码评审、里程碑验收和发布前检查。
-
-验收至少覆盖视觉 token、确认稿比例、整屏信息、全部状态、真实内容、触控反馈、深浅色和目标模拟器。无障碍模式和字体缩放不属于本项目验收范围。
-
-### 推荐组合
-
-```text
-新页面或重大改版：
-oiloil-ui-ux-guide
-  → wireframe-spec
-  → ui-ux-pro-max
-  → data-visualization（含图表时）
-  → Compose 实现
-  → design-qa-checklist
-
-小范围视觉或交互调整：
-ui-ux-pro-max
-  → Compose 实现
-  → design-qa-checklist
-
-已有界面完整评审：
-oiloil-ui-ux-guide（review）
-  → data-visualization（含图表时）
-  → design-qa-checklist
-```
-
-不得因为技能已经安装就无条件同时调用全部五个；纯数据、领域逻辑、数据库和网络任务不应触发 UI 设计技能。
+只用当前任务需要的最小集合。Skill 建议不能覆盖产品需求、用户决定或 Android 官方规范；纯数据、领域逻辑、数据库和网络任务不触发 UI Skill。
 
 ## 代码评审规则
 
@@ -238,4 +165,10 @@ oiloil-ui-ux-guide（review）
 ## 参考
 
 - OpenAI Codex：[Custom instructions with AGENTS.md](https://developers.openai.com/codex/guides/agents-md)
-- 本项目 UI 技能调研：`docs/ui-design-skill-research.md`
+
+
+## 2026-10-11 独立仓库与共享资源
+
+本轮用户明确授权两个项目拆分与分别提交；此前原项目只读和不自动提交限制不适用于本次仓库拆分。后续功能任务仍遵守各自目录边界。
+
+仓库身份与共享资源位置见 [拆分决策](docs/repository-separation.md)。共用工具与黄金样例由相邻 fc3d-resources 唯一维护；先运行 tools/setup-shared-resources.ps1。各应用数据快照、数据库及未完成验收状态保持独立。

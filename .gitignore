@@ -7,6 +7,7 @@ local.properties
 
 # Gradle
 .gradle/
+.kotlin/
 build/
 **/build/
 
@@ -28,6 +29,10 @@ Thumbs.db
 *.log
 *.tmp
 .worktrees/
+.superpowers/
+
+# Generated design draft; the canonical UI specification is docs/design-spec.md
+/design-spec.md
 
 # Locally signed release artifacts
 artifacts/

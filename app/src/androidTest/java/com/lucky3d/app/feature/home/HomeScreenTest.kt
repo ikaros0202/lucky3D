@@ -31,7 +31,7 @@ class HomeScreenTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun confirmedHomeUsesCrystalArtworkBehindLiveData() {
+    fun homeShowsLiveDataWithoutDecorativeArtwork() {
         val latest = draw("2026198", "685")
 
         setHomeContent(
@@ -42,7 +42,7 @@ class HomeScreenTest {
             ),
         )
 
-        composeRule.onNodeWithTag("home_crystal_artwork").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_crystal_artwork").assertDoesNotExist()
         composeRule.onNodeWithTag("home_live_data_layer").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("开奖号 6，8，5").assertIsDisplayed()
         composeRule.onNodeWithText("2026198期").assertIsDisplayed()
@@ -67,7 +67,7 @@ class HomeScreenTest {
         composeRule.onNodeWithText("昨日开奖").assertDoesNotExist()
         composeRule.onNodeWithText("最近开奖").assertDoesNotExist()
         composeRule.onNodeWithText("胆码拖码").assertDoesNotExist()
-        composeRule.onNodeWithText("柔 光 晶 体").assertIsDisplayed()
+        composeRule.onNodeWithText("柔 光 晶 体").assertDoesNotExist()
 
         composeRule
             .onNodeWithContentDescription("按期号查看第2026198期，开奖日期2026-07-27")
@@ -80,7 +80,7 @@ class HomeScreenTest {
             .onNodeWithContentDescription("开奖号 6，8，5")
             .assertIsDisplayed()
             .assertHeightIsAtLeast(48.dp)
-        composeRule.onNodeWithTag("home_crystal_artwork").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_crystal_artwork").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("和值 19").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("和尾 9").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("跨度 3").assertIsDisplayed()
@@ -96,11 +96,11 @@ class HomeScreenTest {
         composeRule
             .onNodeWithContentDescription("百位数字6，此前遗漏30，冷态，窗口30期")
             .assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("冷热刻度").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("冷热刻度").assertDoesNotExist()
         composeRule.onNodeWithText("试机号").assertIsDisplayed()
         composeRule.onNodeWithTag("home_trial_number").assertIsDisplayed()
-        composeRule.onNodeWithTag("home_refresh_icon").assertIsDisplayed()
-        composeRule.onNodeWithTag("home_settings_icon").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_refresh_icon", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithTag("home_settings_icon", useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithTag("home_announcement_issue").assertIsDisplayed()
         composeRule
             .onNodeWithContentDescription("刷新开奖号和试机号")
