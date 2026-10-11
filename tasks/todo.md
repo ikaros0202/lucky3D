@@ -44,3 +44,5 @@
 ## 2026-10-11 独立仓库与共享资源
 
 仓库身份与共享资源位置见 [拆分决策](../docs/repository-separation.md)。共用工具与黄金样例由相邻 fc3d-resources 唯一维护；先运行 tools/setup-shared-resources.ps1。各应用数据快照、数据库及未完成验收状态保持独立。
+
+- [x] 独立 Git/GitHub 仓库与共享资源提取；两个项目数据校验及试机号确定性校验通过，记录见 `docs/repository-separation-verification.json`。本次未进行 Android 构建或 UI 验收。
